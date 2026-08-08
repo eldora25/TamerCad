@@ -2,6 +2,7 @@ package com.tamercad.ui.modeling
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -32,7 +33,7 @@ fun ExtrudePanel(
     Box(
         modifier = Modifier
             .padding(16.dp)
-            .width(260.dp)
+            .width(280.dp)
             .clip(RoundedCornerShape(TamerCadDimensions.CornerLarge))
             .background(TamerCadColors.Surface)
             .border(TamerCadDimensions.BorderThin, TamerCadColors.PanelBorder, RoundedCornerShape(TamerCadDimensions.CornerLarge))
@@ -56,18 +57,36 @@ fun ExtrudePanel(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // İşlemler (Boolean)
+            // OPERATIONS
+            Text("Operation", color = TamerCadColors.TextSecondary, fontSize = 12.sp)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                maxItemsInEachRow = 2,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OperationButton("New Body", true)
+                OperationButton("Join", false)
+                OperationButton("Cut", false)
+                OperationButton("Intersect", false)
+            }
+
+            // MODIFIERS
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OperationButton("Yeni", true)
-                OperationButton("Ekle", false)
-                OperationButton("Kes", false)
+                ModifierToggle("Symmetric", false)
+                ModifierToggle("Reverse", false)
             }
 
             // Onay / İptal
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = onCancel) { Text("İptal", color = TamerCadColors.Error) }
-                Button(onClick = onAccept, colors = ButtonDefaults.buttonColors(containerColor = TamerCadColors.Primary)) {
-                    Text("Uygula")
+                Spacer(Modifier.width(8.dp))
+                Button(
+                    onClick = onAccept, 
+                    colors = ButtonDefaults.buttonColors(containerColor = TamerCadColors.Primary),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Tamam")
                 }
             }
         }
@@ -82,9 +101,26 @@ private fun RowScope.OperationButton(label: String, isSelected: Boolean) {
             .height(36.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(if (isSelected) TamerCadColors.Primary else TamerCadColors.SurfaceElevated)
-            .border(1.dp, if (isSelected) TamerCadColors.Primary else TamerCadColors.PanelBorder, RoundedCornerShape(8.dp)),
+            .border(1.dp, if (isSelected) TamerCadColors.Primary else TamerCadColors.PanelBorder, RoundedCornerShape(8.dp))
+            .clickable { /* TODO */ },
         contentAlignment = Alignment.Center
     ) {
         Text(label, color = if (isSelected) Color.White else TamerCadColors.TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun RowScope.ModifierToggle(label: String, isSelected: Boolean) {
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .height(32.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (isSelected) TamerCadColors.Primary.copy(alpha = 0.2f) else Color.Transparent)
+            .border(1.dp, if (isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+            .clickable { /* TODO */ },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, color = if (isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary, fontSize = 10.sp)
     }
 }

@@ -327,13 +327,23 @@ fun CADCanvas(viewModel: CADViewModel) {
 
         // --- MANIPULATOR (GIZMO) ---
         val selected = viewModel.selectionManager.firstOrNull()
+        val isActive = viewModel.activeManipulatorAxis != null
+        
         if (selected is com.tamercad.core.geometry.Face3D) {
-            Manipulator3D.drawFaceManipulator(this, viewModel, selected, screenWidth, screenHeight)
+            val extrudeFeat = viewModel.mainAssembly.components.flatMap { it.features }.find { it.id == selected.parentFeatureId } as? com.tamercad.core.features.ExtrudeFeature
+            Manipulator3D.drawFaceManipulator(this, viewModel, selected, screenWidth, screenHeight, isActive, extrudeFeat?.depth)
         } else if (selected is com.tamercad.core.geometry.Line && selected.parentFeatureId != null) {
-            Manipulator3D.drawEdgeManipulator(this, viewModel, selected, screenWidth, screenHeight)
+            val filletFeat = viewModel.mainAssembly.components.flatMap { it.features }.filterIsInstance<com.tamercad.core.features.FilletFeature>().find { it.edgeIds.contains(selected.id) }
+            Manipulator3D.drawEdgeManipulator(this, viewModel, selected, screenWidth, screenHeight, isActive, filletFeat?.radius)
         } else {
             viewModel.getSelectedEntityCenter()?.let { center ->
-                Manipulator3D.drawTranslationGizmo(this, viewModel, center, screenWidth, screenHeight)
+                val currentValue = when(viewModel.activeManipulatorAxis) {
+                    "X" -> viewModel.mainAssembly.components.find { it.isSelected }?.tx
+                    "Y" -> viewModel.mainAssembly.components.find { it.isSelected }?.ty
+                    "Z" -> viewModel.mainAssembly.components.find { it.isSelected }?.tz
+                    else -> null
+                }
+                Manipulator3D.drawTranslationGizmo(this, viewModel, center, screenWidth, screenHeight, viewModel.activeManipulatorAxis, currentValue)
             }
         }
     }

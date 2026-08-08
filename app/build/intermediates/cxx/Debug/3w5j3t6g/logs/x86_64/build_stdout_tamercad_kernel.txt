@@ -1,3 +1,2 @@
 ninja: Entering directory `C:\Projelerim\TamerCad-main\app\.cxx\Debug\3w5j3t6g\x86_64'
-[1/2] Building CXX object CMakeFiles/tamercad_kernel.dir/tamercad_kernel.cpp.o
-[2/2] Linking CXX shared library C:\Projelerim\TamerCad-main\app\build\intermediates\cxx\Debug\3w5j3t6g\obj\x86_64\libtamercad_kernel.so
+ninja: no work to do.
