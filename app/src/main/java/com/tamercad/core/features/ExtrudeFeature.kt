@@ -8,6 +8,10 @@ import com.tamercad.core.geometry.Face3D
 import com.tamercad.core.geometry.Line
 import com.tamercad.core.math.Point3
 
+enum class ExtrudeOperation {
+    NEW_BODY, JOIN, CUT, INTERSECT
+}
+
 /**
  * 2D Taslağı Z Ekseninde Yükselterek (Extrude) 3D Katı Model Oluşturan Özellik.
  */
@@ -15,6 +19,7 @@ class ExtrudeFeature(
     val sketch: SketchFeature,
     var depth: Double,
     override val name: String,
+    var operation: ExtrudeOperation = ExtrudeOperation.NEW_BODY,
     override var id: String = UUID.randomUUID().toString()
 ) : IFeature {
     

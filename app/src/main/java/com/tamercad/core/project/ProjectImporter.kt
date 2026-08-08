@@ -61,7 +61,12 @@ class ProjectImporter {
                                 
                                 if (featType == "ExtrudeFeature") {
                                     val depth = featJson.optDouble("depth", 100.0)
-                                    val extrude = ExtrudeFeature(baseSketch, depth, featJson.optString("name", "Extrude"), featJson.optString("id", UUID.randomUUID().toString()))
+                                    val extrude = ExtrudeFeature(
+                                        sketch = baseSketch, 
+                                        depth = depth, 
+                                        name = featJson.optString("name", "Extrude"), 
+                                        id = featJson.optString("id", UUID.randomUUID().toString())
+                                    )
                                     extrude.evaluate() 
                                     comp.features.add(extrude)
                                 } else if (featType == "RevolveFeature") {
