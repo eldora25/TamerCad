@@ -1,20 +1,19 @@
-# TamerCAD Step 4 & Sprint 004 Task List
+# TamerCAD Step 8 - Advanced Selection System Task List
 
-## Step 4: Left Tool Rail Redesign (COMPLETED)
-- [x] Create `ui/toolbar/CategoryPanel.kt` for dynamic sub-menus.
-- [x] Refactor `ui/toolbar/CADSideToolbar.kt` into a slim Tool Rail.
-- [x] Integrate Rail + Panel in `MainCADScreen.kt`.
-- [x] Ensure 44dp+ touch targets for all tools.
-
-## Sprint 004: Parametric Sketch Engine & Constraints (COMPLETED)
-- [x] Implement Constraint classes: `Coincident`, `Horizontal`, `Vertical`, `Parallel`, `Tangent`.
-- [x] Upgrade `GCSManager.kt` to use iterative resolution (10 cycles).
-- [x] Update `AddConstraintCommand.kt` to support Undo/Redo.
-- [x] Add "Smart Inference" for H/V constraints during drawing in `CADViewModel.kt`.
-- [x] Update `CADCanvas.kt` to render constraint badges (H, V, //, T).
-- [x] Implement Blue/Black color coding for defined geometries.
-- [x] Update `CADContextToolbar.kt` to support "Parallel" tool for multiple line selection.
-
-## Step 5: Direct Modeling Deepening (Next)
-- [ ] Connect Gizmo dragging to `ExtrudeFeature` depth updates.
-- [ ] Implement Edge-specific manipulators for Fillet/Chamfer.
+- [ ] **Version Text & Top Bar Fix**
+    - [ ] Update `CADTopBar.kt` with robust truncation and flexible layout.
+- [ ] **Selection Logic Upgrade**
+    - [ ] Add hover and multi-select states to `SelectionManager.kt`.
+    - [ ] Add filter toggles to `SelectionManager.kt`.
+- [ ] **Picking & Hover Engine**
+    - [ ] Update `pick3DEntity` in `CADViewModel.kt` to use filters.
+    - [ ] Implement `onHover` in `CADViewModel.kt`.
+    - [ ] Add move event detection in `CADCanvas.kt`.
+- [ ] **Selection Filter UI**
+    - [ ] Create `ui/selection/SelectionFilterPanel.kt`.
+    - [ ] Integrate into `MainCADScreen.kt`.
+- [ ] **Visual Feedback**
+    - [ ] Update `CADCanvas.kt` for hover highlights and multi-selection outlines.
+- [ ] **Push & Build**
+    - [ ] Build APK.
+    - [ ] Push to GitHub.

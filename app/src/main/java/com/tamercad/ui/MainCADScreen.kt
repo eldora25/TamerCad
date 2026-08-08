@@ -20,6 +20,7 @@ import com.tamercad.ui.topbar.CADTopBar
 import com.tamercad.ui.toolbar.CADSideToolbar
 import com.tamercad.ui.toolbar.ToolbarCategory
 import com.tamercad.ui.toolbar.CategoryPanel
+import com.tamercad.ui.selection.SelectionFilterPanel
 import com.tamercad.ui.viewport.CADViewport
 import com.tamercad.ui.contextual.CADContextToolbar
 import com.tamercad.ui.contextual.SelectionType
@@ -86,6 +87,16 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
                         viewModel.activeCategory = if (viewModel.activeCategory == cat) ToolbarCategory.NONE else cat
                     }
                 )
+            }
+
+            // SELECTION FILTER: Rail'in hemen yanında
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 72.dp) // Rail genişliği kadar ofset
+                    .zIndex(10f)
+            ) {
+                SelectionFilterPanel(manager = viewModel.selectionManager)
             }
 
             // KATEGORİ PANELİ: Rail üzerinden seçilen araçlar

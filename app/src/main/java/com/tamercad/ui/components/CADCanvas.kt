@@ -38,6 +38,9 @@ import kotlin.math.*
 
 import com.tamercad.ui.viewport.Manipulator3D
 
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
+
 /**
  * TamerCAD Akıllı Çizim Alanı.
  */
@@ -50,6 +53,18 @@ fun CADCanvas(viewModel: CADViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .background(if (viewModel.currentMode == CadMode.NAVIGATE) TamerCadColors.BgColor else TamerCadColors.SketchBgColor)
+            // HOVER TESPİTİ
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        if (event.type == PointerEventType.Move) {
+                            val pos = event.changes.first().position
+                            viewModel.onHover(pos, size.width.toFloat(), size.height.toFloat())
+                        }
+                    }
+                }
+            }
             .pointerInteropFilter { motionEvent ->
                 val stylusEvent = viewModel.stylusInputManager.resolveEvent(motionEvent)
                 viewModel.isStylusInUse = stylusEvent.type == PointerType.Stylus
@@ -137,9 +152,32 @@ fun CADCanvas(viewModel: CADViewModel) {
                 comp.features.forEach { feature ->
                     val solid = (feature as? ExtrudeFeature)?.generatedGeometry ?: (feature as? RevolveFeature)?.generatedGeometry
                     solid?.let { s ->
+                        val isSolidSelected = viewModel.selectionManager.selectedEntities.contains(s)
+                        val isSolidHovered = viewModel.selectionManager.hoveredEntity == s
+                        
                         val compMaterial = viewModel.componentMaterials[comp]?.color ?: VisualEngine.MaterialType.POLISHED_ALUMINUM.baseColor
-                        s.faces.forEach { face -> facesToRender.add(Triple(Face3D(face.vertices.map { it.transform(comp.transform) }), comp, compMaterial)) }
-                        linesToRender.addAll(s.lines.map { Pair(Line(it.startPoint.transform(comp.transform), it.endPoint.transform(comp.transform)), comp.isSelected) })
+                        
+                        s.faces.forEach { face ->
+                            val isFaceSelected = viewModel.selectionManager.selectedEntities.contains(face)
+                            val isFaceHovered = viewModel.selectionManager.hoveredEntity == face
+                            
+                            val highlightColor = when {
+                                isFaceSelected -> TamerCadColors.Primary
+                                isFaceHovered -> TamerCadColors.Primary.copy(alpha = 0.4f)
+                                isSolidSelected -> TamerCadColors.Primary.copy(alpha = 0.6f)
+                                isSolidHovered -> TamerCadColors.Primary.copy(alpha = 0.2f)
+                                else -> null
+                            }
+                            
+                            facesToRender.add(Triple(Face3D(face.vertices.map { it.transform(comp.transform) }), comp, highlightColor ?: compMaterial))
+                        }
+                        
+                        s.lines.forEach { line ->
+                            val isEdgeSelected = viewModel.selectionManager.selectedEntities.contains(line)
+                            val isEdgeHovered = viewModel.selectionManager.hoveredEntity == line
+                            
+                            linesToRender.add(Pair(Line(line.startPoint.transform(comp.transform), line.endPoint.transform(comp.transform)), isEdgeSelected || isSolidSelected || isEdgeHovered))
+                        }
                     }
                 }
             }
@@ -181,9 +219,15 @@ fun CADCanvas(viewModel: CADViewModel) {
         // --- SKETCH RENDERING (Blueprints Logic) ---
         val sketchGeoms = viewModel.activeSketch.getGeometries()
         sketchGeoms.forEach { geometry ->
-            val isSelected = geometry.isSelected
+            val isSelected = viewModel.selectionManager.selectedEntities.contains(geometry)
+            val isHovered = viewModel.selectionManager.hoveredEntity == geometry
+            
             val baseColor = if (geometry.isFullyDefined) Color.Black else Color.Blue
-            val color = if (isSelected) TamerCadColors.AccentBlue else baseColor
+            val color = when {
+                isSelected -> TamerCadColors.AccentBlue
+                isHovered -> TamerCadColors.AccentBlue.copy(alpha = 0.5f)
+                else -> baseColor
+            }
             
             when (geometry) {
                 is Line -> {

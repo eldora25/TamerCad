@@ -19,6 +19,8 @@ import com.tamercad.ui.theme.IconRegistry
 import com.tamercad.ui.theme.TamerCadColors
 import com.tamercad.ui.theme.TamerCadDimensions
 
+import androidx.compose.ui.text.style.TextOverflow
+
 /**
  * TamerCAD Profesyonel Üst Bar.
  * Proje yönetimi, Undo/Redo ve genel ayarları içerir.
@@ -34,9 +36,6 @@ fun CADTopBar(
     onHelp: () -> Unit,
     onBack: () -> Unit
 ) {
-    // Truncate long project names
-    val displayProjectName = if (projectName.length > 15) projectName.take(12) + "..." else projectName
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -47,6 +46,7 @@ fun CADTopBar(
         // SOL: Home, Project Name, Status
         Row(
             modifier = Modifier
+                .weight(1f, fill = false) // İsim çok uzunsa diğerlerini sıkıştırmasın
                 .clip(RoundedCornerShape(TamerCadDimensions.CornerLarge))
                 .background(TamerCadColors.Surface)
                 .border(TamerCadDimensions.BorderThin, TamerCadColors.PanelBorder, RoundedCornerShape(TamerCadDimensions.CornerLarge))
@@ -56,8 +56,15 @@ fun CADTopBar(
             IconButton(onClick = onBack, modifier = Modifier.size(TamerCadDimensions.IconButtonSize)) {
                 Icon(IconRegistry.Home, "Home", tint = Color.White, modifier = Modifier.size(TamerCadDimensions.IconMedium))
             }
-            Column(modifier = Modifier.padding(horizontal = TamerCadDimensions.SpacingSmall)) {
-                Text(displayProjectName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            Column(modifier = Modifier.padding(start = TamerCadDimensions.SpacingSmall, end = TamerCadDimensions.SpacingMedium)) {
+                Text(
+                    text = projectName,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Text(saveStatus, color = TamerCadColors.TextSecondary, fontSize = 10.sp)
             }
         }

@@ -15,20 +15,38 @@ class SelectionManager {
 
     // Seçili nesnelerin listesi (Gözlemlenebilir)
     val selectedEntities = mutableStateListOf<IGeometry>()
+    
+    // Hover durumundaki nesne
+    var hoveredEntity by mutableStateOf<IGeometry?>(null)
 
-    // Seçim Filtreleri
-    var isVertexSelectionEnabled by mutableStateOf(true)
-    var isEdgeSelectionEnabled by mutableStateOf(true)
-    var isFaceSelectionEnabled by mutableStateOf(true)
-    var isBodySelectionEnabled by mutableStateOf(true)
+    // Seçim Modu
+    var isMultiSelectMode by mutableStateOf(false)
+
+    // Seçim Filtreleri (TamerCAD Standartları)
+    var showVertices by mutableStateOf(true)
+    var showEdges by mutableStateOf(true)
+    var showFaces by mutableStateOf(true)
+    var showBodies by mutableStateOf(true)
+    var showSketches by mutableStateOf(true)
 
     /**
-     * Tekil seçim yapar. Mevcut seçimi temizler.
+     * Tekil veya çoklu seçim yapar.
      */
     fun select(entity: IGeometry) {
-        clear()
-        entity.isSelected = true
-        selectedEntities.add(entity)
+        if (isMultiSelectMode) {
+            toggle(entity)
+        } else {
+            clear()
+            entity.isSelected = true
+            selectedEntities.add(entity)
+        }
+    }
+
+    /**
+     * Hover durumunu günceller.
+     */
+    fun setHover(entity: IGeometry?) {
+        hoveredEntity = entity
     }
 
     /**

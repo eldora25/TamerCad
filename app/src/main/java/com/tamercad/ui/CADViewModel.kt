@@ -86,17 +86,19 @@ class CADViewModel : ViewModel() {
     fun pick3DEntity(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): IGeometry? {
         val tapPos = Offset(screenX, screenY)
         
-        // 1. Sketch Geometrileri (En öncelikli)
-        val worldTap = screenToWorld(screenX, screenY, screenWidth, screenHeight)
-        val sketchHit = activeSketch.pickGeometry(worldTap, 20.0 / zoom)
-        if (sketchHit != null) return sketchHit
+        // 1. Sketch Geometrileri (Filter: showSketches)
+        if (selectionManager.showSketches) {
+            val worldTap = screenToWorld(screenX, screenY, screenWidth, screenHeight)
+            val sketchHit = activeSketch.pickGeometry(worldTap, 20.0 / zoom)
+            if (sketchHit != null) return sketchHit
+        }
 
-        // 2. Katı Model Geometrileri (Edge ve Face tespiti)
+        // 2. Katı Model Geometrileri
         var closestSolid: Solid3D? = null
         var closestFace: Face3D? = null
         var closestEdge: Line? = null
         var minDepth = Double.MAX_VALUE
-        var minEdgeDist = 25.0 // Piksel bazlı tolerans
+        var minEdgeDist = 25.0
 
         mainAssembly.components.forEach { comp ->
             if (!comp.isVisible) return@forEach
@@ -104,53 +106,68 @@ class CADViewModel : ViewModel() {
             comp.features.forEach { feature ->
                 val solid = (feature as? ExtrudeFeature)?.generatedGeometry ?: (feature as? RevolveFeature)?.generatedGeometry
                 
-                // KENAR (Edge) Tespiti
-                solid?.lines?.forEach { line ->
-                    val p1 = worldToScreen(line.startPoint.transform(comp.transform), screenWidth, screenHeight)
-                    val p2 = worldToScreen(line.endPoint.transform(comp.transform), screenWidth, screenHeight)
-                    
-                    val dist = distancePointToSegment(tapPos, p1, p2)
-                    if (dist < minEdgeDist) {
-                        minEdgeDist = dist.toDouble()
-                        closestEdge = line
-                        closestEdge?.parentFeatureId = feature.id
+                // Filter: showEdges
+                if (selectionManager.showEdges) {
+                    solid?.lines?.forEach { line ->
+                        val p1 = worldToScreen(line.startPoint.transform(comp.transform), screenWidth, screenHeight)
+                        val p2 = worldToScreen(line.endPoint.transform(comp.transform), screenWidth, screenHeight)
+                        val dist = distancePointToSegment(tapPos, p1, p2)
+                        if (dist < minEdgeDist) {
+                            minEdgeDist = dist.toDouble()
+                            closestEdge = line
+                            closestEdge?.parentFeatureId = feature.id
+                        }
                     }
                 }
 
-                // YÜZEY (Face) Tespiti
-                solid?.faces?.forEach { face ->
-                    val tVertices = face.vertices.map { project3DTo2D(it.transform(comp.transform)) }
-                    val avgZ = tVertices.sumOf { it.z } / tVertices.size
-                    val screenVerts = tVertices.map { worldToScreen(it, screenWidth, screenHeight) }
-                    
-                    if (isPointInPolygon(tapPos, screenVerts)) {
-                        if (avgZ < minDepth) { 
-                            minDepth = avgZ
-                            closestSolid = solid
-                            closestFace = face
-                            closestFace?.parentFeatureId = feature.id
+                // Filter: showFaces & showBodies
+                if (selectionManager.showFaces || selectionManager.showBodies) {
+                    solid?.faces?.forEach { face ->
+                        val tVertices = face.vertices.map { project3DTo2D(it.transform(comp.transform)) }
+                        val avgZ = tVertices.sumOf { it.z } / tVertices.size
+                        val screenVerts = tVertices.map { worldToScreen(it, screenWidth, screenHeight) }
+                        
+                        if (isPointInPolygon(tapPos, screenVerts)) {
+                            if (avgZ < minDepth) { 
+                                minDepth = avgZ
+                                closestSolid = solid
+                                closestFace = face
+                                closestFace?.parentFeatureId = feature.id
+                            }
                         }
                     }
                 }
             }
         }
         
-        // --- SELECTION DRILL-DOWN (Hiyerarşik Seçim) ---
+        // --- SELECTION HIERARCHY ---
         val currentSelection = selectionManager.firstOrNull()
         
-        // Önce Kenar hassasiyeti (Eğer çok yakınsa kenarı seç)
-        if (closestEdge != null && minEdgeDist < 15.0) {
+        // Edge has priority if close enough
+        if (selectionManager.showEdges && closestEdge != null && minEdgeDist < 15.0) {
             return closestEdge
         }
 
         if (closestSolid != null) {
-            if (currentSelection == closestSolid && closestFace != null) {
+            // Drill-down logic
+            if (selectionManager.showFaces && currentSelection == closestSolid && closestFace != null) {
                 return closestFace
             }
-            return closestSolid
+            if (selectionManager.showBodies) {
+                return closestSolid
+            }
         }
         
         return null
+    }
+
+    /**
+     * Stylus Hover Olayı.
+     */
+    fun onHover(offset: Offset, screenWidth: Float, screenHeight: Float) {
+        val hit = pick3DEntity(offset.x, offset.y, screenWidth, screenHeight)
+        selectionManager.setHover(hit)
+        if (hit != null) triggerUpdate()
     }
 
     private fun distancePointToSegment(p: Offset, s1: Offset, s2: Offset): Float {
