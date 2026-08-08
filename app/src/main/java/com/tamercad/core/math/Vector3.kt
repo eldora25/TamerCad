@@ -28,4 +28,8 @@ data class Vector3(
         if (len == 0.0) return Vector3()
         return Vector3(x / len, y / len, z / len)
     }
+
+    fun transform(matrix: Matrix4): Vector3 {
+        return matrix.transformNormal(x, y, z)
+    }
 }

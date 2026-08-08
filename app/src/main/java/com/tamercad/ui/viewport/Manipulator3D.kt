@@ -63,17 +63,27 @@ object Manipulator3D {
         val zoom = viewModel.zoom
         val handleLength = 100.0 / zoom
         
-        // Yüzeyin merkezini bul
-        val center = Point3(
+        // Yüzeyin merkezini (centroid) bul
+        val centroid = Point3(
             face.vertices.map { it.x }.average(),
             face.vertices.map { it.y }.average(),
             face.vertices.map { it.z }.average()
         )
         
-        val normal = face.normal()
-        val endPoint = center.add(normal.multiply(handleLength))
+        // Yüzeyi içeren bileşeni bul ki transform uygulayabilelim
+        val component = viewModel.mainAssembly.components.find { comp ->
+            comp.features.any { feat ->
+                (feat as? com.tamercad.core.features.ExtrudeFeature)?.generatedGeometry?.faces?.contains(face) == true ||
+                (feat as? com.tamercad.core.features.RevolveFeature)?.generatedGeometry?.faces?.contains(face) == true
+            }
+        }
         
-        val startScreen = viewModel.worldToScreen(center, screenWidth, screenHeight)
+        val transform = component?.transform ?: com.tamercad.core.math.Matrix4.identity()
+        val worldCentroid = centroid.transform(transform)
+        val normal = face.normal().transform(transform)
+        val endPoint = worldCentroid.add(normal.multiply(handleLength))
+        
+        val startScreen = viewModel.worldToScreen(worldCentroid, screenWidth, screenHeight)
         val endScreen = viewModel.worldToScreen(endPoint, screenWidth, screenHeight)
         
         drawArrow(drawScope, startScreen, endScreen, Color.Cyan, zoom)

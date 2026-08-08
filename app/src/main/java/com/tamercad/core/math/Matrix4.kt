@@ -54,5 +54,14 @@ class Matrix4(
         )
     }
 
+    fun transformNormal(x: Double, y: Double, z: Double): Vector3 {
+        val m = this.elements
+        return Vector3(
+            x = (m[0] * x) + (m[1] * y) + (m[2] * z),
+            y = (m[4] * x) + (m[5] * y) + (m[6] * z),
+            z = (m[8] * x) + (m[9] * y) + (m[10] * z)
+        ).normalize()
+    }
+
     fun clone(): Matrix4 = Matrix4(elements.clone())
 }

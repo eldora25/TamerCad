@@ -146,16 +146,33 @@ fun CADCanvas(viewModel: CADViewModel) {
         }
 
         facesToRender.sortBy { (face, _, _) -> face.vertices.sumOf { viewModel.project3DTo2D(it).z } / face.vertices.size }
-        facesToRender.forEach { (face, _, baseColor) ->
+        facesToRender.forEach { (face, comp, baseColor) ->
             val normal = face.normal()
             val lightIntensity = max(0.3, normal.dot(lightDirection))
-            val shadedColor = Color(red = baseColor.red * lightIntensity.toFloat(), green = baseColor.green * lightIntensity.toFloat(), blue = baseColor.blue * lightIntensity.toFloat(), alpha = baseColor.alpha)
+            
+            // Highlight selected Face
+            val isFaceSelected = face == viewModel.selectionManager.firstOrNull()
+            val finalColor = if (isFaceSelected) TamerCadColors.Primary.copy(alpha = 0.8f) else baseColor
+            
+            val shadedColor = Color(
+                red = finalColor.red * lightIntensity.toFloat(),
+                green = finalColor.green * lightIntensity.toFloat(),
+                blue = finalColor.blue * lightIntensity.toFloat(),
+                alpha = finalColor.alpha
+            )
+            
             val path = Path()
             face.vertices.forEachIndexed { index, vertex ->
-                val screenPt = viewModel.worldToScreen(vertex, screenWidth, screenHeight)
+                val screenPt = viewModel.worldToScreen(vertex.transform(comp.transform), screenWidth, screenHeight)
                 if (index == 0) path.moveTo(screenPt.x, screenPt.y) else path.lineTo(screenPt.x, screenPt.y)
             }
-            path.close(); drawPath(path = path, color = shadedColor)
+            path.close()
+            drawPath(path = path, color = shadedColor)
+            
+            // Draw Face Outline if selected
+            if (isFaceSelected) {
+                drawPath(path = path, color = TamerCadColors.Primary, style = Stroke(width = 4f * viewModel.zoom))
+            }
         }
         linesToRender.forEach { (line, isSelected) ->
             drawLine(if (isSelected) TamerCadColors.ActiveColor else (if (isSketchMode) Color.DarkGray else Color.Cyan.copy(alpha = 0.6f)), viewModel.worldToScreen(line.startPoint, screenWidth, screenHeight), viewModel.worldToScreen(line.endPoint, screenWidth, screenHeight), if (isSelected) 4f * viewModel.zoom else 2f * viewModel.zoom)

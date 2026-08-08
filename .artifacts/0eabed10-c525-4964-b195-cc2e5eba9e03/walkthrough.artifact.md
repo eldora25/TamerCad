@@ -1,35 +1,34 @@
-# TamerCAD: Phase 2 Layout & Phase 3 Direct Modeling Walkthrough
+# TamerCAD UI Redesign - Step 3: Top Command Bar Walkthrough
 
-TamerCad has taken a massive leap forward. We've not only finalized the professional application layout but also implemented the foundational engine for **Direct Modeling**, allowing you to manipulate 3D geometry by selecting and dragging individual faces.
+The top command bar of TamerCad has been fully redesigned to provide a professional, organized, and tablet-friendly experience. It now correctly categorizes controls into logical groups and provides visual feedback for project status.
 
-## 🚀 Key Milestones
+## 🚀 Key Improvements
 
-### 1. Professional Layout Orchestration (Phase 2)
-- **Z-Index Layering**: The UI is now strictly layered using a `Box` orchestration.
-    - **Layer 0**: The 3D Viewport (Full screen).
-    - **Layer 1**: Floating Controls (TopBar, SideToolbar, ContextToolbar).
-    - **Layer 100**: Floating Windows (Browser/Object Tree) and Dialogs.
-- **Safe Area Insets**: Correct padding for status and navigation bars has been implemented for seamless tablet edge-to-edge usage.
+### 1. Three-Section Layout
+- **Left (Project Info)**: Displays a Home icon, the truncated project name, and a live "Save Status" (e.g., "Saved", "Unsaved changes").
+- **Center (History)**: Dedicated area for Undo and Redo buttons, centered for quick access.
+- **Right (System Tools)**: Quick access to Save, Settings, and Help/Info.
 
-### 2. Hierarchical "Drill-Down" Selection
-- **Body & Face Picking**: [CADViewModel.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/ui/CADViewModel.kt) now features an advanced picking engine.
-    - **First Tap**: Selects the entire **Body** (`Solid3D`).
-    - **Second Tap** (on the same area): Drills down to select the specific **Face** (`Face3D`).
-- **Precision**: We use mathematical Point-in-Polygon testing to ensure that the face under your stylus is accurately identified.
+### 2. Live Document Status
+- **Dynamic Feedback**: The project status now updates in real-time. When you make a change, it automatically switches to "Unsaved changes". Tapping the Save button simulates a save operation ("Saving...") and returns to "Saved".
+- **Technical Detail**: This is managed via the `saveStatus` state in [CADViewModel.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/ui/CADViewModel.kt).
 
-### 3. Direct Modeling Engine (Live Geometry)
-- **Live Rebuild**: [ExtrudeFeature.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/core/features/ExtrudeFeature.kt) now implements a Kotlin-side geometry engine. When you change the "Depth" parameter, the solid model's faces and edges are recalculated instantly.
-- **Gizmo Integration**: When a face is selected, a **Normal-Aligned Gizmo** (Cyan Arrow) appears. Dragging this arrow projects your movement into 3D and directly updates the model's height.
+### 3. Professional Aesthetics
+- **Smart Truncation**: Project names longer than 15 characters are automatically truncated (e.g., `MyVeryLongProjectName` becomes `MyVeryLongPro...`) to prevent UI clutter.
+- **Rounded Containers**: Buttons and groups are housed in high-radius containers (24dp+) with professional dark borders, matching the "Grand Architecture" design tokens.
+- **Icon Standardization**: All icons now use the [IconRegistry.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/ui/theme/IconRegistry.kt) system, ensuring visual consistency across the app.
 
-## 🛠️ Refactored Components
-- `MainCADScreen.kt`: Cleaned up for modular orchestration.
-- `SelectionManager.kt`: Now understands the difference between selecting a Body and a Face.
-- `Manipulator3D.kt`: Added support for face-normal translation handles.
+## 🛠️ Refactored Files
+- `ui/topbar/CADTopBar.kt`: Complete redesign of the component.
+- `ui/CADViewModel.kt`: Added `saveStatus` state and updated `triggerUpdate()` to track changes.
+- `ui/MainCADScreen.kt`: Integrated the new `CADTopBar` and save simulation.
+- `ui/components/CommonUI.kt`: Updated `LabeledSidebarIconButton` for better label handling.
 
-## How to Test
-1. **Selection**: Tap on a 3D object (it turns blue). Tap again on its top face; you'll see a single **Cyan Arrow** pointing up.
-2. **Modeling**: Drag that Cyan Arrow up or down. Watch as the 3D body grows or shrinks in real-time.
-3. **Layout**: Notice how the Browser and Toolbars hover elegantly over the 3D space without obscuring your design area.
+## How to Verify
+1. **Layout**: Notice the clean separation of Home/Name, Undo/Redo, and Save/Settings in the top bar.
+2. **Status**: Draw a line or move a body; the status under the project name should change to "Unsaved changes".
+3. **Save**: Tap the Save icon on the right; it will briefly show "Saving..." and then back to "Saved".
+4. **Undo/Redo**: Verify that the history buttons are centered and visually distinct.
 
 > [!TIP]
-> This "Drill-down" selection logic is the standard for professional CAD like Shapr3D and SolidWorks, providing both speed and precision.
+> The top bar height is optimized for tablet thumbs while maintaining a slim profile to maximize the 3D modeling viewport area.
