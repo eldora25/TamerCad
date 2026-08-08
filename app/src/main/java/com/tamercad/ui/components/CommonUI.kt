@@ -67,7 +67,13 @@ fun ConstraintBadge(label: String, symbol: String) {
 }
 
 @Composable
-fun LabeledSidebarIconButton(icon: ImageVector, label: String, isSelected: Boolean, onClick: () -> Unit) {
+fun LabeledSidebarIconButton(
+    icon: ImageVector,
+    label: String,
+    isSelected: Boolean,
+    status: String? = null, // "Saved", "Saving..." vb. için
+    onClick: () -> Unit
+) {
     Column(
         modifier = Modifier
             .width(64.dp)
@@ -79,13 +85,24 @@ fun LabeledSidebarIconButton(icon: ImageVector, label: String, isSelected: Boole
             modifier = Modifier
                 .size(40.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(if (isSelected) TamerCadColors.ActiveColor.copy(alpha = 0.2f) else Color.Transparent),
+                .background(if (isSelected) TamerCadColors.Primary.copy(alpha = 0.2f) else Color.Transparent),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = label, tint = if (isSelected) TamerCadColors.ActiveColor else TamerCadColors.IconColor, modifier = Modifier.size(20.dp))
+            Icon(icon, contentDescription = label, tint = if (isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary, modifier = Modifier.size(20.dp))
         }
-        Spacer(Modifier.height(2.dp))
-        Text(label, color = if (isSelected) TamerCadColors.ActiveColor else TamerCadColors.IconColor, fontSize = 9.sp, fontWeight = FontWeight.Medium)
+        if (label.isNotEmpty()) {
+            Spacer(Modifier.height(2.dp))
+            Text(
+                label,
+                color = if (isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1
+            )
+        }
+        if (status != null) {
+            Text(status, color = TamerCadColors.TextSecondary.copy(alpha = 0.7f), fontSize = 8.sp)
+        }
     }
 }
 

@@ -57,6 +57,7 @@ class CADViewModel : ViewModel() {
     var currentMode by mutableStateOf(CadMode.NAVIGATE)
     val sidebarState = SidebarState()
     var browserOffset by mutableStateOf(Offset(250f, 100f)) // Toolbar'dan iyice uzaklaştırıldı (Pixel cinsinden)
+    var saveStatus by mutableStateOf("Saved") // "Saved", "Saving...", "Unsaved changes"
     
     // Dialog States
     var showRenameDialog by mutableStateOf<Component3D?>(null)
@@ -201,6 +202,7 @@ class CADViewModel : ViewModel() {
 
     fun triggerUpdate() {
         updateTrigger++
+        if (saveStatus == "Saved") saveStatus = "Unsaved changes"
     }
 
     fun onUndo() {

@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tamercad.ui.theme.IconRegistry
 import com.tamercad.ui.theme.TamerCadColors
@@ -27,6 +26,7 @@ import com.tamercad.ui.theme.TamerCadDimensions
 @Composable
 fun CADTopBar(
     projectName: String,
+    saveStatus: String, // "Saved", "Saving...", "Unsaved changes"
     onUndo: () -> Unit,
     onRedo: () -> Unit,
     onSave: () -> Unit,
@@ -34,6 +34,9 @@ fun CADTopBar(
     onHelp: () -> Unit,
     onBack: () -> Unit
 ) {
+    // Truncate long project names
+    val displayProjectName = if (projectName.length > 15) projectName.take(12) + "..." else projectName
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -41,7 +44,7 @@ fun CADTopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Sol Grup: Geri, Proje Adı ve Kaydet
+        // SOL: Home, Project Name, Status
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(TamerCadDimensions.CornerLarge))
@@ -51,17 +54,15 @@ fun CADTopBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack, modifier = Modifier.size(TamerCadDimensions.IconButtonSize)) {
-                Icon(IconRegistry.Home, "Back", tint = Color.White, modifier = Modifier.size(TamerCadDimensions.IconSmall))
+                Icon(IconRegistry.Home, "Home", tint = Color.White, modifier = Modifier.size(TamerCadDimensions.IconMedium))
             }
-            Spacer(Modifier.width(TamerCadDimensions.SpacingMedium))
-            Text(projectName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            Spacer(Modifier.width(TamerCadDimensions.SpacingMedium))
-            IconButton(onClick = onSave, modifier = Modifier.size(TamerCadDimensions.IconButtonSize)) {
-                Icon(IconRegistry.Save, "Save", tint = Color.White, modifier = Modifier.size(TamerCadDimensions.IconSmall))
+            Column(modifier = Modifier.padding(horizontal = TamerCadDimensions.SpacingSmall)) {
+                Text(displayProjectName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text(saveStatus, color = TamerCadColors.TextSecondary, fontSize = 10.sp)
             }
         }
 
-        // Orta Grup: Undo / Redo
+        // ORTA: Undo / Redo
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(TamerCadDimensions.CornerLarge))
@@ -79,27 +80,25 @@ fun CADTopBar(
             }
         }
 
-        // Sağ Grup: Ayarlar ve Yardım
+        // SAĞ: Save, Settings, Help
         Row(
-            horizontalArrangement = Arrangement.spacedBy(TamerCadDimensions.SpacingMedium)
+            modifier = Modifier
+                .clip(RoundedCornerShape(TamerCadDimensions.CornerLarge))
+                .background(TamerCadColors.Surface)
+                .border(TamerCadDimensions.BorderThin, TamerCadColors.PanelBorder, RoundedCornerShape(TamerCadDimensions.CornerLarge))
+                .padding(horizontal = TamerCadDimensions.SpacingSmall, vertical = TamerCadDimensions.SpacingSmall),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(TamerCadDimensions.SpacingSmall)
         ) {
-            TopBarActionIcon(IconRegistry.Settings) { onSettings() }
-            TopBarActionIcon(IconRegistry.Help) { onHelp() }
+            IconButton(onClick = onSave, modifier = Modifier.size(TamerCadDimensions.IconButtonSize)) {
+                Icon(IconRegistry.Save, "Save", tint = Color.White, modifier = Modifier.size(TamerCadDimensions.IconMedium))
+            }
+            IconButton(onClick = onSettings, modifier = Modifier.size(TamerCadDimensions.IconButtonSize)) {
+                Icon(IconRegistry.Settings, "Settings", tint = Color.White, modifier = Modifier.size(TamerCadDimensions.IconMedium))
+            }
+            IconButton(onClick = onHelp, modifier = Modifier.size(TamerCadDimensions.IconButtonSize)) {
+                Icon(IconRegistry.Help, "Help", tint = Color.White, modifier = Modifier.size(TamerCadDimensions.IconMedium))
+            }
         }
-    }
-}
-
-@Composable
-fun TopBarActionIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(TamerCadDimensions.IconButtonSize)
-            .clip(RoundedCornerShape(TamerCadDimensions.CornerMedium))
-            .background(TamerCadColors.Surface)
-            .border(TamerCadDimensions.BorderThin, TamerCadColors.PanelBorder, RoundedCornerShape(TamerCadDimensions.CornerMedium))
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(icon, null, tint = Color.White, modifier = Modifier.size(TamerCadDimensions.IconMedium))
     }
 }

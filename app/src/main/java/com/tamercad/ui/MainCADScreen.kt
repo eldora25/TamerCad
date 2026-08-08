@@ -59,9 +59,14 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
             ) {
                 CADTopBar(
                     projectName = "TamerCad_v0.1.${BuildConfig.VERSION_CODE} Tamer YAMAK©",
+                    saveStatus = viewModel.saveStatus,
                     onUndo = { viewModel.onUndo() },
                     onRedo = { viewModel.onRedo() },
-                    onSave = { Toast.makeText(context, "Proje Kaydedildi", Toast.LENGTH_SHORT).show() },
+                    onSave = { 
+                        viewModel.saveStatus = "Saving..."
+                        Toast.makeText(context, "Proje Kaydedildi", Toast.LENGTH_SHORT).show()
+                        viewModel.saveStatus = "Saved"
+                    },
                     onSettings = { /* Settings Dialog */ },
                     onHelp = { viewModel.showInfoDialog = true },
                     onBack = { /* Project Selection */ }
