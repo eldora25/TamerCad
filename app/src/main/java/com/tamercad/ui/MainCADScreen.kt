@@ -19,6 +19,7 @@ import com.tamercad.ui.theme.TamerCadColors
 import com.tamercad.ui.topbar.CADTopBar
 import com.tamercad.ui.toolbar.CADSideToolbar
 import com.tamercad.ui.toolbar.ToolbarCategory
+import com.tamercad.ui.toolbar.CategoryPanel
 import com.tamercad.ui.viewport.CADViewport
 import com.tamercad.ui.contextual.CADContextToolbar
 import com.tamercad.ui.contextual.SelectionType
@@ -73,12 +74,11 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
                 )
             }
 
-            // SOL SIDEBAR: Kategorize edilmiş araçlar
+            // SOL SIDEBAR: Tool Rail
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .zIndex(10f)
-                    .padding(start = TamerCadColors.Grid.red.coerceAtLeast(0f).let { 0.dp }) // Safe area padding can be added here
             ) {
                 CADSideToolbar(
                     activeCategory = viewModel.activeCategory,
@@ -88,6 +88,15 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
                 )
             }
 
+            // KATEGORİ PANELİ: Rail üzerinden seçilen araçlar
+            CategoryPanel(
+                category = viewModel.activeCategory,
+                onToolClick = { tool ->
+                    Toast.makeText(context, "Tool selected: $tool", Toast.LENGTH_SHORT).show()
+                    // TODO: Map string tool name to CadMode and update viewModel.currentMode
+                }
+            )
+
             // ALT BAĞLAM BAR (Contextual Toolbar): Seçime göre değişen araçlar
             Box(
                 modifier = Modifier
@@ -96,7 +105,7 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
                     .navigationBarsPadding()
             ) {
                 CADContextToolbar(
-                    selectionType = viewModel.selectionManager.getSelectionType(),
+                    viewModel = viewModel,
                     onCommandClick = { cmd -> 
                         Toast.makeText(context, "Komut: $cmd", Toast.LENGTH_SHORT).show()
                         // TODO: Feature Manager / Kernel interaction

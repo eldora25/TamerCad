@@ -187,8 +187,28 @@ fun CADCanvas(viewModel: CADViewModel) {
             
             when (geometry) {
                 is Line -> {
-                    drawLine(color, viewModel.worldToScreen(geometry.startPoint, screenWidth, screenHeight), viewModel.worldToScreen(geometry.endPoint, screenWidth, screenHeight), if (isSelected) 6f * viewModel.zoom else 3f * viewModel.zoom)
+                    val constraints = viewModel.gcsManager.getConstraintsForEntity(geometry.id)
+                    val isBlack = geometry.isFullyDefined || constraints.isNotEmpty()
+                    val lineCol = if (isSelected) TamerCadColors.AccentBlue else (if (isBlack) Color.Black else Color.Blue)
+
+                    drawLine(lineCol, viewModel.worldToScreen(geometry.startPoint, screenWidth, screenHeight), viewModel.worldToScreen(geometry.endPoint, screenWidth, screenHeight), if (isSelected) 6f * viewModel.zoom else 3f * viewModel.zoom)
                     if (isSelected) renderDimensionBubble(viewModel, geometry.startPoint, geometry.endPoint, "${String.format(Locale.US, "%.1f", geometry.length())} mm", screenWidth, screenHeight)
+                    
+                    // Kısıtlama Rozetleri
+                    val midPt = Point3((geometry.startPoint.x + geometry.endPoint.x) / 2.0, (geometry.startPoint.y + geometry.endPoint.y) / 2.0, 0.0)
+                    val midScreen = viewModel.worldToScreen(midPt, screenWidth, screenHeight)
+                    constraints.forEachIndexed { index, constraint ->
+                        val symbol = when (constraint.type) {
+                            "HorizontalConstraint" -> "H"
+                            "VerticalConstraint" -> "V"
+                            "ParallelConstraint" -> "//"
+                            "PerpendicularConstraint" -> "T"
+                            else -> ""
+                        }
+                        if (symbol.isNotEmpty()) {
+                            drawBadge(this, symbol, Offset(midScreen.x + (index * 24f * viewModel.zoom), midScreen.y - 24f * viewModel.zoom), viewModel.zoom)
+                        }
+                    }
                 }
                 is Circle3D -> {
                     val centerScreen = viewModel.worldToScreen(geometry.center, screenWidth, screenHeight)
@@ -267,4 +287,38 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.renderDimensionBubb
     drawRoundRect(color = Color.White, topLeft = Offset(midX - (textWidth / 2) - 15f, midY - 45f), size = Size(textWidth + 30f, 40f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(20f, 20f))
     drawRoundRect(color = TamerCadColors.AccentBlue, topLeft = Offset(midX - (textWidth / 2) - 15f, midY - 45f), size = Size(textWidth + 30f, 40f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(20f, 20f), style = Stroke(width = 2f))
     drawContext.canvas.nativeCanvas.drawText(text, midX, midY - 18f, textPaint)
+}
+
+private fun drawBadge(
+    drawScope: androidx.compose.ui.graphics.drawscope.DrawScope,
+    symbol: String,
+    position: Offset,
+    zoom: Float
+) {
+    val size = 18f * zoom
+    val paint = android.graphics.Paint().apply {
+        color = 0xFF4A90E2.toInt()
+        textSize = 12f * zoom
+        textAlign = android.graphics.Paint.Align.CENTER
+        isAntiAlias = true
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+    }
+    
+    drawScope.drawCircle(
+        color = Color.White,
+        radius = size / 2,
+        center = position
+    )
+    drawScope.drawCircle(
+        color = TamerCadColors.Primary,
+        radius = size / 2,
+        center = position,
+        style = Stroke(width = 1f * zoom)
+    )
+    drawScope.drawContext.canvas.nativeCanvas.drawText(
+        symbol,
+        position.x,
+        position.y + (size / 4),
+        paint
+    )
 }

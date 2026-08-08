@@ -1,17 +1,20 @@
-# TamerCAD Phase 3 Deepening - Edge Selection & Fillet/Chamfer Progress
+# TamerCAD Step 4 & Sprint 004 Task List
 
-- [x] **Edge Selection & Metadata**
-    - [x] Add `parentFeatureId` to `Line.kt`
-    - [x] Enhance `pick3DEntity` in `CADViewModel.kt` for Edge detection (25px tolerance)
-- [x] **Fillet and Chamfer Features**
-    - [x] Create `FilletFeature.kt`
-    - [x] Create `ChamferFeature.kt`
-- [x] **Edge-Specific 3D Manipulators**
-    - [x] Implement `drawEdgeManipulator` in `Manipulator3D.kt` (Yellow handle)
-    - [x] Update `hitTest` in `Manipulator3D.kt` for edge handles (`EDGE_OFFSET`)
-    - [x] Render edge manipulators in `CADCanvas.kt`
-- [x] **Direct Modeling for Edges**
-    - [x] Implement edge drag logic in `CADViewModel.kt`
-    - [x] Connect dragging to `FilletFeature` radius updates
-- [x] **Verification**
-    - [x] Build APK and verify layout and selection
+## Step 4: Left Tool Rail Redesign (COMPLETED)
+- [x] Create `ui/toolbar/CategoryPanel.kt` for dynamic sub-menus.
+- [x] Refactor `ui/toolbar/CADSideToolbar.kt` into a slim Tool Rail.
+- [x] Integrate Rail + Panel in `MainCADScreen.kt`.
+- [x] Ensure 44dp+ touch targets for all tools.
+
+## Sprint 004: Parametric Sketch Engine & Constraints (COMPLETED)
+- [x] Implement Constraint classes: `Coincident`, `Horizontal`, `Vertical`, `Parallel`, `Tangent`.
+- [x] Upgrade `GCSManager.kt` to use iterative resolution (10 cycles).
+- [x] Update `AddConstraintCommand.kt` to support Undo/Redo.
+- [x] Add "Smart Inference" for H/V constraints during drawing in `CADViewModel.kt`.
+- [x] Update `CADCanvas.kt` to render constraint badges (H, V, //, T).
+- [x] Implement Blue/Black color coding for defined geometries.
+- [x] Update `CADContextToolbar.kt` to support "Parallel" tool for multiple line selection.
+
+## Step 5: Direct Modeling Deepening (Next)
+- [ ] Connect Gizmo dragging to `ExtrudeFeature` depth updates.
+- [ ] Implement Edge-specific manipulators for Fillet/Chamfer.

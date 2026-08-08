@@ -17,6 +17,9 @@ import com.tamercad.ui.theme.IconRegistry
 import com.tamercad.ui.theme.TamerCadColors
 import com.tamercad.ui.theme.TamerCadDimensions
 
+import com.tamercad.ui.CADViewModel
+import com.tamercad.core.geometry.Line
+
 enum class SelectionType {
     NONE, VERTEX, EDGE, FACE, BODY, SKETCH, FEATURE, MULTIPLE
 }
@@ -26,9 +29,11 @@ enum class SelectionType {
  */
 @Composable
 fun CADContextToolbar(
-    selectionType: SelectionType,
+    viewModel: CADViewModel,
     onCommandClick: (String) -> Unit
 ) {
+    val selectionType = viewModel.selectionManager.getSelectionType()
+    
     Row(
         modifier = Modifier
             .padding(bottom = TamerCadDimensions.SpacingExtraLarge)
@@ -78,6 +83,10 @@ fun CADContextToolbar(
                 LabeledSidebarIconButton(IconRegistry.Delete, "Delete", false) { onCommandClick("delete") }
             }
             SelectionType.MULTIPLE -> {
+                val selected = viewModel.selectionManager.selectedEntities
+                if (selected.all { it is Line }) {
+                    LabeledSidebarIconButton(IconRegistry.Modify, "Parallel", false) { onCommandClick("parallel") }
+                }
                 LabeledSidebarIconButton(IconRegistry.Measure, "Measure", false) { onCommandClick("measure") }
                 LabeledSidebarIconButton(IconRegistry.Delete, "Delete", false) { onCommandClick("delete") }
             }

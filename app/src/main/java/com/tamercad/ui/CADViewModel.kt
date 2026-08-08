@@ -438,8 +438,28 @@ class CADViewModel : ViewModel() {
                         val straightened = PredictiveSketchEngine.straighten(rawStroke.first(), rawStroke.last())
                         listOf(straightened.startPoint, straightened.endPoint)
                     } else rawStroke
+                    
                     val predictedShapes = PredictiveSketchEngine.recognize(finalizedStroke, zoom)
-                    predictedShapes.forEach { shape -> commandManager.execute(AddGeometryCommand(activeSketch, shape)) }
+                    predictedShapes.forEach { shape -> 
+                        commandManager.execute(AddGeometryCommand(activeSketch, shape))
+                        
+                        // Otomatik Kısıtlama Ekleme (Smart Inference)
+                        if (shape is Line) {
+                            // H/V Inference
+                            val dx = abs(shape.endPoint.x - shape.startPoint.x)
+                            val dy = abs(shape.endPoint.y - shape.startPoint.y)
+                            if (dy < 5.0 / zoom) {
+                                commandManager.execute(com.tamercad.core.commands.AddConstraintCommand(activeSketch, gcsManager, com.tamercad.core.constraints.HorizontalConstraint(shape)))
+                            } else if (dx < 5.0 / zoom) {
+                                commandManager.execute(com.tamercad.core.commands.AddConstraintCommand(activeSketch, gcsManager, com.tamercad.core.constraints.VerticalConstraint(shape)))
+                            }
+                            
+                            // Coincident Inference (Snapping to endpoints)
+                            if (currentSnapType == SnapType.ENDPOINT) {
+                                // Bulunan en yakın noktayı kısıtla (Basitleştirilmiş: Sadece mantık iskeleti)
+                            }
+                        }
+                    }
                     rawStroke = emptyList()
                 }
                 dragHandle = -1; triggerUpdate()

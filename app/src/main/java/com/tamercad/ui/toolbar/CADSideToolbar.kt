@@ -2,22 +2,24 @@ package com.tamercad.ui.toolbar
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.tamercad.ui.components.LabeledSidebarIconButton
 import com.tamercad.ui.theme.IconRegistry
 import com.tamercad.ui.theme.TamerCadColors
 import com.tamercad.ui.theme.TamerCadDimensions
 
 /**
- * TamerCAD Profesyonel Tablet Side Toolbar.
- * Ana araç kategorilerini barındırır.
+ * TamerCAD Profesyonel Tablet Tool Rail.
+ * Sadece ana kategorileri dikey bir şeritte gösterir.
  */
 @Composable
 fun CADSideToolbar(
@@ -26,24 +28,48 @@ fun CADSideToolbar(
 ) {
     Column(
         modifier = Modifier
-            .padding(start = TamerCadDimensions.SpacingMedium, top = 80.dp, bottom = TamerCadDimensions.SpacingExtraLarge)
-            .width(TamerCadDimensions.SideToolbarWidth)
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(TamerCadDimensions.CornerExtraLarge))
+            .padding(start = TamerCadDimensions.SpacingMedium, top = 80.dp)
+            .width(64.dp) // Daha dar bir rail
+            .wrapContentHeight()
+            .clip(RoundedCornerShape(TamerCadDimensions.CornerLarge))
             .background(TamerCadColors.Surface)
-            .border(TamerCadDimensions.BorderThin, TamerCadColors.PanelBorder, RoundedCornerShape(TamerCadDimensions.CornerExtraLarge))
-            .shadow(TamerCadDimensions.ElevationMedium)
-            .padding(vertical = TamerCadDimensions.SpacingExtraLarge),
+            .border(TamerCadDimensions.BorderThin, TamerCadColors.PanelBorder, RoundedCornerShape(TamerCadDimensions.CornerLarge))
+            .shadow(TamerCadDimensions.ElevationLow)
+            .padding(vertical = TamerCadDimensions.SpacingMedium),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(TamerCadDimensions.SpacingLarge)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        LabeledSidebarIconButton(IconRegistry.Select, "Select", activeCategory == ToolbarCategory.SELECT) { onCategoryClick(ToolbarCategory.SELECT) }
-        LabeledSidebarIconButton(IconRegistry.Sketch, "Sketch", activeCategory == ToolbarCategory.SKETCH) { onCategoryClick(ToolbarCategory.SKETCH) }
-        LabeledSidebarIconButton(IconRegistry.Create, "Create", activeCategory == ToolbarCategory.CREATE) { onCategoryClick(ToolbarCategory.CREATE) }
-        LabeledSidebarIconButton(IconRegistry.Modify, "Modify", activeCategory == ToolbarCategory.MODIFY) { onCategoryClick(ToolbarCategory.MODIFY) }
-        LabeledSidebarIconButton(IconRegistry.Construct, "Construct", activeCategory == ToolbarCategory.CONSTRUCT) { onCategoryClick(ToolbarCategory.CONSTRUCT) }
-        LabeledSidebarIconButton(IconRegistry.Measure, "Measure", activeCategory == ToolbarCategory.MEASURE) { onCategoryClick(ToolbarCategory.MEASURE) }
-        LabeledSidebarIconButton(IconRegistry.Inspect, "Inspect", activeCategory == ToolbarCategory.INSPECT) { onCategoryClick(ToolbarCategory.INSPECT) }
+        ToolRailItem(IconRegistry.Select, "Select", activeCategory == ToolbarCategory.SELECT) { onCategoryClick(ToolbarCategory.SELECT) }
+        ToolRailItem(IconRegistry.Sketch, "Sketch", activeCategory == ToolbarCategory.SKETCH) { onCategoryClick(ToolbarCategory.SKETCH) }
+        ToolRailItem(IconRegistry.Create, "Create", activeCategory == ToolbarCategory.CREATE) { onCategoryClick(ToolbarCategory.CREATE) }
+        ToolRailItem(IconRegistry.Modify, "Modify", activeCategory == ToolbarCategory.MODIFY) { onCategoryClick(ToolbarCategory.MODIFY) }
+        ToolRailItem(IconRegistry.Construct, "Construct", activeCategory == ToolbarCategory.CONSTRUCT) { onCategoryClick(ToolbarCategory.CONSTRUCT) }
+        ToolRailItem(IconRegistry.Measure, "Measure", activeCategory == ToolbarCategory.MEASURE) { onCategoryClick(ToolbarCategory.MEASURE) }
+        ToolRailItem(IconRegistry.Inspect, "Items", activeCategory == ToolbarCategory.INSPECT) { onCategoryClick(ToolbarCategory.INSPECT) }
+    }
+}
+
+@Composable
+private fun ToolRailItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isSelected) TamerCadColors.Primary.copy(alpha = 0.2f) else Color.Transparent)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            icon,
+            contentDescription = label,
+            tint = if (isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary,
+            modifier = Modifier.size(24.dp)
+        )
     }
 }
 

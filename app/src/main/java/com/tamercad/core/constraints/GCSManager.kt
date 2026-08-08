@@ -17,17 +17,40 @@ class GCSManager {
         resolve()
     }
 
+    fun removeConstraint(constraint: IConstraint) {
+        constraints.remove(constraint)
+        resolve()
+    }
+
+    fun getConstraints(): List<IConstraint> = constraints.toList()
+
+    fun getConstraintsForEntity(entityId: String): List<IConstraint> {
+        return constraints.filter { 
+            it.toJson().toString().contains(entityId) // Basitleştirilmiş ID taraması
+        }
+    }
+
     /**
      * Tüm aktif kısıtlamaları çözer (Resolve).
-     * Newton-Raphson veya benzeri bir iteratif yöntem simülasyonu.
+     * İteratif yöntem: Karmaşık zincirleri çözmek için birden fazla tur döner.
      */
     fun resolve(): Boolean {
-        var allResolved = true
-        // Kısıtlamaları öncelik sırasına göre çöz
-        for (constraint in constraints) {
-            if (!constraint.resolve()) {
-                allResolved = false
+        var iterations = 0
+        val maxIterations = 10
+        var allResolved = false
+        
+        while (iterations < maxIterations) {
+            var currentRoundResolved = true
+            for (constraint in constraints) {
+                if (!constraint.resolve()) {
+                    currentRoundResolved = false
+                }
             }
+            if (currentRoundResolved) {
+                allResolved = true
+                break
+            }
+            iterations++
         }
         return allResolved
     }
