@@ -407,6 +407,8 @@ fun CADCanvas(viewModel: CADViewModel) {
                     "X" -> viewModel.mainAssembly.components.find { it.isSelected }?.tx
                     "Y" -> viewModel.mainAssembly.components.find { it.isSelected }?.ty
                     "Z" -> viewModel.mainAssembly.components.find { it.isSelected }?.tz
+                    "XY", "XZ", "YZ" -> 0.0 // Could show 2D distance
+                    "ROT_X", "ROT_Y", "ROT_Z" -> 0.0 // Could show angle
                     else -> null
                 }
                 

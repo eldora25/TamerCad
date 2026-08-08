@@ -36,6 +36,7 @@ import com.tamercad.ui.interaction.StylusEvent
 import androidx.compose.ui.input.pointer.PointerType
 
 import com.tamercad.core.analysis.MeasurementEngine
+import com.tamercad.core.math.Ray
 import com.tamercad.core.math.Vector3
 import com.tamercad.ui.viewport.Manipulator3D
 import com.tamercad.ui.selection.SelectionManager
@@ -106,6 +107,7 @@ class CADViewModel : ViewModel() {
     var isExtrudeReversed by mutableStateOf(false)
     var extrudeOperation by mutableStateOf(com.tamercad.core.features.ExtrudeOperation.NEW_BODY)
     var activeManipulatorAxis by mutableStateOf<String?>(null)
+    var manipulationAnchorPoint by mutableStateOf<Point3?>(null)
     
     // Measurement State
     var currentMeasurement by mutableStateOf<MeasurementEngine.MeasurementResult?>(null)
@@ -258,6 +260,26 @@ class CADViewModel : ViewModel() {
         return Point3(worldX.toDouble(), worldY.toDouble(), 0.0)
     }
 
+    /**
+     * Ekranda dokunulan noktadan 3D dünyaya bir ışın (Ray) oluşturur.
+     * Ortho projection uyumludur.
+     */
+    fun getRayFromScreen(offset: Offset, screenWidth: Float, screenHeight: Float): Ray {
+        val cosY = cos(cameraYaw.toDouble()); val sinY = sin(cameraYaw.toDouble())
+        val cosP = cos(cameraPitch.toDouble()); val sinP = sin(cameraPitch.toDouble())
+        
+        // Kamera bakış yönü (Dünya uzayında)
+        val dir = Vector3(sinY * cosP, sinP, cosY * cosP).normalize()
+        
+        // Ekran düzlemindeki nokta (Z=0 varsayımı ile)
+        val worldPt = screenToWorld(offset.x, offset.y, screenWidth, screenHeight)
+        
+        // Ortho ray origin: worldPt'den kamera yönünde geriye doğru büyük bir adım
+        val origin = worldPt.add(dir.multiply(-1000.0))
+        
+        return Ray(origin, dir)
+    }
+
     fun isPointInsideActiveSketch(pt: Point3, screenWidth: Float, screenHeight: Float): Boolean {
         val geometries = activeSketch.getGeometries().filterIsInstance<Line>()
         if (geometries.isEmpty()) return false
@@ -365,6 +387,19 @@ class CADViewModel : ViewModel() {
         val axis = Manipulator3D.hitTest(offset, this, screenWidth, screenHeight)
         if (axis != null) {
             activeManipulatorAxis = axis
+            val ray = getRayFromScreen(offset, screenWidth, screenHeight)
+            val center = getSelectedEntityCenter() ?: Point3.origin()
+            
+            // Initial intersection for delta tracking
+            manipulationAnchorPoint = when {
+                axis == "X" -> ray.closestPointOnAxis(center, Vector3(1.0, 0.0, 0.0))
+                axis == "Y" -> ray.closestPointOnAxis(center, Vector3(0.0, 1.0, 0.0))
+                axis == "Z" -> ray.closestPointOnAxis(center, Vector3(0.0, 0.0, 1.0))
+                axis == "XY" -> ray.intersectPlane(center, Vector3(0.0, 0.0, 1.0))
+                axis == "XZ" -> ray.intersectPlane(center, Vector3(0.0, 1.0, 0.0))
+                axis == "YZ" -> ray.intersectPlane(center, Vector3(1.0, 0.0, 0.0))
+                else -> ray.closestPointOnAxis(center, Vector3(0.0, 0.0, 1.0))
+            }
             return
         }
 
@@ -387,56 +422,91 @@ class CADViewModel : ViewModel() {
     }
 
     fun onSketchDrag(position: Offset, dragAmount: Offset, screenWidth: Float, screenHeight: Float, context: Context) {
-        if (activeManipulatorAxis != null) {
-            val delta = dragAmount.y * -0.5 / zoom
-            val selected = selectionManager.firstOrNull()
+        if (activeManipulatorAxis != null && manipulationAnchorPoint != null) {
+            val ray = getRayFromScreen(position, screenWidth, screenHeight)
+            val center = getSelectedEntityCenter() ?: Point3.origin()
             
-            if (activeManipulatorAxis == "FACE_NORMAL" && selected is Face3D) {
-                // Direct Modeling: Yüzeyi normali yönünde çekiştir
-                val feat = mainAssembly.components.flatMap { it.features }.find { it.id == selected.parentFeatureId }
-                if (feat is ExtrudeFeature) {
-                    feat.depth += delta
-                    feat.evaluate()
-                    triggerUpdate()
-                }
-                return
-            }
-            
-            if (activeManipulatorAxis == "EDGE_OFFSET" && selected is Line) {
-                // Kenar yuvarlatma (Fillet) simülasyonu
-                val existingFillet = mainAssembly.components.flatMap { it.features }
-                    .filterIsInstance<com.tamercad.core.features.FilletFeature>()
-                    .find { it.edgeIds.contains(selected.id) }
-                
-                if (existingFillet != null) {
-                    existingFillet.radius = max(0.0, existingFillet.radius + delta)
-                } else {
-                    // Yeni bir Fillet özelliği ekle (Basitleştirilmiş: Sadece UI değerini değiştirir)
-                    val newFillet = com.tamercad.core.features.FilletFeature(listOf(selected.id), max(0.0, delta))
-                    // TODO: Bileşene ekle ve değerlendir
-                }
-                triggerUpdate()
-                return
+            val currentPt = when {
+                activeManipulatorAxis == "X" -> ray.closestPointOnAxis(center, Vector3(1.0, 0.0, 0.0))
+                activeManipulatorAxis == "Y" -> ray.closestPointOnAxis(center, Vector3(0.0, 1.0, 0.0))
+                activeManipulatorAxis == "Z" -> ray.closestPointOnAxis(center, Vector3(0.0, 0.0, 1.0))
+                activeManipulatorAxis == "XY" -> ray.intersectPlane(center, Vector3(0.0, 0.0, 1.0))
+                activeManipulatorAxis == "XZ" -> ray.intersectPlane(center, Vector3(0.0, 1.0, 0.0))
+                activeManipulatorAxis == "YZ" -> ray.intersectPlane(center, Vector3(1.0, 0.0, 0.0))
+                activeManipulatorAxis == "ROT_X" -> ray.intersectPlane(center, Vector3(1.0, 0.0, 0.0))
+                activeManipulatorAxis == "ROT_Y" -> ray.intersectPlane(center, Vector3(0.0, 1.0, 0.0))
+                activeManipulatorAxis == "ROT_Z" -> ray.intersectPlane(center, Vector3(0.0, 0.0, 1.0))
+                else -> null
             }
 
-            // Seçili nesneyi içeren bileşeni bul
-            val component = mainAssembly.components.find { comp ->
-                comp.features.any { feat ->
-                    (feat as? ExtrudeFeature)?.generatedGeometry == selected ||
-                    (feat as? RevolveFeature)?.generatedGeometry == selected
+            if (currentPt != null) {
+                val selected = selectionManager.firstOrNull()
+                
+                if (activeManipulatorAxis?.startsWith("ROT_") == true) {
+                    // ROTATION LOGIC
+                    val vOld = manipulationAnchorPoint!!.subtract(center).normalize()
+                    val vNew = currentPt.subtract(center).normalize()
+                    
+                    // Simple angle calculation on the plane
+                    val dot = vOld.dot(vNew)
+                    val angle = acos(max(-1.0, min(1.0, dot)))
+                    val cross = vOld.cross(vNew)
+                    
+                    val axisNormal = when(activeManipulatorAxis) {
+                        "ROT_X" -> Vector3(1.0, 0.0, 0.0)
+                        "ROT_Y" -> Vector3(0.0, 1.0, 0.0)
+                        else -> Vector3(0.0, 0.0, 1.0)
+                    }
+                    
+                    val direction = if (cross.dot(axisNormal) > 0) 1.0 else -1.0
+                    val finalAngle = angle * direction
+                    
+                    val component = mainAssembly.components.find { comp ->
+                        comp.features.any { feat ->
+                            (feat as? ExtrudeFeature)?.generatedGeometry == selected ||
+                            (feat as? RevolveFeature)?.generatedGeometry == selected
+                        }
+                    }
+                    
+                    component?.let {
+                        val rotation = when(activeManipulatorAxis) {
+                            "ROT_X" -> com.tamercad.core.math.Matrix4.rotationX(finalAngle)
+                            "ROT_Y" -> com.tamercad.core.math.Matrix4.rotationY(finalAngle)
+                            else -> com.tamercad.core.math.Matrix4.rotationZ(finalAngle)
+                        }
+                        it.transform = it.transform.multiply(rotation)
+                    }
+                } else {
+                    // TRANSLATION LOGIC
+                    val delta = Vector3(
+                        currentPt.x - manipulationAnchorPoint!!.x,
+                        currentPt.y - manipulationAnchorPoint!!.y,
+                        currentPt.z - manipulationAnchorPoint!!.z
+                    )
+                    
+                    if (activeManipulatorAxis == "FACE_NORMAL" && selected is Face3D) {
+                        (mainAssembly.components.flatMap { it.features }.find { it.id == selected.parentFeatureId } as? ExtrudeFeature)?.let {
+                            it.depth += delta.length() * (if (delta.dot(selected.normal()) > 0) 1 else -1)
+                            it.evaluate()
+                        }
+                    } else {
+                        val component = mainAssembly.components.find { comp ->
+                            comp.features.any { feat ->
+                                (feat as? ExtrudeFeature)?.generatedGeometry == selected ||
+                                (feat as? RevolveFeature)?.generatedGeometry == selected
+                            }
+                        }
+                        
+                        component?.let {
+                            it.tx += delta.x; it.ty += delta.y; it.tz += delta.z
+                            it.updateTransform()
+                        }
+                    }
                 }
+                
+                manipulationAnchorPoint = currentPt
+                triggerUpdate()
             }
-            
-            component?.let {
-                when (activeManipulatorAxis) {
-                    "X" -> it.tx += delta
-                    "Y" -> it.ty += delta
-                    "Z" -> it.tz += delta
-                }
-                it.updateTransform()
-            }
-            
-            triggerUpdate()
             return
         }
 

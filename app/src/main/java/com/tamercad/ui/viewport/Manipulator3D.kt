@@ -58,6 +58,46 @@ object Manipulator3D {
                 drawNumericLabel(drawScope, endScreen, "$name ${String.format(Locale.US, "%+.2f", currentValue)} mm", zoom)
             }
         }
+
+        // --- Planar Handles (Squares) ---
+        drawPlanarSquare(drawScope, viewModel, center, Vector3(1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0), Color.Blue.copy(alpha = 0.5f), activeAxis == "XY", screenWidth, screenHeight) // XY Plane
+        drawPlanarSquare(drawScope, viewModel, center, Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, 1.0), Color.Green.copy(alpha = 0.5f), activeAxis == "XZ", screenWidth, screenHeight) // XZ Plane
+        drawPlanarSquare(drawScope, viewModel, center, Vector3(0.0, 1.0, 0.0), Vector3(0.0, 0.0, 1.0), Color.Red.copy(alpha = 0.5f), activeAxis == "YZ", screenWidth, screenHeight) // YZ Plane
+    }
+
+    private fun drawPlanarSquare(
+        drawScope: DrawScope,
+        viewModel: CADViewModel,
+        center: Point3,
+        v1: Vector3,
+        v2: Vector3,
+        color: Color,
+        isActive: Boolean,
+        screenWidth: Float,
+        screenHeight: Float
+    ) {
+        val zoom = viewModel.zoom
+        val size = 30.0 / zoom
+        
+        val p0 = center.add(v1.multiply(size)).add(v2.multiply(size))
+        val p1 = p0.add(v1.multiply(size))
+        val p2 = p1.add(v2.multiply(size))
+        val p3 = p0.add(v2.multiply(size))
+        
+        val s0 = viewModel.worldToScreen(p0, screenWidth, screenHeight)
+        val s1 = viewModel.worldToScreen(p1, screenWidth, screenHeight)
+        val s2 = viewModel.worldToScreen(p2, screenWidth, screenHeight)
+        val s3 = viewModel.worldToScreen(p3, screenWidth, screenHeight)
+        
+        val path = Path().apply {
+            moveTo(s0.x, s0.y)
+            lineTo(s1.x, s1.y)
+            lineTo(s2.x, s2.y)
+            lineTo(s3.x, s3.y)
+            close()
+        }
+        
+        drawScope.drawPath(path, if (isActive) Color.White else color)
     }
 
     /**
@@ -222,6 +262,27 @@ object Manipulator3D {
             val endScreen = viewModel.worldToScreen(axis.second, screenWidth, screenHeight)
             if (isPointNearLine(tapPos, centerScreen, endScreen, 40f)) return axis.first
         }
+        
+        // Planar Squares Hit Test
+        // (Simplified: check distance to square center proxy)
+        val squareSize = 30.0 / zoom
+        val planarChecks = listOf(
+            "XY" to center.add(Vector3(1.0, 0.0, 0.0).multiply(squareSize * 1.5)).add(Vector3(0.0, 1.0, 0.0).multiply(squareSize * 1.5)),
+            "XZ" to center.add(Vector3(1.0, 0.0, 0.0).multiply(squareSize * 1.5)).add(Vector3(0.0, 0.0, 1.0).multiply(squareSize * 1.5)),
+            "YZ" to center.add(Vector3(0.0, 1.0, 0.0).multiply(squareSize * 1.5)).add(Vector3(0.0, 0.0, 1.0).multiply(squareSize * 1.5))
+        )
+        for (p in planarChecks) {
+            val sp = viewModel.worldToScreen(p.second, screenWidth, screenHeight)
+            if (sqrt((tapPos.x - sp.x).pow(2) + (tapPos.y - sp.y).pow(2)) < 30f) return p.first
+        }
+
+        // Rotation Rings Hit Test
+        val rotRadius = 80.0 / zoom
+        val distToCenter = sqrt((tapPos.x - centerScreen.x).pow(2) + (tapPos.y - centerScreen.y).pow(2))
+        if (abs(distToCenter - rotRadius) < 15f) return "ROT_X"
+        if (abs(distToCenter - rotRadius * 1.1f) < 15f) return "ROT_Y"
+        if (abs(distToCenter - rotRadius * 1.2f) < 15f) return "ROT_Z"
+
         return null
     }
 

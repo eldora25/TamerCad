@@ -32,4 +32,9 @@ data class Vector3(
     fun transform(matrix: Matrix4): Vector3 {
         return matrix.transformNormal(x, y, z)
     }
+
+    fun isParallelTo(other: Vector3, tolerance: Double = 0.0001): Boolean {
+        val cross = this.normalize().cross(other.normalize())
+        return cross.length() < tolerance
+    }
 }

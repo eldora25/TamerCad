@@ -1,5 +1,8 @@
 package com.tamercad.core.math
 
+import kotlin.math.cos
+import kotlin.math.sin
+
 class Matrix4(
     val elements: DoubleArray = doubleArrayOf(
         1.0, 0.0, 0.0, 0.0,
@@ -25,6 +28,36 @@ class Matrix4(
                 x, 0.0, 0.0, 0.0,
                 0.0, y, 0.0, 0.0,
                 0.0, 0.0, z, 0.0,
+                0.0, 0.0, 0.0, 1.0
+            ))
+        }
+
+        fun rotationX(angle: Double): Matrix4 {
+            val c = cos(angle); val s = sin(angle)
+            return Matrix4(doubleArrayOf(
+                1.0, 0.0, 0.0, 0.0,
+                0.0, c, -s, 0.0,
+                0.0, s, c, 0.0,
+                0.0, 0.0, 0.0, 1.0
+            ))
+        }
+
+        fun rotationY(angle: Double): Matrix4 {
+            val c = cos(angle); val s = sin(angle)
+            return Matrix4(doubleArrayOf(
+                c, 0.0, s, 0.0,
+                0.0, 1.0, 0.0, 0.0,
+                -s, 0.0, c, 0.0,
+                0.0, 0.0, 0.0, 1.0
+            ))
+        }
+
+        fun rotationZ(angle: Double): Matrix4 {
+            val c = cos(angle); val s = sin(angle)
+            return Matrix4(doubleArrayOf(
+                c, -s, 0.0, 0.0,
+                s, c, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
                 0.0, 0.0, 0.0, 1.0
             ))
         }
