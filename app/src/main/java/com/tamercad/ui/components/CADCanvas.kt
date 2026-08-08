@@ -224,69 +224,71 @@ fun CADCanvas(viewModel: CADViewModel) {
         }
 
         // --- SKETCH RENDERING (Blueprints Logic) ---
-        val sketchGeoms = viewModel.activeSketch.getGeometries()
-        sketchGeoms.forEach { geometry ->
-            val isSelected = viewModel.selectionManager.selectedEntities.contains(geometry)
-            val isHovered = viewModel.selectionManager.hoveredEntity == geometry
-            
-            val baseColor = if (geometry.isFullyDefined) Color.Black else Color.Blue
-            val color = when {
-                isSelected -> TamerCadColors.AccentBlue
-                isHovered -> TamerCadColors.AccentBlue.copy(alpha = 0.5f)
-                else -> baseColor
-            }
-            
-            when (geometry) {
-                is Line -> {
-                    val constraints = viewModel.gcsManager.getConstraintsForEntity(geometry.id)
-                    val isBlack = geometry.isFullyDefined || constraints.isNotEmpty()
-                    val lineCol = if (isSelected) TamerCadColors.AccentBlue else (if (isBlack) Color.Black else Color.Blue)
+        viewModel.document.sketches.forEach { sketch ->
+            val sketchGeoms = sketch.getGeometries()
+            sketchGeoms.forEach { geometry ->
+                val isSelected = viewModel.selectionManager.selectedEntities.contains(geometry)
+                val isHovered = viewModel.selectionManager.hoveredEntity == geometry
+                
+                val baseColor = if (geometry.isFullyDefined) Color.Black else Color.Blue
+                val color = when {
+                    isSelected -> TamerCadColors.AccentBlue
+                    isHovered -> TamerCadColors.AccentBlue.copy(alpha = 0.5f)
+                    else -> baseColor
+                }
+                
+                when (geometry) {
+                    is Line -> {
+                        val constraints = viewModel.gcsManager.getConstraintsForEntity(geometry.id)
+                        val isBlack = geometry.isFullyDefined || constraints.isNotEmpty()
+                        val lineCol = if (isSelected) TamerCadColors.AccentBlue else (if (isBlack) Color.Black else Color.Blue)
 
-                    drawLine(lineCol, viewModel.worldToScreen(geometry.startPoint, screenWidth, screenHeight), viewModel.worldToScreen(geometry.endPoint, screenWidth, screenHeight), if (isSelected) 6f * viewModel.zoom else 3f * viewModel.zoom)
-                    if (isSelected) renderDimensionBubble(viewModel, geometry.startPoint, geometry.endPoint, "${String.format(Locale.US, "%.1f", geometry.length())} mm", screenWidth, screenHeight)
-                    
-                    // Kısıtlama Rozetleri
-                    val midPt = Point3((geometry.startPoint.x + geometry.endPoint.x) / 2.0, (geometry.startPoint.y + geometry.endPoint.y) / 2.0, 0.0)
-                    val midScreen = viewModel.worldToScreen(midPt, screenWidth, screenHeight)
-                    constraints.forEachIndexed { index, constraint ->
-                        val symbol = when (constraint.type) {
-                            "HorizontalConstraint" -> "H"
-                            "VerticalConstraint" -> "V"
-                            "ParallelConstraint" -> "//"
-                            "PerpendicularConstraint" -> "T"
-                            else -> ""
-                        }
-                        if (symbol.isNotEmpty()) {
-                            drawBadge(this, symbol, Offset(midScreen.x + (index * 24f * viewModel.zoom), midScreen.y - 24f * viewModel.zoom), viewModel.zoom)
+                        drawLine(lineCol, viewModel.worldToScreen(geometry.startPoint, screenWidth, screenHeight), viewModel.worldToScreen(geometry.endPoint, screenWidth, screenHeight), if (isSelected) 6f * viewModel.zoom else 3f * viewModel.zoom)
+                        if (isSelected) renderDimensionBubble(viewModel, geometry.startPoint, geometry.endPoint, "${String.format(Locale.US, "%.1f", geometry.length())} mm", screenWidth, screenHeight)
+                        
+                        // Kısıtlama Rozetleri
+                        val midPt = Point3((geometry.startPoint.x + geometry.endPoint.x) / 2.0, (geometry.startPoint.y + geometry.endPoint.y) / 2.0, 0.0)
+                        val midScreen = viewModel.worldToScreen(midPt, screenWidth, screenHeight)
+                        constraints.forEachIndexed { index, constraint ->
+                            val symbol = when (constraint.type) {
+                                "HorizontalConstraint" -> "H"
+                                "VerticalConstraint" -> "V"
+                                "ParallelConstraint" -> "//"
+                                "PerpendicularConstraint" -> "T"
+                                else -> ""
+                            }
+                            if (symbol.isNotEmpty()) {
+                                drawBadge(this, symbol, Offset(midScreen.x + (index * 24f * viewModel.zoom), midScreen.y - 24f * viewModel.zoom), viewModel.zoom)
+                            }
                         }
                     }
-                }
-                is Circle3D -> {
-                    val centerScreen = viewModel.worldToScreen(geometry.center, screenWidth, screenHeight)
-                    val radiusScreen = geometry.radius * viewModel.zoom
-                    drawCircle(color = color, radius = radiusScreen.toFloat(), center = centerScreen, style = Stroke(width = if (isSelected) 6f * viewModel.zoom else 3f * viewModel.zoom))
-                    if (isSelected) {
-                        val angle = PI / 4
-                        val edgePt = Point3(geometry.center.x + geometry.radius * cos(angle), geometry.center.y + geometry.radius * sin(angle), 0.0)
-                        renderDimensionBubble(viewModel, geometry.center, edgePt, "R: ${String.format(Locale.US, "%.1f", geometry.radius)} mm", screenWidth, screenHeight, isRadius = true)
+                    is Circle3D -> {
+                        val centerScreen = viewModel.worldToScreen(geometry.center, screenWidth, screenHeight)
+                        val radiusScreen = geometry.radius * viewModel.zoom
+                        drawCircle(color = color, radius = radiusScreen.toFloat(), center = centerScreen, style = Stroke(width = if (isSelected) 6f * viewModel.zoom else 3f * viewModel.zoom))
+                        if (isSelected) {
+                            val angle = PI / 4
+                            val edgePt = Point3(geometry.center.x + geometry.radius * cos(angle), geometry.center.y + geometry.radius * sin(angle), 0.0)
+                            renderDimensionBubble(viewModel, geometry.center, edgePt, "R: ${String.format(Locale.US, "%.1f", geometry.radius)} mm", screenWidth, screenHeight, isRadius = true)
+                        }
                     }
-                }
-                is Arc3D -> {
-                    val centerScreen = viewModel.worldToScreen(geometry.center, screenWidth, screenHeight)
-                    val radiusScreen = (geometry.radius * viewModel.zoom).toFloat()
-                    val startAngleDeg = Math.toDegrees(geometry.startAngle).toFloat()
-                    var sweepAngleDeg = Math.toDegrees(geometry.endAngle - geometry.startAngle).toFloat()
-                    if (sweepAngleDeg < 0) sweepAngleDeg += 360f
-                    
-                    drawArc(
-                        color = color,
-                        startAngle = -startAngleDeg,
-                        sweepAngle = -sweepAngleDeg,
-                        useCenter = false,
-                        topLeft = Offset(centerScreen.x - radiusScreen, centerScreen.y - radiusScreen),
-                        size = Size(radiusScreen * 2, radiusScreen * 2),
-                        style = Stroke(width = if (isSelected) 6f * viewModel.zoom else 3f * viewModel.zoom)
-                    )
+                    is Arc3D -> {
+                        val centerScreen = viewModel.worldToScreen(geometry.center, screenWidth, screenHeight)
+                        val radiusScreen = (geometry.radius * viewModel.zoom).toFloat()
+                        val startAngleDeg = Math.toDegrees(geometry.startAngle).toFloat()
+                        var sweepAngleDeg = Math.toDegrees(geometry.endAngle - geometry.startAngle).toFloat()
+                        if (sweepAngleDeg < 0) sweepAngleDeg += 360f
+                        
+                        drawArc(
+                            color = color,
+                            startAngle = -startAngleDeg,
+                            sweepAngle = -sweepAngleDeg,
+                            useCenter = false,
+                            topLeft = Offset(centerScreen.x - radiusScreen, centerScreen.y - radiusScreen),
+                            size = Size(radiusScreen * 2, radiusScreen * 2),
+                            style = Stroke(width = if (isSelected) 6f * viewModel.zoom else 3f * viewModel.zoom)
+                        )
+                    }
                 }
             }
         }

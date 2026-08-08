@@ -5,21 +5,21 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="86bf953a-6114-4ac9-aefb-735364799590" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/app/src/main/java/com/tamercad/core/analysis/MeasurementEngine.kt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/state/SettingsState.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/java/com/tamercad/core/document/CADDocument.kt" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/build_eldora.bat" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/build_eldora.ps1" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/lib/persistence_service.dart" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/scripts/increment_build.dart" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/task.artifact.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.artifacts/0eabed10-c525-4964-b195-cc2e5eba9e03/implementation_plan.artifact.md" beforeDir="false" afterPath="$PROJECT_DIR$/.artifacts/0eabed10-c525-4964-b195-cc2e5eba9e03/implementation_plan.artifact.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.artifacts/0eabed10-c525-4964-b195-cc2e5eba9e03/task.artifact.md" beforeDir="false" afterPath="$PROJECT_DIR$/.artifacts/0eabed10-c525-4964-b195-cc2e5eba9e03/task.artifact.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/8.9/executionHistory/executionHistory.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/8.9/executionHistory/executionHistory.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/8.9/fileHashes/fileHashes.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/8.9/fileHashes/fileHashes.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/CADViewModel.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/CADViewModel.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/components/CADCanvas.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/components/CADCanvas.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/components/ObjectTree.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/components/ObjectTree.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/components/BottomToolbar.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/components/MainSidebar.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/components/Sidebar.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/components/Toolbar.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/components/TopBar.kt" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/.metadata" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/.metadata" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/app/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/app/build.gradle.kts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/app/src/main/AndroidManifest.xml" afterDir="false" />

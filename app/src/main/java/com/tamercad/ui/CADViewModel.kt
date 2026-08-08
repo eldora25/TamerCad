@@ -42,6 +42,8 @@ import com.tamercad.ui.selection.SelectionManager
 
 import com.tamercad.ui.state.SettingsState
 
+import com.tamercad.core.document.CADDocument
+
 class CADViewModel : ViewModel() {
     // UI State
     var activeCategory by mutableStateOf(ToolbarCategory.INSPECT)
@@ -50,7 +52,13 @@ class CADViewModel : ViewModel() {
     val selectionManager = SelectionManager()
     val stylusInputManager = StylusInputManager()
     var isStylusInUse by mutableStateOf(false)
-    // Camera & Viewport State
+    
+    // Core Document State (Step 1)
+    val document = CADDocument()
+    
+    // Shortcuts to document properties for convenience
+    val mainAssembly get() = document.assembly
+    val gcsManager get() = document.gcsManager
     var cameraPitch by mutableFloatStateOf(0.5f)
     var cameraYaw by mutableFloatStateOf(-0.5f)
     var panX by mutableFloatStateOf(0f)
@@ -82,8 +90,7 @@ class CADViewModel : ViewModel() {
     var dimInput by mutableStateOf("")
     
     // Core Design State
-    val activeSketch = SketchFeature("Active Sketch")
-    val mainAssembly = Assembly3D("Untitled_Design")
+    var activeSketch by mutableStateOf(SketchFeature("Active Sketch"))
     var updateTrigger by mutableIntStateOf(0)
 
     // Selection & Gesture State
@@ -104,14 +111,16 @@ class CADViewModel : ViewModel() {
     fun pick3DEntity(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): IGeometry? {
         val tapPos = Offset(screenX, screenY)
         
-        // 1. Sketch Geometrileri
+        // 1. Sketch Geometrileri (Tüm doküman eskizlerini tara)
         if (selectionManager.showSketches) {
             val worldTap = screenToWorld(screenX, screenY, screenWidth, screenHeight)
-            val sketchHit = activeSketch.pickGeometry(worldTap, 20.0 / zoom)
-            if (sketchHit != null) return sketchHit
+            document.sketches.forEach { sketch ->
+                val hit = sketch.pickGeometry(worldTap, 20.0 / zoom)
+                if (hit != null) return hit
+            }
         }
 
-        // 2. Katı Model Geometrileri
+        // 2. Katı Model Geometrileri (Edge ve Face tespiti)
         var closestSolid: Solid3D? = null
         var closestFace: Face3D? = null
         var closestEdge: Line? = null
@@ -200,7 +209,6 @@ class CADViewModel : ViewModel() {
 
     val pencilDetector = PencilGestureDetector()
     val commandManager = CommandManager()
-    val gcsManager = GCSManager()
 
     // MATH HELPERS (KALİBRASYON DÜZELTİLDİ)
     fun project3DTo2D(p: Point3): Point3 {
@@ -638,7 +646,12 @@ class CADViewModel : ViewModel() {
         isSketchMode = true
         showPlaneSelector = false
         currentMode = CadMode.SMART_SKETCH
-        activeCategory = ToolbarCategory.SKETCH // Switch to sketch toolbar
+        activeCategory = ToolbarCategory.SKETCH
+        
+        // Add a new sketch to the document and make it active
+        val newSketch = SketchFeature("Sketch ${document.sketches.size + 1}")
+        document.sketches.add(newSketch)
+        activeSketch = newSketch
         
         // Align camera to plane
         when(plane) {
@@ -665,29 +678,30 @@ class CADViewModel : ViewModel() {
 
     fun runCommand(cmdId: String, context: android.content.Context) {
         when (cmdId) {
+            "sketch" -> startSketchFlow()
+            "line" -> currentMode = CadMode.SKETCH_LINE_MANUAL
+            "circle" -> currentMode = CadMode.SMART_SKETCH // Or specific circle mode
+            "extrude" -> currentMode = CadMode.EXTRUDE
+            "fillet" -> currentMode = CadMode.FILLET
             "mate_coincident" -> {
                 val selected = selectionManager.selectedEntities
                 if (selected.size >= 2) {
                     val solidA = selected[0] as? Solid3D
                     val solidB = selected[1] as? Solid3D
-                    
-                    if (solidA != null && solidB != null) {
-                        // Find the actual Component3D wrapper
-                        val compA = mainAssembly.components.find { c -> c.features.any { (it as? ExtrudeFeature)?.generatedGeometry == solidA } }
-                        val compB = mainAssembly.components.find { c -> c.features.any { (it as? ExtrudeFeature)?.generatedGeometry == solidB } }
-                        
-                        if (compA != null && compB != null) {
-                            mainAssembly.addMate(com.tamercad.core.assembly.CoincidentMate(compA, compB))
-                            Toast.makeText(context, "Coincident Mate Applied", Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        Toast.makeText(context, "Please select two 3D Bodies", Toast.LENGTH_SHORT).show()
+                    val compA = mainAssembly.components.find { c -> c.features.any { (it as? ExtrudeFeature)?.generatedGeometry == solidA } }
+                    val compB = mainAssembly.components.find { c -> c.features.any { (it as? ExtrudeFeature)?.generatedGeometry == solidB } }
+                    if (compA != null && compB != null) {
+                        mainAssembly.addMate(com.tamercad.core.assembly.CoincidentMate(compA, compB))
+                        Toast.makeText(context, "Coincident Mate Applied", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
             "delete" -> {
                 selectionManager.selectedEntities.forEach { entity ->
-                    // Logic to remove from sketch or assembly
+                    // Remove from active sketch or assembly
+                    if (activeSketch.getGeometries().contains(entity)) {
+                        activeSketch.removeGeometry(entity)
+                    }
                 }
                 selectionManager.clear()
             }
