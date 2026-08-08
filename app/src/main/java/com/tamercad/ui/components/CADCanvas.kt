@@ -36,9 +36,10 @@ import com.tamercad.ui.theme.TamerCadColors
 import java.util.Locale
 import kotlin.math.*
 
+import com.tamercad.ui.viewport.Manipulator3D
+
 /**
  * TamerCAD Akıllı Çizim Alanı.
- * SPRINT 001: Parmak/Kalem ayrımı ve Blueprint mantığı aktif.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -50,11 +51,8 @@ fun CADCanvas(viewModel: CADViewModel) {
             .fillMaxSize()
             .background(if (viewModel.currentMode == CadMode.NAVIGATE) TamerCadColors.BgColor else TamerCadColors.SketchBgColor)
             .pointerInteropFilter { motionEvent ->
-                // Ham olayları StylusInputManager üzerinden analiz et
                 val stylusEvent = viewModel.stylusInputManager.resolveEvent(motionEvent)
                 viewModel.isStylusInUse = stylusEvent.type == PointerType.Stylus
-                
-                // PencilGestureDetector'ı da güncel tut (Dwell vb. için)
                 viewModel.pencilDetector.processMotionEvent(motionEvent)
                 
                 if (viewModel.isStylusInUse) {
@@ -214,6 +212,11 @@ fun CADCanvas(viewModel: CADViewModel) {
             }
             val strokeColor = if (viewModel.currentMode == CadMode.TRIM) Color.Red.copy(alpha = 0.7f) else Color.Blue.copy(alpha = 0.5f)
             drawPath(path, color = strokeColor, style = Stroke(width = 4f * viewModel.zoom))
+        }
+
+        // --- MANIPULATOR (GIZMO) ---
+        viewModel.getSelectedEntityCenter()?.let { center ->
+            Manipulator3D.drawTranslationGizmo(this, viewModel, center, screenWidth, screenHeight)
         }
     }
 }

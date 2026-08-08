@@ -1,16 +1,19 @@
-# TamerCAD İyileştirmeleri - Görev Listesi (TAMAMLANDI)
+# TamerCAD Phase 3 - Precision Selection & 3D Manipulators Task List
 
-- [x] **Undo/Redo ve İkon Düzeltmesi**
-    - [x] `material-icons-extended` kütüphanesi projeye eklendi.
-    - [x] `IconRegistry.kt` içindeki Undo/Redo okları `AutoMirrored` standartlarına çekildi ve görsel olarak ayrıştırıldı.
-    - [x] `CADTopBar.kt` içindeki butonlar `IconButton` yapısına geçirilerek daha hassas ve çalışan tıklama alanlarına kavuşturuldu.
-- [x] **Browser (Nesne Ağacı) Canlı Liste Sorunu**
-    - [x] `Assembly3D.kt` içindeki `components` listesi `mutableStateListOf` yapısına geçirildi.
-    - [x] `SketchFeature.kt` içindeki `geometries` listesi `mutableStateListOf` yapısına geçirildi.
-    - [x] Nesneler artık oluşturuldukları (Extrude vb.) anda Browser'da listeleniyor.
-- [x] **Browser Sürükleme ve Katman Sorunu**
-    - [x] `ObjectTree.kt` içine `zIndex(100f)` eklenerek en üstte olması garanti edildi.
-    - [x] Sürükleme mantığı rafine edildi.
-- [x] **Bağlamsal Araç Çubuğu (Contextual Toolbar) Derinleştirmesi**
-    - [x] `VERTEX`, `EDGE`, `FACE`, `BODY`, `SKETCH`, `MULTIPLE` ve `FEATURE` seçimleri için özel komut setleri eklendi.
-    - [x] Alt bar artık Shapr3D standartlarında zengin bir araç setine sahip.
+- [ ] **Unified Selection Management**
+    - [ ] Create `ui/selection/SelectionManager.kt`
+    - [ ] Refactor `CADViewModel` to use `SelectionManager`
+- [ ] **3D Picking Engine (Ray-Casting)**
+    - [ ] Implement Ray-Plane intersection in `CADViewModel`
+    - [ ] Implement Ray-Edge (Line) proximity hit-testing
+    - [ ] Update `onTap` to support deep picking (Body -> Face/Edge)
+- [ ] **3D Manipulators (Gizmos)**
+    - [ ] Create `ui/viewport/Manipulator3D.kt`
+    - [ ] Implement rendering logic for translation arrows (X, Y, Z)
+    - [ ] Add hit-detection for manipulator handles
+- [ ] **Interaction & Direct Modeling**
+    - [ ] Update `onSketchDrag` to handle manipulator-constrained movement
+    - [ ] Connect manipulators to `Component3D` transforms and `ExtrudeFeature` parameters
+- [ ] **Verification**
+    - [ ] Build and test on tablet
+    - [ ] Verify selection hierarchy logic

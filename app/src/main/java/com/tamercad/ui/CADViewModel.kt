@@ -12,6 +12,7 @@ import com.tamercad.core.features.RevolveFeature
 import com.tamercad.core.geometry.IGeometry
 import com.tamercad.core.geometry.Line
 import com.tamercad.core.geometry.Circle3D
+import com.tamercad.core.geometry.Solid3D
 import com.tamercad.core.math.Point3
 import com.tamercad.core.sketch.PredictiveSketchEngine
 import com.tamercad.core.sketch.SketchFeature
@@ -33,11 +34,15 @@ import com.tamercad.ui.interaction.StylusInputManager
 import com.tamercad.ui.interaction.StylusEvent
 import androidx.compose.ui.input.pointer.PointerType
 
+import com.tamercad.core.math.Vector3
+import com.tamercad.ui.viewport.Manipulator3D
+import com.tamercad.ui.selection.SelectionManager
+
 class CADViewModel : ViewModel() {
     // UI State
-    var activeCategory by mutableStateOf(ToolbarCategory.INSPECT) // Browser başlangıçta açık
-    var selectionType by mutableStateOf(SelectionType.NONE)
-
+    var activeCategory by mutableStateOf(ToolbarCategory.INSPECT)
+    
+    val selectionManager = SelectionManager()
     val stylusInputManager = StylusInputManager()
     var isStylusInUse by mutableStateOf(false)
     // Camera & Viewport State
@@ -65,12 +70,51 @@ class CADViewModel : ViewModel() {
     var updateTrigger by mutableIntStateOf(0)
 
     // Selection & Gesture State
-    var selectedGeometry by mutableStateOf<IGeometry?>(null)
     var selectionPoint by mutableStateOf<Offset?>(null)
     var dragHandle by mutableIntStateOf(-1)
     var rawStroke by mutableStateOf<List<Point3>>(emptyList())
     var currentSnapType by mutableStateOf(SnapType.NONE)
     var dynamicExtrudeHeight by mutableFloatStateOf(0f)
+    var activeManipulatorAxis by mutableStateOf<String?>(null)
+
+    /**
+     * 3D Nesne Seçimi (Ray-Casting)
+     * Ekranda dokunulan noktadan 3D dünyaya bir ışın (Ray) gönderir ve kesişen en yakın nesneyi döner.
+     */
+    fun pick3DEntity(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): IGeometry? {
+        val tapPos = Offset(screenX, screenY)
+        
+        // 1. Sketch Geometrileri (En öncelikli)
+        val worldTap = screenToWorld(screenX, screenY, screenWidth, screenHeight)
+        val sketchHit = activeSketch.pickGeometry(worldTap, 20.0 / zoom)
+        if (sketchHit != null) return sketchHit
+
+        // 2. Katı Model Geometrileri
+        var closestHit: IGeometry? = null
+        var minDepth = Double.MAX_VALUE
+
+        mainAssembly.components.forEach { comp ->
+            if (!comp.isVisible) return@forEach
+            
+            comp.features.forEach { feature ->
+                val solid = (feature as? ExtrudeFeature)?.generatedGeometry ?: (feature as? RevolveFeature)?.generatedGeometry
+                solid?.faces?.forEach { face ->
+                    val tVertices = face.vertices.map { project3DTo2D(it.transform(comp.transform)) }
+                    val avgZ = tVertices.sumOf { it.z } / tVertices.size
+                    val screenVerts = tVertices.map { worldToScreen(it, screenWidth, screenHeight) }
+                    
+                    if (isPointInPolygon(tapPos, screenVerts)) {
+                        if (avgZ < minDepth) { 
+                            minDepth = avgZ
+                            closestHit = solid
+                        }
+                    }
+                }
+            }
+        }
+        
+        return closestHit
+    }
 
     // Materials
     val componentMaterials = mutableStateMapOf<Component3D, RenderMaterial>()
@@ -158,9 +202,10 @@ class CADViewModel : ViewModel() {
         val pt = screenToWorld(offset.x, offset.y, screenWidth, screenHeight)
         
         // Ölçü Balonuna Tıklama Kontrolü
-        if (selectedGeometry != null) {
+        val currentSelected = selectionManager.firstOrNull()
+        if (currentSelected != null) {
             var isBubbleClicked = false
-            when (val geom = selectedGeometry) {
+            when (val geom = currentSelected) {
                 is Line -> {
                     val midPt = Point3((geom.startPoint.x + geom.endPoint.x) / 2, (geom.startPoint.y + geom.endPoint.y) / 2, 0.0)
                     val midScreen = worldToScreen(midPt, screenWidth, screenHeight)
@@ -183,15 +228,14 @@ class CADViewModel : ViewModel() {
             if (isBubbleClicked) return
         }
 
-        if (currentMode == CadMode.SMART_SKETCH) {
-            val clickedGeom = activeSketch.pickGeometry(pt, 20.0 / zoom)
+        if (currentMode == CadMode.SMART_SKETCH || currentMode == CadMode.NAVIGATE) {
+            val clickedGeom = pick3DEntity(offset.x, offset.y, screenWidth, screenHeight)
             activeSketch.clearSelection()
             if (clickedGeom != null) {
-                selectedGeometry = clickedGeom
-                clickedGeom.isSelected = true
+                selectionManager.select(clickedGeom)
                 selectionPoint = offset
             } else {
-                selectedGeometry = null
+                selectionManager.clear()
                 selectionPoint = null
             }
             triggerUpdate()
@@ -206,6 +250,15 @@ class CADViewModel : ViewModel() {
     }
 
     fun onSketchDragStart(offset: Offset, screenWidth: Float, screenHeight: Float, context: Context) {
+        // 0. Manipülatör Hiti Kontrolü
+        getSelectedEntityCenter()?.let { center ->
+            val axis = Manipulator3D.hitTest(offset, this, center, screenWidth, screenHeight)
+            if (axis != null) {
+                activeManipulatorAxis = axis
+                return
+            }
+        }
+
         val rawPoint = screenToWorld(offset.x, offset.y, screenWidth, screenHeight)
         if (currentMode == CadMode.SMART_SKETCH && isPointInsideActiveSketch(rawPoint, screenWidth, screenHeight)) {
             currentMode = CadMode.EXTRUDE; dynamicExtrudeHeight = 0f
@@ -213,18 +266,43 @@ class CADViewModel : ViewModel() {
             rawStroke = listOf(rawPoint)
         } else if (currentMode == CadMode.SMART_SKETCH) {
             var handled = false
-            val geom = selectedGeometry
+            val geom = selectionManager.firstOrNull()
             if (geom is Line) {
                 val dStart = sqrt((rawPoint.x - geom.startPoint.x).pow(2) + (rawPoint.y - geom.startPoint.y).pow(2))
                 val dEnd = sqrt((rawPoint.x - geom.endPoint.x).pow(2) + (rawPoint.y - geom.endPoint.y).pow(2))
                 if (dStart < 30.0 / zoom) { dragHandle = 0; handled = true }
                 else if (dEnd < 30.0 / zoom) { dragHandle = 1; handled = true }
             }
-            if (!handled) { rawStroke = listOf(rawPoint); dragHandle = -1; selectedGeometry = null; activeSketch.clearSelection() }
+            if (!handled) { rawStroke = listOf(rawPoint); dragHandle = -1; selectionManager.clear(); activeSketch.clearSelection() }
         } else if (currentMode == CadMode.EXTRUDE) { dynamicExtrudeHeight = 0f }
     }
 
     fun onSketchDrag(position: Offset, dragAmount: Offset, screenWidth: Float, screenHeight: Float, context: Context) {
+        if (activeManipulatorAxis != null) {
+            val delta = dragAmount.y * -0.5 / zoom
+            val selected = selectionManager.firstOrNull()
+            
+            // Seçili nesneyi içeren bileşeni bul
+            val component = mainAssembly.components.find { comp ->
+                comp.features.any { feat ->
+                    (feat as? ExtrudeFeature)?.generatedGeometry == selected ||
+                    (feat as? RevolveFeature)?.generatedGeometry == selected
+                }
+            }
+            
+            component?.let {
+                when (activeManipulatorAxis) {
+                    "X" -> it.tx += delta
+                    "Y" -> it.ty += delta
+                    "Z" -> it.tz += delta
+                }
+                it.updateTransform()
+            }
+            
+            triggerUpdate()
+            return
+        }
+
         if (currentMode == CadMode.NAVIGATE) {
             cameraYaw += dragAmount.x * 0.005f; cameraPitch -= dragAmount.y * 0.005f; triggerUpdate()
         } else if (currentMode == CadMode.TRIM || currentMode == CadMode.SMART_SKETCH || currentMode == CadMode.SKETCH_RECT_DIAG || currentMode == CadMode.SKETCH_POLYGON || currentMode == CadMode.SKETCH_SPLINE_FIT) {
@@ -246,7 +324,7 @@ class CADViewModel : ViewModel() {
                 if (toRemove.isNotEmpty()) {
                     geoms.removeAll(toRemove); activeSketch.clearWorkspace()
                     geoms.forEach { activeSketch.addGeometry(it) }
-                    if (toRemove.contains(selectedGeometry)) { selectedGeometry = null; selectionPoint = null }
+                    if (toRemove.contains(selectionManager.firstOrNull())) { selectionManager.clear(); selectionPoint = null }
                 }
             }
             triggerUpdate()
@@ -256,7 +334,7 @@ class CADViewModel : ViewModel() {
                 val straightened = PredictiveSketchEngine.straighten(rawStroke.first(), pt)
                 rawStroke = listOf(rawStroke.first(), straightened.endPoint)
             } else {
-                val geom = selectedGeometry
+                val geom = selectionManager.firstOrNull()
                 if (dragHandle in 0..1 && geom is Line) {
                     val allGeoms = activeSketch.getGeometries().toMutableList()
                     allGeoms.remove(geom)
@@ -264,7 +342,7 @@ class CADViewModel : ViewModel() {
                     if (dragHandle == 0) newStart = pt
                     if (dragHandle == 1) newEnd = pt
                     val newLine = Line(newStart, newEnd); allGeoms.add(newLine); activeSketch.clearWorkspace()
-                    allGeoms.forEach { activeSketch.addGeometry(it) }; selectedGeometry = newLine; newLine.isSelected = true
+                    allGeoms.forEach { activeSketch.addGeometry(it) }; selectionManager.select(newLine)
                 } else {
                     val snap = SnapEngine.snapPoint(pt, rawStroke.firstOrNull(), activeSketch.getGeometries().filterIsInstance<Line>(), zoom)
                     currentSnapType = snap.type; rawStroke = rawStroke + snap.point
@@ -277,6 +355,7 @@ class CADViewModel : ViewModel() {
     }
 
     fun onSketchDragEnd(context: Context) {
+        activeManipulatorAxis = null
         when (currentMode) {
             CadMode.TRIM -> { rawStroke = emptyList(); currentMode = CadMode.SMART_SKETCH; triggerUpdate() }
             CadMode.SMART_SKETCH -> {
@@ -307,7 +386,7 @@ class CADViewModel : ViewModel() {
     }
 
     fun applyDimension(newVal: Double) {
-        val geom = selectedGeometry
+        val geom = selectionManager.firstOrNull()
         if (geom != null && newVal > 0) {
             when (geom) {
                 is Line -> {
@@ -322,6 +401,21 @@ class CADViewModel : ViewModel() {
             triggerUpdate()
         }
         showDimDialog = false
+    }
+
+    fun getSelectedEntityCenter(): Point3? {
+        val selected = selectionManager.firstOrNull() ?: return null
+        return when (selected) {
+            is Line -> Point3((selected.startPoint.x + selected.endPoint.x) / 2.0, (selected.startPoint.y + selected.endPoint.y) / 2.0, 0.0)
+            is Circle3D -> selected.center
+            is Solid3D -> {
+                // Katının merkezini yaklaşık olarak bul
+                val allVerts = selected.faces.flatMap { it.vertices }
+                if (allVerts.isEmpty()) return Point3(0.0, 0.0, 0.0)
+                Point3(allVerts.map { it.x }.average(), allVerts.map { it.y }.average(), allVerts.map { it.z }.average())
+            }
+            else -> null
+        }
     }
 
     fun renameComponent() {

@@ -67,10 +67,9 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
             // 4. ALT BAĞLAM BAR (Contextual Toolbar)
             Box(modifier = Modifier.align(Alignment.BottomCenter)) {
                 CADContextToolbar(
-                    selectionType = viewModel.selectionType,
+                    selectionType = viewModel.selectionManager.getSelectionType(),
                     onCommandClick = { cmd -> 
                         Toast.makeText(context, "Komut tetiklendi: $cmd", Toast.LENGTH_SHORT).show()
-                        // TODO: Command pattern üzerinden kernel'a iletilecek
                     }
                 )
             }
@@ -115,7 +114,7 @@ fun DialogLayer(viewModel: CADViewModel) {
         )
     }
 
-    if (viewModel.showDimDialog && viewModel.selectedGeometry != null) {
+    if (viewModel.showDimDialog && viewModel.selectionManager.firstOrNull() != null) {
         AlertDialog(
             onDismissRequest = { viewModel.showDimDialog = false },
             title = { Text("Ölçü Girin (mm)", fontWeight = FontWeight.Bold) },
