@@ -72,6 +72,10 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
                     },
                     onSettings = { /* Settings Dialog */ },
                     onHelp = { viewModel.showInfoDialog = true },
+                    onAR = { 
+                        Toast.makeText(context, "AR Mode Starting (1:1 Scale)...", Toast.LENGTH_LONG).show()
+                        com.tamercad.core.rendering.ArCoreBridge(context).startArView(viewModel.mainAssembly)
+                    },
                     onBack = { /* Project Selection */ }
                 )
             }

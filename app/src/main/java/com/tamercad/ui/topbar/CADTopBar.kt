@@ -34,6 +34,7 @@ fun CADTopBar(
     onSave: () -> Unit,
     onSettings: () -> Unit,
     onHelp: () -> Unit,
+    onAR: () -> Unit,
     onBack: () -> Unit
 ) {
     // Dynamic Branding String
@@ -103,6 +104,9 @@ fun CADTopBar(
         ) {
             IconButton(onClick = onSave, modifier = Modifier.size(TamerCadDimensions.IconButtonSize)) {
                 Icon(IconRegistry.Save, "Save", tint = Color.White, modifier = Modifier.size(TamerCadDimensions.IconMedium))
+            }
+            IconButton(onClick = onAR, modifier = Modifier.size(TamerCadDimensions.IconButtonSize)) {
+                Icon(IconRegistry.AR, "AR", tint = Color.White, modifier = Modifier.size(TamerCadDimensions.IconMedium))
             }
             IconButton(onClick = onSettings, modifier = Modifier.size(TamerCadDimensions.IconButtonSize)) {
                 Icon(IconRegistry.Settings, "Settings", tint = Color.White, modifier = Modifier.size(TamerCadDimensions.IconMedium))

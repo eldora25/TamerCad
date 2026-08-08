@@ -87,20 +87,19 @@ class CADViewModel : ViewModel() {
     fun pick3DEntity(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): IGeometry? {
         val tapPos = Offset(screenX, screenY)
         
-        // 1. Sketch Geometrileri (Filter: showSketches)
+        // 1. Sketch Geometrileri
         if (selectionManager.showSketches) {
             val worldTap = screenToWorld(screenX, screenY, screenWidth, screenHeight)
             val sketchHit = activeSketch.pickGeometry(worldTap, 20.0 / zoom)
             if (sketchHit != null) return sketchHit
         }
 
-        // 2. Katı Model Geometrileri (Edge ve Face tespiti)
+        // 2. Katı Model Geometrileri
         var closestSolid: Solid3D? = null
         var closestFace: Face3D? = null
         var closestEdge: Line? = null
         var minDepth = Double.MAX_VALUE
-        var minEdgeDist = 25.0 // Piksel bazlı tolerans
-        var minVertexDist = 30.0
+        var minEdgeDist = 25.0 
 
         mainAssembly.components.forEach { comp ->
             if (!comp.isVisible) return@forEach
@@ -113,7 +112,6 @@ class CADViewModel : ViewModel() {
                     solid?.lines?.forEach { line ->
                         val p1 = worldToScreen(line.startPoint.transform(comp.transform), screenWidth, screenHeight)
                         val p2 = worldToScreen(line.endPoint.transform(comp.transform), screenWidth, screenHeight)
-                        
                         val dist = distancePointToSegment(tapPos, p1, p2)
                         if (dist < minEdgeDist) {
                             minEdgeDist = dist.toDouble()
@@ -143,22 +141,15 @@ class CADViewModel : ViewModel() {
             }
         }
         
-        // --- SELECTION HIERARCHY ---
-        val currentSelection = selectionManager.selectedEntities.firstOrNull()
+        // SELECTION PRIORITY
+        if (selectionManager.showEdges && closestEdge != null && minEdgeDist < 12.0) return closestEdge
         
-        // Edge has priority if extremely close
-        if (selectionManager.showEdges && closestEdge != null && minEdgeDist < 10.0) {
-            return closestEdge
-        }
-
+        val currentSelection = selectionManager.selectedEntities.firstOrNull()
         if (closestSolid != null) {
-            // Drill-down logic
-            if (selectionManager.showFaces && currentSelection == closestSolid && closestFace != null) {
+            if (selectionManager.showFaces && (currentSelection == closestSolid || !selectionManager.showBodies) && closestFace != null) {
                 return closestFace
             }
-            if (selectionManager.showBodies) {
-                return closestSolid
-            }
+            if (selectionManager.showBodies) return closestSolid
         }
         
         return null
@@ -607,12 +598,27 @@ class CADViewModel : ViewModel() {
             "mate_coincident" -> {
                 val selected = selectionManager.selectedEntities
                 if (selected.size >= 2) {
-                    // Logic to find components from selected geometries
-                    Toast.makeText(context, "Applying Coincident Mate", Toast.LENGTH_SHORT).show()
+                    val solidA = selected[0] as? Solid3D
+                    val solidB = selected[1] as? Solid3D
+                    
+                    if (solidA != null && solidB != null) {
+                        // Find the actual Component3D wrapper
+                        val compA = mainAssembly.components.find { c -> c.features.any { (it as? ExtrudeFeature)?.generatedGeometry == solidA } }
+                        val compB = mainAssembly.components.find { c -> c.features.any { (it as? ExtrudeFeature)?.generatedGeometry == solidB } }
+                        
+                        if (compA != null && compB != null) {
+                            mainAssembly.addMate(com.tamercad.core.assembly.CoincidentMate(compA, compB))
+                            Toast.makeText(context, "Coincident Mate Applied", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(context, "Please select two 3D Bodies", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
             "delete" -> {
-                selectionManager.selectedEntities.forEach { /* handle delete */ }
+                selectionManager.selectedEntities.forEach { entity ->
+                    // Logic to remove from sketch or assembly
+                }
                 selectionManager.clear()
             }
         }

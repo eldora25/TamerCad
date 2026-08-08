@@ -51,4 +51,5 @@ object IconRegistry {
     // Visibility
     val Visible = Icons.Default.Visibility
     val Hidden = Icons.Default.VisibilityOff
+    val AR = Icons.Default.ViewInAr
 }

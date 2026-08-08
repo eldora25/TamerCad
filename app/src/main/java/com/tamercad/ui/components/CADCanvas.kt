@@ -162,10 +162,10 @@ fun CADCanvas(viewModel: CADViewModel) {
                             val isFaceHovered = viewModel.selectionManager.hoveredEntity == face
                             
                             val highlightColor = when {
-                                isFaceSelected -> TamerCadColors.Primary
+                                isFaceSelected -> TamerCadColors.Primary.copy(alpha = 0.8f)
                                 isFaceHovered -> TamerCadColors.Primary.copy(alpha = 0.4f)
-                                isSolidSelected -> TamerCadColors.Primary.copy(alpha = 0.6f)
-                                isSolidHovered -> TamerCadColors.Primary.copy(alpha = 0.2f)
+                                isSolidSelected -> TamerCadColors.Primary.copy(alpha = 0.2f)
+                                isSolidHovered -> TamerCadColors.Primary.copy(alpha = 0.1f)
                                 else -> null
                             }
                             
@@ -176,7 +176,8 @@ fun CADCanvas(viewModel: CADViewModel) {
                             val isEdgeSelected = viewModel.selectionManager.selectedEntities.contains(line)
                             val isEdgeHovered = viewModel.selectionManager.hoveredEntity == line
                             
-                            linesToRender.add(Pair(Line(line.startPoint.transform(comp.transform), line.endPoint.transform(comp.transform)), isEdgeSelected || isSolidSelected || isEdgeHovered))
+                            val edgeHighlight = isEdgeSelected || isEdgeHovered || isSolidSelected || isSolidHovered
+                            linesToRender.add(Pair(Line(line.startPoint.transform(comp.transform), line.endPoint.transform(comp.transform)), edgeHighlight))
                         }
                     }
                 }
