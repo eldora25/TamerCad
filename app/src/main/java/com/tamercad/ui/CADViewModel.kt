@@ -101,6 +101,7 @@ class CADViewModel : ViewModel() {
             comp.features.forEach { feature ->
                 val solid = (feature as? ExtrudeFeature)?.generatedGeometry ?: (feature as? RevolveFeature)?.generatedGeometry
                 solid?.faces?.forEach { face ->
+                    // Face hiti (Matematiksel Point-in-Polygon)
                     val tVertices = face.vertices.map { project3DTo2D(it.transform(comp.transform)) }
                     val avgZ = tVertices.sumOf { it.z } / tVertices.size
                     val screenVerts = tVertices.map { worldToScreen(it, screenWidth, screenHeight) }
@@ -117,15 +118,14 @@ class CADViewModel : ViewModel() {
             }
         }
         
-        // --- DRILL-DOWN LOGIC ---
+        // --- SELECTION DRILL-DOWN (Hiyerarşik Seçim) ---
         val currentSelection = selectionManager.firstOrNull()
         
         if (closestSolid != null) {
-            // Eğer gövde zaten seçiliyse ve bir yüzeye vurduysak, yüzeyi seç
+            // Eğer gövde zaten seçiliyse veya spesifik bir yüzey hedefleniyorsa
             if (currentSelection == closestSolid && closestFace != null) {
                 return closestFace
             }
-            // Aksi takdirde gövdeyi seç
             return closestSolid
         }
         

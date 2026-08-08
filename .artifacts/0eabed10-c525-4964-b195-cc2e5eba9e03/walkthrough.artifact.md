@@ -1,37 +1,35 @@
-# TamerCAD UI Redesign - Step 1: Design System Walkthrough
+# TamerCAD: Phase 2 Layout & Phase 3 Direct Modeling Walkthrough
 
-TamerCad has now transitioned to a professional, token-based Design System. This move eliminates hard-coded styles and establishes a consistent, scalable foundation for the entire application, matching the aesthetics of professional tablet CAD software.
+TamerCad has taken a massive leap forward. We've not only finalized the professional application layout but also implemented the foundational engine for **Direct Modeling**, allowing you to manipulate 3D geometry by selecting and dragging individual faces.
 
-## 🚀 Key Improvements
+## 🚀 Key Milestones
 
-### 1. Unified Design Tokens
-- **Color Tokens**: [TamerCadColors.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/ui/theme/TamerCadColors.kt) now contains the full set of requested tokens: `SurfaceElevated`, `SurfacePressed`, `SurfaceSelected`, and specific colors for `AxisX`, `AxisY`, `AxisZ`.
-- **Dimension Tokens**: [TamerCadDimensions.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/ui/theme/TamerCadDimensions.kt) centralizes all measurements, including `TouchTargetMin` (44dp), `Elevation` levels, `BorderWidth`, and categorized `Spacing` (Small to ExtraLarge).
+### 1. Professional Layout Orchestration (Phase 2)
+- **Z-Index Layering**: The UI is now strictly layered using a `Box` orchestration.
+    - **Layer 0**: The 3D Viewport (Full screen).
+    - **Layer 1**: Floating Controls (TopBar, SideToolbar, ContextToolbar).
+    - **Layer 100**: Floating Windows (Browser/Object Tree) and Dialogs.
+- **Safe Area Insets**: Correct padding for status and navigation bars has been implemented for seamless tablet edge-to-edge usage.
 
-### 2. High-Contrast Viewport
-- **Grid & Axes**: The 3D Viewport now uses standardized technical colors. Axes are now correctly colored (X: Red, Y: Green, Z: Blue) using the design system tokens.
-- **Backgrounds**: The main workspace and panels now use a cohesive dark-themed palette that reduces visual strain and highlights the model.
+### 2. Hierarchical "Drill-Down" Selection
+- **Body & Face Picking**: [CADViewModel.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/ui/CADViewModel.kt) now features an advanced picking engine.
+    - **First Tap**: Selects the entire **Body** (`Solid3D`).
+    - **Second Tap** (on the same area): Drills down to select the specific **Face** (`Face3D`).
+- **Precision**: We use mathematical Point-in-Polygon testing to ensure that the face under your stylus is accurately identified.
 
-### 3. Responsive & Stylus-Friendly Layouts
-- **Touch Targets**: All interactive elements in the `CADTopBar`, `CADSideToolbar`, and `CADContextToolbar` now strictly adhere to the minimum 44dp touch target standard.
-- **Redesigned Browser**: The [ObjectTree.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/ui/components/ObjectTree.kt) has been fully redesigned using the new design system, featuring elevated headers, standardized spacing, and better iconography for visibility toggles.
+### 3. Direct Modeling Engine (Live Geometry)
+- **Live Rebuild**: [ExtrudeFeature.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/core/features/ExtrudeFeature.kt) now implements a Kotlin-side geometry engine. When you change the "Depth" parameter, the solid model's faces and edges are recalculated instantly.
+- **Gizmo Integration**: When a face is selected, a **Normal-Aligned Gizmo** (Cyan Arrow) appears. Dragging this arrow projects your movement into 3D and directly updates the model's height.
 
-## 🛠️ Refactored Files
-The following files were updated to remove hard-coded values and implement the new Design System:
-- `ui/theme/TamerCadColors.kt`
-- `ui/theme/TamerCadDimensions.kt`
-- `ui/theme/TamerCadTheme.kt`
-- `ui/components/CADCanvas.kt`
-- `ui/components/ObjectTree.kt`
-- `ui/toolbar/CADSideToolbar.kt`
-- `ui/topbar/CADTopBar.kt`
-- `ui/contextual/CADContextToolbar.kt`
-- `ui/MainCADScreen.kt`
+## 🛠️ Refactored Components
+- `MainCADScreen.kt`: Cleaned up for modular orchestration.
+- `SelectionManager.kt`: Now understands the difference between selecting a Body and a Face.
+- `Manipulator3D.kt`: Added support for face-normal translation handles.
 
-## How to Verify
-1. **Axis Colors**: Open the application and look at the 3D origin. The X axis should be Red, Y should be Green, and Z should be Blue.
-2. **Touch Targets**: Try tapping on any tool or the browser header. The areas are now larger and more responsive to stylus/touch.
-3. **Browser Design**: Open the Browser (Inspect mode). Notice the new "Elevated" header and the clean, consistent technical look of the items.
+## How to Test
+1. **Selection**: Tap on a 3D object (it turns blue). Tap again on its top face; you'll see a single **Cyan Arrow** pointing up.
+2. **Modeling**: Drag that Cyan Arrow up or down. Watch as the 3D body grows or shrinks in real-time.
+3. **Layout**: Notice how the Browser and Toolbars hover elegantly over the 3D space without obscuring your design area.
 
 > [!TIP]
-> The entire UI now scales perfectly based on the tokens defined in [TamerCadDimensions.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/ui/theme/TamerCadDimensions.kt). Changing a single token there will now update the entire app.
+> This "Drill-down" selection logic is the standard for professional CAD like Shapr3D and SolidWorks, providing both speed and precision.

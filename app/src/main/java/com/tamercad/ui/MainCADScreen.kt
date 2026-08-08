@@ -9,6 +9,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tamercad.BuildConfig
 import com.tamercad.ui.components.*
@@ -22,8 +24,8 @@ import com.tamercad.ui.contextual.CADContextToolbar
 import com.tamercad.ui.contextual.SelectionType
 
 /**
- * TamerCAD Ana Uygulama Orkestratörü.
- * Grand Architecture vizyonuna göre modüler katmanları yönetir.
+ * TamerCAD Ana Uygulama Orkestratörü (Grand Architecture).
+ * Tüm modüllerin hiyerarşik yerleşimini ve state akışını yönetir.
  */
 @Composable
 fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
@@ -34,28 +36,45 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
             modifier = Modifier
                 .fillMaxSize()
                 .background(TamerCadColors.Background)
-                .statusBarsPadding()
-                .navigationBarsPadding()
         ) {
-            // 1. ANA VIEWPORT (Z-Index 0, Tam Ekran)
+            // ----------------------------------------------------------------
+            // 1. KATMAN (Z-Index 0): 3D VIEWPORT
+            // Tüm ekranı kaplar, diğer bileşenler bunun üzerinde yüzer.
+            // ----------------------------------------------------------------
             CADViewport(
                 viewModel = viewModel,
                 modifier = Modifier.fillMaxSize()
             )
 
-            // 2. ÜST BAR (Geri, Undo/Redo, Kaydet, Ayarlar)
-            CADTopBar(
-                projectName = "TamerCad_v0.1.${BuildConfig.VERSION_CODE} Tamer YAMAK©",
-                onUndo = { viewModel.onUndo() },
-                onRedo = { viewModel.onRedo() },
-                onSave = { Toast.makeText(context, "Proje Kaydedildi", Toast.LENGTH_SHORT).show() },
-                onSettings = { /* TODO: Settings Dialog */ },
-                onHelp = { viewModel.showInfoDialog = true },
-                onBack = { /* TODO: Project Selection */ }
-            )
+            // ----------------------------------------------------------------
+            // 2. KATMAN (Z-Index 1): UI KONTROLLERİ
+            // ----------------------------------------------------------------
+            
+            // ÜST BAR: Proje adı, Undo/Redo, Save, Settings
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .zIndex(10f)
+                    .statusBarsPadding()
+            ) {
+                CADTopBar(
+                    projectName = "TamerCad_v0.1.${BuildConfig.VERSION_CODE} Tamer YAMAK©",
+                    onUndo = { viewModel.onUndo() },
+                    onRedo = { viewModel.onRedo() },
+                    onSave = { Toast.makeText(context, "Proje Kaydedildi", Toast.LENGTH_SHORT).show() },
+                    onSettings = { /* Settings Dialog */ },
+                    onHelp = { viewModel.showInfoDialog = true },
+                    onBack = { /* Project Selection */ }
+                )
+            }
 
-            // 3. SOL KATEGORİ TOOLBAR
-            Box(modifier = Modifier.align(Alignment.CenterStart)) {
+            // SOL SIDEBAR: Kategorize edilmiş araçlar
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .zIndex(10f)
+                    .padding(start = TamerCadColors.Grid.red.coerceAtLeast(0f).let { 0.dp }) // Safe area padding can be added here
+            ) {
                 CADSideToolbar(
                     activeCategory = viewModel.activeCategory,
                     onCategoryClick = { cat -> 
@@ -64,17 +83,27 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
                 )
             }
 
-            // 4. ALT BAĞLAM BAR (Contextual Toolbar)
-            Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+            // ALT BAĞLAM BAR (Contextual Toolbar): Seçime göre değişen araçlar
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .zIndex(10f)
+                    .navigationBarsPadding()
+            ) {
                 CADContextToolbar(
                     selectionType = viewModel.selectionManager.getSelectionType(),
                     onCommandClick = { cmd -> 
-                        Toast.makeText(context, "Komut tetiklendi: $cmd", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Komut: $cmd", Toast.LENGTH_SHORT).show()
+                        // TODO: Feature Manager / Kernel interaction
                     }
                 )
             }
 
-            // 5. YÜZEN BROWSER
+            // ----------------------------------------------------------------
+            // 3. KATMAN (Z-Index 100): YÜZEN PANELLER VE DİALOGLAR
+            // ----------------------------------------------------------------
+
+            // YÜZEN BROWSER (Nesne Ağacı)
             ObjectTree(
                 assembly = viewModel.mainAssembly,
                 onVisibilityToggle = { comp -> comp.isVisible = !comp.isVisible; viewModel.triggerUpdate() },
@@ -86,17 +115,19 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
                 isVisible = viewModel.activeCategory == ToolbarCategory.INSPECT
             )
 
-            // 6. DİNAMİK SEÇİM MENÜSÜ (Nesnenin hemen yanında)
+            // DİNAMİK SEÇİM MENÜSÜ (Nesnenin hemen yanında beliren mini araçlar)
             if (viewModel.selectionPoint != null) {
-                SelectionMenu(
-                    selectionPoint = viewModel.selectionPoint!!,
-                    onFillet = { /* TODO */ },
-                    onChamfer = { /* TODO */ },
-                    onDelete = { viewModel.selectionPoint = null }
-                )
+                Box(modifier = Modifier.zIndex(150f)) {
+                    SelectionMenu(
+                        selectionPoint = viewModel.selectionPoint!!,
+                        onFillet = { /* TODO */ },
+                        onChamfer = { /* TODO */ },
+                        onDelete = { viewModel.selectionPoint = null }
+                    )
+                }
             }
 
-            // 7. DİALOGLAR
+            // DİALOG KATMANI
             DialogLayer(viewModel)
         }
     }
