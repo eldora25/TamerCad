@@ -2,7 +2,6 @@ package com.tamercad.ui.topbar
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -27,7 +26,8 @@ import androidx.compose.ui.text.style.TextOverflow
  */
 @Composable
 fun CADTopBar(
-    projectName: String,
+    designName: String,
+    buildNo: String,
     saveStatus: String, // "Saved", "Saving...", "Unsaved changes"
     onUndo: () -> Unit,
     onRedo: () -> Unit,
@@ -36,6 +36,10 @@ fun CADTopBar(
     onHelp: () -> Unit,
     onBack: () -> Unit
 ) {
+    // Dynamic Branding String
+    val branding = "TamerCadv01.$buildNo Tamer YAMAK©"
+    val fullTitle = if (designName.isNotEmpty()) "$branding - $designName" else branding
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -43,10 +47,10 @@ fun CADTopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // SOL: Home, Project Name, Status
+        // SOL: Home, Branding & Status
         Row(
             modifier = Modifier
-                .weight(1f, fill = false) // İsim çok uzunsa diğerlerini sıkıştırmasın
+                .weight(1f, fill = false) 
                 .clip(RoundedCornerShape(TamerCadDimensions.CornerLarge))
                 .background(TamerCadColors.Surface)
                 .border(TamerCadDimensions.BorderThin, TamerCadColors.PanelBorder, RoundedCornerShape(TamerCadDimensions.CornerLarge))
@@ -58,7 +62,7 @@ fun CADTopBar(
             }
             Column(modifier = Modifier.padding(start = TamerCadDimensions.SpacingSmall, end = TamerCadDimensions.SpacingMedium)) {
                 Text(
-                    text = projectName,
+                    text = fullTitle,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,

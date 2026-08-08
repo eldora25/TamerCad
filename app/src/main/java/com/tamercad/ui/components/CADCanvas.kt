@@ -189,8 +189,14 @@ fun CADCanvas(viewModel: CADViewModel) {
             val lightIntensity = max(0.3, normal.dot(lightDirection))
             
             // Highlight selected Face
-            val isFaceSelected = face == viewModel.selectionManager.firstOrNull()
-            val finalColor = if (isFaceSelected) TamerCadColors.Primary.copy(alpha = 0.8f) else baseColor
+            val isFaceSelected = viewModel.selectionManager.selectedEntities.contains(face)
+            val isFaceHovered = viewModel.selectionManager.hoveredEntity == face
+            
+            val finalColor = when {
+                isFaceSelected -> TamerCadColors.Primary.copy(alpha = 0.8f)
+                isFaceHovered -> TamerCadColors.Primary.copy(alpha = 0.4f)
+                else -> baseColor
+            }
             
             val shadedColor = Color(
                 red = finalColor.red * lightIntensity.toFloat(),

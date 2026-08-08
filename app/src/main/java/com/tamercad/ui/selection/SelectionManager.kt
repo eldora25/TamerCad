@@ -84,12 +84,14 @@ class SelectionManager {
         if (selectedEntities.isEmpty()) return SelectionType.NONE
         if (selectedEntities.size > 1) return SelectionType.MULTIPLE
 
-        return when (selectedEntities.first().type) {
+        val first = selectedEntities.first()
+        return when (first.type) {
             "Vertex" -> SelectionType.VERTEX
             "Line" -> SelectionType.EDGE
             "Face3D" -> SelectionType.FACE
             "Solid3D" -> SelectionType.BODY
             "Circle3D", "Arc3D" -> SelectionType.SKETCH
+            "Feature" -> SelectionType.FEATURE
             else -> SelectionType.NONE
         }
     }

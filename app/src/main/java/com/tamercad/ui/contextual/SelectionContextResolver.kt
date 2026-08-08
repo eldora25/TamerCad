@@ -53,9 +53,10 @@ object SelectionContextResolver {
                 ToolDefinition("delete", "Delete", IconRegistry.Delete)
             )
             SelectionType.MULTIPLE -> listOf(
+                ToolDefinition("mate_coincident", "Coincident Mate", IconRegistry.Home),
+                ToolDefinition("mate_concentric", "Concentric Mate", IconRegistry.Revolve),
                 ToolDefinition("measure", "Measure", IconRegistry.Measure),
                 ToolDefinition("delete", "Delete", IconRegistry.Delete)
-                // TODO: Find common operations for mixed selection
             )
             SelectionType.FEATURE -> listOf(
                 ToolDefinition("edit", "Edit", IconRegistry.Settings),

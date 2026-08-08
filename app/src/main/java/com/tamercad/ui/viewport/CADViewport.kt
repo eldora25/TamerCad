@@ -40,7 +40,11 @@ fun CADViewport(
                     viewModel.cameraYaw += dx * 0.01f
                     viewModel.cameraPitch -= dy * 0.01f
                     viewModel.triggerUpdate()
-                }
+                },
+                onHomeClick = { viewModel.goHome() },
+                onFitAllClick = { viewModel.fitAll() },
+                isPerspective = viewModel.isPerspective,
+                onTogglePerspective = { viewModel.isPerspective = !viewModel.isPerspective; viewModel.triggerUpdate() }
             )
         }
 

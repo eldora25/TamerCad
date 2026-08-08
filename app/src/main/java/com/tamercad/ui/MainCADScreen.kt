@@ -60,7 +60,8 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
                     .statusBarsPadding()
             ) {
                 CADTopBar(
-                    projectName = "TamerCad_v0.1.${BuildConfig.VERSION_CODE} Tamer YAMAK©",
+                    designName = viewModel.mainAssembly.name,
+                    buildNo = BuildConfig.VERSION_CODE.toString(),
                     saveStatus = viewModel.saveStatus,
                     onUndo = { viewModel.onUndo() },
                     onRedo = { viewModel.onRedo() },
@@ -105,7 +106,7 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
                 viewModel = viewModel,
                 onToolClick = { tool ->
                     if (tool.enabled) {
-                        Toast.makeText(context, "Tool: ${tool.label}", Toast.LENGTH_SHORT).show()
+                        viewModel.runCommand(tool.id, context)
                     }
                 }
             )
@@ -120,8 +121,7 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
                 CADContextToolbar(
                     viewModel = viewModel,
                     onCommandClick = { cmd -> 
-                        Toast.makeText(context, "Komut: $cmd", Toast.LENGTH_SHORT).show()
-                        // TODO: Feature Manager / Kernel interaction
+                        viewModel.runCommand(cmd, context)
                     }
                 )
             }

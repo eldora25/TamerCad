@@ -3,13 +3,18 @@ package com.tamercad.ui.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -59,71 +64,119 @@ fun NavigationCube(
     cameraPitch: Float,
     cameraYaw: Float,
     onViewChange: (Float, Float) -> Unit,
-    onDrag: (Float, Float) -> Unit
+    onDrag: (Float, Float) -> Unit,
+    onHomeClick: () -> Unit,
+    onFitAllClick: () -> Unit,
+    isPerspective: Boolean,
+    onTogglePerspective: () -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .size(80.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(TamerCadColors.PanelColor)
-            .border(1.dp, TamerCadColors.PanelBorder, RoundedCornerShape(12.dp))
+    Column(
+        modifier = Modifier.wrapContentSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Canvas(
-            modifier = Modifier.fillMaxSize()
-                .pointerInput(Unit) {
-                    detectTapGestures(onTap = { offset ->
-                        val projectedHitFaces = navFaces.map { face ->
-                            val tNormal = projectNav3DTo2D(face.normal, cameraPitch, cameraYaw)
-                            val tVertices = face.vertices.map { v -> 
-                                val p = projectNav3DTo2D(v, cameraPitch, cameraYaw)
-                                Offset((size.width / 2f) + p.x.toFloat() * (size.width / 2f * 0.6f), (size.height / 2f) + p.y.toFloat() * (size.width / 2f * 0.6f)) 
-                            }
-                            Triple(face, tNormal, tVertices)
-                        }.filter { it.second.z > 0 }.sortedByDescending { it.second.z }
-                        for ((face, _, verts) in projectedHitFaces) {
-                            if (isPointInPolygon(offset, verts)) { 
-                                onViewChange(face.pitch, face.yaw); break 
-                            }
-                        }
-                    })
-                }
-                .pointerInput(Unit) { 
-                    detectDragGestures(onDrag = { change, dragAmount -> 
-                        change.consume(); 
-                        onDrag(dragAmount.x, dragAmount.y)
-                    }) 
-                }
+        // VIEW CUBE
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(TamerCadColors.Surface.copy(alpha = 0.8f))
+                .border(1.dp, TamerCadColors.PanelBorder, RoundedCornerShape(16.dp))
         ) {
-            val radius = size.width / 2f; val center = Offset(size.width / 2f, size.height / 2f); val scale = radius * 0.6f
-            val projectedFaces = navFaces.map { face ->
-                val tNormal = projectNav3DTo2D(face.normal, cameraPitch, cameraYaw)
-                val tVertices = face.vertices.map { v -> 
-                    val p = projectNav3DTo2D(v, cameraPitch, cameraYaw)
-                    Offset(center.x + p.x.toFloat() * scale, center.y + p.y.toFloat() * scale) 
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(cameraPitch, cameraYaw) {
+                        detectTapGestures(onTap = { offset ->
+                            val projectedHitFaces = navFaces.map { face ->
+                                val tNormal = projectNav3DTo2D(face.normal, cameraPitch, cameraYaw)
+                                val tVertices = face.vertices.map { v -> 
+                                    val p = projectNav3DTo2D(v, cameraPitch, cameraYaw)
+                                    Offset((size.width / 2f) + p.x.toFloat() * (size.width / 2f * 0.7f), (size.height / 2f) + p.y.toFloat() * (size.width / 2f * 0.7f)) 
+                                }
+                                Triple(face, tNormal, tVertices)
+                            }.filter { it.second.z > 0 }.sortedByDescending { it.second.z }
+                            
+                            for ((face, _, verts) in projectedHitFaces) {
+                                if (isPointInPolygon(offset, verts)) { 
+                                    onViewChange(face.pitch, face.yaw)
+                                    return@detectTapGestures
+                                }
+                            }
+                            
+                            // Corners (Isometric Views)
+                            val w = size.width; val h = size.height
+                            when {
+                                offset.x < w*0.3f && offset.y < h*0.3f -> onViewChange(0.6f, 0.6f)
+                                offset.x > w*0.7f && offset.y < h*0.3f -> onViewChange(0.6f, -0.6f)
+                                offset.x < w*0.3f && offset.y > h*0.7f -> onViewChange(-0.6f, 0.6f)
+                                offset.x > w*0.7f && offset.y > h*0.7f -> onViewChange(-0.6f, -0.6f)
+                            }
+                        })
+                    }
+                    .pointerInput(Unit) { 
+                        detectDragGestures(onDrag = { change, dragAmount -> 
+                            change.consume(); onDrag(dragAmount.x, dragAmount.y)
+                        }) 
+                    }
+            ) {
+                val center = Offset(size.width / 2f, size.height / 2f)
+                val scale = size.width / 2f * 0.7f
+                
+                val projectedFaces = navFaces.map { face ->
+                    val tNormal = projectNav3DTo2D(face.normal, cameraPitch, cameraYaw)
+                    val tVertices = face.vertices.map { v -> 
+                        val p = projectNav3DTo2D(v, cameraPitch, cameraYaw)
+                        Offset(center.x + p.x.toFloat() * scale, center.y + p.y.toFloat() * scale) 
+                    }
+                    Triple(face, tNormal, tVertices)
+                }.filter { it.second.z > 0 }.sortedBy { it.second.z } 
+                
+                projectedFaces.forEach { (face, _, tVertices) ->
+                    val path = Path().apply { 
+                        moveTo(tVertices[0].x, tVertices[0].y)
+                        tVertices.drop(1).forEach { lineTo(it.x, it.y) }
+                        close() 
+                    }
+                    drawPath(path = path, color = face.color)
+                    drawPath(path = path, color = TamerCadColors.PanelBorder, style = Stroke(width = 1f))
+                    
+                    val cx = tVertices.map { it.x }.average().toFloat()
+                    val cy = tVertices.map { it.y }.average().toFloat()
+                    val paint = android.graphics.Paint().apply { 
+                        setColor(android.graphics.Color.WHITE)
+                        textSize = 24f
+                        textAlign = android.graphics.Paint.Align.CENTER
+                        isAntiAlias = true
+                        typeface = android.graphics.Typeface.DEFAULT_BOLD 
+                    }
+                    drawContext.canvas.nativeCanvas.drawText(face.name.take(1), cx, cy + 8f, paint)
                 }
-                Triple(face, tNormal, tVertices)
-            }.filter { it.second.z > 0 }.sortedBy { it.second.z } 
-            
-            projectedFaces.forEach { (face, _, tVertices) ->
-                val path = Path().apply { 
-                    moveTo(tVertices[0].x, tVertices[0].y)
-                    lineTo(tVertices[1].x, tVertices[1].y)
-                    lineTo(tVertices[2].x, tVertices[2].y)
-                    lineTo(tVertices[3].x, tVertices[3].y)
-                    close() 
-                }
-                drawPath(path = path, color = face.color)
-                drawPath(path = path, color = Color.Gray, style = Stroke(width = 1f))
-                val cx = tVertices.map { it.x }.average().toFloat()
-                val cy = tVertices.map { it.y }.average().toFloat()
-                val paint = android.graphics.Paint().apply { 
-                    setColor(android.graphics.Color.WHITE)
-                    textSize = scale * 0.35f
-                    textAlign = android.graphics.Paint.Align.CENTER
-                    isAntiAlias = true
-                    typeface = android.graphics.Typeface.DEFAULT_BOLD 
-                }
-                drawContext.canvas.nativeCanvas.drawText(face.name, cx, cy - ((paint.descent() + paint.ascent()) / 2), paint)
+            }
+        }
+
+        // NAVIGATION BUTTONS
+        Row(
+            modifier = Modifier
+                .wrapContentSize()
+                .background(TamerCadColors.Surface.copy(alpha = 0.8f), CircleShape)
+                .border(1.dp, TamerCadColors.PanelBorder, CircleShape)
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            IconButton(onClick = onHomeClick, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Home, "Home", tint = Color.White, modifier = Modifier.size(18.dp))
+            }
+            IconButton(onClick = onFitAllClick, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.ZoomOutMap, "Fit", tint = Color.White, modifier = Modifier.size(18.dp))
+            }
+            IconButton(onClick = onTogglePerspective, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    if (isPerspective) Icons.Default.ViewInAr else Icons.Default.CropFree, 
+                    "Projection", 
+                    tint = Color.White, 
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }

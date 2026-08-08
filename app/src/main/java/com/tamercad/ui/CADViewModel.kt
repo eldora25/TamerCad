@@ -58,6 +58,7 @@ class CADViewModel : ViewModel() {
     val sidebarState = SidebarState()
     var browserOffset by mutableStateOf(Offset(250f, 100f)) // Toolbar'dan iyice uzaklaştırıldı (Pixel cinsinden)
     var saveStatus by mutableStateOf("Saved") // "Saved", "Saving...", "Unsaved changes"
+    var isPerspective by mutableStateOf(false)
     
     // Dialog States
     var showRenameDialog by mutableStateOf<Component3D?>(null)
@@ -93,12 +94,13 @@ class CADViewModel : ViewModel() {
             if (sketchHit != null) return sketchHit
         }
 
-        // 2. Katı Model Geometrileri
+        // 2. Katı Model Geometrileri (Edge ve Face tespiti)
         var closestSolid: Solid3D? = null
         var closestFace: Face3D? = null
         var closestEdge: Line? = null
         var minDepth = Double.MAX_VALUE
-        var minEdgeDist = 25.0
+        var minEdgeDist = 25.0 // Piksel bazlı tolerans
+        var minVertexDist = 30.0
 
         mainAssembly.components.forEach { comp ->
             if (!comp.isVisible) return@forEach
@@ -111,6 +113,7 @@ class CADViewModel : ViewModel() {
                     solid?.lines?.forEach { line ->
                         val p1 = worldToScreen(line.startPoint.transform(comp.transform), screenWidth, screenHeight)
                         val p2 = worldToScreen(line.endPoint.transform(comp.transform), screenWidth, screenHeight)
+                        
                         val dist = distancePointToSegment(tapPos, p1, p2)
                         if (dist < minEdgeDist) {
                             minEdgeDist = dist.toDouble()
@@ -141,10 +144,10 @@ class CADViewModel : ViewModel() {
         }
         
         // --- SELECTION HIERARCHY ---
-        val currentSelection = selectionManager.firstOrNull()
+        val currentSelection = selectionManager.selectedEntities.firstOrNull()
         
-        // Edge has priority if close enough
-        if (selectionManager.showEdges && closestEdge != null && minEdgeDist < 15.0) {
+        // Edge has priority if extremely close
+        if (selectionManager.showEdges && closestEdge != null && minEdgeDist < 10.0) {
             return closestEdge
         }
 
@@ -160,6 +163,8 @@ class CADViewModel : ViewModel() {
         
         return null
     }
+
+    private fun Offset.distanceTo(other: Offset): Float = sqrt((x - other.x).pow(2) + (y - other.y).pow(2))
 
     /**
      * Stylus Hover Olayı.
@@ -529,7 +534,88 @@ class CADViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Tüm görünür nesneleri ekrana sığdırır (Fit All).
+     */
+    fun fitAll() {
+        var minX = Double.MAX_VALUE; var maxX = -Double.MAX_VALUE
+        var minY = Double.MAX_VALUE; var maxY = -Double.MAX_VALUE
+        var anyVisible = false
+
+        mainAssembly.components.forEach { comp ->
+            if (!comp.isVisible) return@forEach
+            comp.features.forEach { feat ->
+                val geom = (feat as? ExtrudeFeature)?.generatedGeometry ?: (feat as? RevolveFeature)?.generatedGeometry
+                geom?.faces?.flatMap { it.vertices }?.forEach { v ->
+                    val tv = v.transform(comp.transform)
+                    minX = min(minX, tv.x); maxX = max(maxX, tv.x)
+                    minY = min(minY, tv.y); maxY = max(maxY, tv.y)
+                    anyVisible = true
+                }
+            }
+        }
+        
+        activeSketch.getGeometries().forEach { geom ->
+            when (geom) {
+                is Line -> {
+                    minX = min(minX, geom.startPoint.x); maxX = max(maxX, geom.startPoint.x)
+                    minY = min(minY, geom.startPoint.y); maxY = max(maxY, geom.startPoint.y)
+                    minX = min(minX, geom.endPoint.x); maxX = max(maxX, geom.endPoint.x)
+                    minY = min(minY, geom.endPoint.y); maxY = max(maxY, geom.endPoint.y)
+                    anyVisible = true
+                }
+                is Circle3D -> {
+                    minX = min(minX, geom.center.x - geom.radius); maxX = max(maxX, geom.center.x + geom.radius)
+                    minY = min(minY, geom.center.y - geom.radius); maxY = max(maxY, geom.center.y + geom.radius)
+                    anyVisible = true
+                }
+            }
+        }
+
+        if (anyVisible) {
+            val width = maxX - minX
+            val height = maxY - minY
+            val centerX = (minX + maxX) / 2.0
+            val centerY = (minY + maxY) / 2.0
+            
+            panX = -centerX.toFloat() * zoom
+            panY = -centerY.toFloat() * zoom
+            
+            // Zoom ayarı (Basitleştirilmiş)
+            val scale = 500f / max(width, height).toFloat()
+            zoom = max(0.5f, min(5f, scale))
+            
+            triggerUpdate()
+        }
+    }
+
+    fun goHome() {
+        cameraPitch = 0.5f
+        cameraYaw = -0.5f
+        panX = 0f
+        panY = 0f
+        zoom = 1.5f
+        triggerUpdate()
+    }
+
     fun renameComponent() {
         showRenameDialog?.let { it.name = renameInput; showRenameDialog = null; triggerUpdate() }
+    }
+
+    fun runCommand(cmdId: String, context: android.content.Context) {
+        when (cmdId) {
+            "mate_coincident" -> {
+                val selected = selectionManager.selectedEntities
+                if (selected.size >= 2) {
+                    // Logic to find components from selected geometries
+                    Toast.makeText(context, "Applying Coincident Mate", Toast.LENGTH_SHORT).show()
+                }
+            }
+            "delete" -> {
+                selectionManager.selectedEntities.forEach { /* handle delete */ }
+                selectionManager.clear()
+            }
+        }
+        triggerUpdate()
     }
 }

@@ -1,60 +1,65 @@
-# TamerCAD UI Redesign - Step 8: Advanced CAD Selection System
+# TamerCAD: Phase 5 - Professional Selection, Navigation, and Assembly System
 
-This plan transforms the current selection logic into a professional, multi-state selection engine. It introduces hover support, multi-selection, and user-configurable selection filters, matching the interaction standards of high-end CAD software.
+This plan covers the transformation of TamerCad into a production-grade 3D environment. We will finalize the selection engine, overhaul the 3D navigation widget (ViewCube), and introduce the core mechanical assembly (Mate) system.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Hover Support**: Hover effects require an active stylus that supports hover events. Finger touch will continue to use tap-to-select.
-> **Multi-Selection**: We will implement a "Toggle Multi-Select" mode in the Selection Filter panel to allow selecting multiple entities without holding a keyboard modifier.
-> **Version Text**: The top bar version text will be made dynamic and auto-truncating to ensure it never overflows on smaller tablet screens.
+> **Top Bar Brand Change**: The header will be updated to `TamerCadv01.(BUILDNO) Tamer YAMAK©` with auto-truncation for smaller screens.
+> **Mate System Workflow**: Mates will be applied by selecting two entities (e.g., two faces) and choosing a mate type from the contextual menu.
+> **Navigation Overhaul**: The ViewCube will support isometric corner clicks and orthographic face clicks with smooth transitions.
 
 ## Proposed Changes
 
-### 1. Dynamic Version & Top Bar Truncation
+### 1. Branding & Versioning
 - **[MODIFY] ui/topbar/CADTopBar.kt**:
-    - Improve the truncation logic for `displayProjectName`.
-    - Ensure the layout is flexible enough to handle different font scales.
+    - Update project name format to: `TamerCadv01.[BUILD_NO] Tamer YAMAK©`.
+    - Ensure robust ellipsis truncation for long Design names.
 
-### 2. Enhanced Selection Manager
+### 2. Advanced Selection System (Step 8)
 - **[MODIFY] ui/selection/SelectionManager.kt**:
-    - Add `hoveredEntity: IGeometry?` state.
-    - Add `isMultiSelectMode: Boolean` toggle.
-    - Implement `setHover(entity: IGeometry?)`.
-    - Update `select()` to handle single vs multi-selection logic based on the mode.
-    - Add observable boolean flags for filters: `showVertices`, `showEdges`, `showFaces`, `showBodies`.
-
-### 3. Selection Filter UI
-- **[NEW] ui/selection/SelectionFilterPanel.kt**:
-    - A small, floating overlay (likely near the Tool Rail) to toggle selection filters and multi-select mode.
-
-### 4. Advanced Picking & Hover Engine
+    - Full support for `VERTEX`, `EDGE`, `FACE`, `BODY`, `SKETCH`, `FEATURE`.
+    - States: `Idle`, `Hover`, `Selected`, `MultiSelected`.
+    - Integrated filter flags: `showVertices`, `showEdges`, `showFaces`, `showBodies`.
 - **[MODIFY] ui/CADViewModel.kt**:
-    - Refine `pick3DEntity` to strictly respect the `SelectionManager` filters.
-    - Add `onHover(offset: Offset, screenWidth: Float, screenHeight: Float)` function.
-    - Update `onTap` to support multi-select via `selectionManager.toggle()`.
-
-### 5. High-Fidelity Rendering
+    - Implement the centralized picking pipeline: `pick3DEntity` -> `SelectionManager`.
+    - Add `onHover` stylus event handling.
 - **[MODIFY] ui/components/CADCanvas.kt**:
-    - Implement **Hover Highlight**: Render a faint, semi-transparent overlay on the `hoveredEntity`.
-    - Implement **Multi-Select Visualization**: Iterate through all `selectedEntities` in the manager and draw their outlines/highlights.
-    - Add `PointerEventType.Move` detection to trigger hover events.
+    - Implement visual feedback for multi-selection and hover states (glowing edges/faces).
+
+### 3. Professional View Navigation (Step 9)
+- **[MODIFY] ui/components/NavigationCube.kt**:
+    - Add support for **Corner Taps** (Isometric views).
+    - Refine **Face Taps** for exact 90-degree alignment.
+    - Add satellite buttons: **Home**, **Fit All**, **Perspective/Orthographic Toggle**.
+- **[MODIFY] ui/CADViewModel.kt**:
+    - Implement `fitAll()`: Calculate bounding box of visible geometry and adjust camera zoom/pan.
+
+### 4. Assembly & Mate System
+- **[NEW] core/assembly/MateModels.kt**:
+    - `CoincidentMate`: Align faces/points.
+    - `ConcentricMate`: Align circular axes.
+    - `ParallelMate`: Align face normals.
+- **[MODIFY] core/assembly/Assembly3D.kt**:
+    - Implement a basic solver to apply mate constraints iteratively.
+- **[MODIFY] ui/contextual/CADContextToolbar.kt**:
+    - Add "Mate" tools to the `MULTIPLE` selection menu.
 
 ## Roadmap
 
-1.  **Selection Logic**: Upgrade `SelectionManager` with hover and multi-select states.
-2.  **Picking Upgrade**: Connect `pick3DEntity` to filters and implement the `onHover` pipeline.
-3.  **UI Components**: Create the `SelectionFilterPanel` and fix the `CADTopBar` text.
-4.  **Canvas Integration**: Add hover rendering and multi-highlighting to the main viewport.
+1.  **Selection & Branding**: Finalize the core interaction and top bar.
+2.  **ViewCube Upgrade**: Complete the navigation widget and camera controls.
+3.  **Assembly Foundation**: Implement mate types and the iterative solver.
+4.  **Mate UI**: Enable mechanical assembly via the contextual toolbar.
 
 ## Verification Plan
 
 ### Automated Tests
-- Test `SelectionManager` single vs multi-select transitions.
-- Verify `pick3DEntity` returns `null` when all filters are disabled.
+- Unit tests for Bounding Box calculation (`Fit All`).
+- Integration tests for Mate resolution (e.g., verifying that two faces are parallel after mate).
 
 ### Manual Verification
-- **Hover**: Move stylus over a 3D face; verify it glows lightly.
-- **Multi-Select**: Enable multi-select mode; tap three different faces; verify all three remain highlighted.
-- **Filters**: Disable "Face" filter; verify that faces can no longer be selected even if tapped directly.
-- **Top Bar**: Check that the version text fits perfectly in both Landscape and Portrait.
+- **Header**: Verify the new branding and version text.
+- **Selection**: Move stylus over edges; verify hover glow. Use multi-select to pick two faces.
+- **ViewCube**: Click corners to go Isometric. Test "Fit All" with multiple bodies spread out.
+- **Mates**: Select two faces, click "Coincident Mate", and verify the bodies snap together.

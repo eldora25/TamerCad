@@ -15,7 +15,7 @@ class Assembly3D(
 ) : ISerializable {
     
     val components = mutableStateListOf<Component3D>()
-    val mates = mutableListOf<IMate>()
+    val mates = mutableStateListOf<IMate>()
 
     fun addComponent(component: Component3D) {
         components.add(component)
@@ -23,6 +23,27 @@ class Assembly3D(
 
     fun removeComponent(component: Component3D) {
         components.remove(component)
+    }
+
+    fun addMate(mate: IMate) {
+        mates.add(mate)
+        solveMates()
+    }
+
+    /**
+     * Tüm montaj ilişkilerini (Mates) iteratif olarak çözer.
+     */
+    fun solveMates() {
+        var iterations = 0
+        val maxIterations = 5
+        while (iterations < maxIterations) {
+            var allResolved = true
+            for (mate in mates) {
+                if (!mate.solve()) allResolved = false
+            }
+            if (allResolved) break
+            iterations++
+        }
     }
 
     override fun toJson(): JSONObject {
