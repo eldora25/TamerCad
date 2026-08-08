@@ -732,6 +732,15 @@ class CADViewModel : ViewModel() {
         triggerUpdate()
     }
 
+    // Standard Views
+    fun setFrontView() { cameraPitch = 0f; cameraYaw = 0f; triggerUpdate() }
+    fun setBackView() { cameraPitch = 0f; cameraYaw = PI.toFloat(); triggerUpdate() }
+    fun setTopView() { cameraPitch = PI.toFloat()/2f; cameraYaw = 0f; triggerUpdate() }
+    fun setBottomView() { cameraPitch = -PI.toFloat()/2f; cameraYaw = 0f; triggerUpdate() }
+    fun setLeftView() { cameraPitch = 0f; cameraYaw = -PI.toFloat()/2f; triggerUpdate() }
+    fun setRightView() { cameraPitch = 0f; cameraYaw = PI.toFloat()/2f; triggerUpdate() }
+    fun setIsometricView() { cameraPitch = 0.6f; cameraYaw = -0.6f; triggerUpdate() }
+
     fun startSketchFlow() {
         showPlaneSelector = true
     }

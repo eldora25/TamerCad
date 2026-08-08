@@ -1,54 +1,56 @@
-# TAMERCAD CAD DEVELOPMENT — STEP 9 — 3D MANIPULATOR
+# TamerCAD: Phase 8 - Professional Camera, Sketch Engine, and AR Integration
 
-This plan implements a professional 3D manipulation system for TamerCAD, moving beyond simple screen-offset dragging to true world-space ray-casting interactions. This system will allow for precise translation, rotation, and feature-specific manipulation (like Extrude depth) using the stylus.
+This comprehensive plan covers the transition of TamerCAD into a professional workstation by refining the camera navigation, improving the parametric sketch engine for production use, and implementing Articulated 1:1 Augmented Reality (AR) visualization.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Ray-Casting Precision**: Movement will be calculated by intersecting a ray from the camera with 3D axes or planes. This ensures that the distance moved in the viewport corresponds exactly to the physical world units (mm).
-> **Interactive Preview**: Geometry will update in real-time as the user drags a manipulator handle. The operation will only be committed to the command history upon release and confirmation.
-> **Gizmo Visuals**: The manipulator (Gizmo) will include translation arrows (X, Y, Z), planar movement squares (XY, XZ, YZ), and rotation rings.
+> **Branding Update**: The header will be strictly set to `TamerCadv01.[BUILD_NO] Tamer YAMAK©` as per the visual requirement.
+> **Input Priority**: Stylus now has absolute priority for modeling. Camera navigation (Orbit/Pan/Zoom) is restricted to Finger touch to prevent accidental camera movement while drawing.
+> **ARCore Requirements**: 1:1 AR mode requires an ARCore-supported device. The app will check for compatibility before launching the AR bridge.
 
 ## Proposed Changes
 
-### 1. Advanced 3D Intersection Engine
-- **[MODIFY] core/math/Vector3.kt & Matrix4.kt**:
-    - Add helper functions for Ray-Plane and Ray-Line (Axis) intersection.
+### 1. Professional Camera Navigation (Step 10)
 - **[MODIFY] ui/CADViewModel.kt**:
-    - Implement `getRayFromScreen(Offset)`: Generates a 3D ray starting at the camera position passing through the touch point.
-    - Implement `calculateManipulationDelta(ray, axis/plane)`: Returns the 3D translation or rotation value based on intersection.
+    - Add explicit view methods: `setFrontView()`, `setBackView()`, `setTopView()`, `setBottomView()`, `setLeftView()`, `setRightView()`, `setIsometricView()`.
+    - Implement smooth transitions (Interpolation) between camera states.
+- **[MODIFY] ui/components/CADCanvas.kt**:
+    - Refine gesture routing: 1-finger (Orbit), 2-finger (Pan), Pinch (Zoom).
+    - Ensure `isStylusInUse` block effectively prevents camera movement during sketching.
 
-### 2. High-Fidelity 3D Manipulator (Gizmo)
-- **[MODIFY] ui/viewport/Manipulator3D.kt**:
-    - Expand `drawTranslationGizmo` to include small squares for **Planar Movement**.
-    - Implement `drawRotationGizmo` with circular handles for each axis.
-    - Add states for `hoveredHandle` and `activeHandle`.
-    - Render numeric tooltips near the active handle during drag (e.g., `ΔZ: +15.50 mm`).
-
-### 3. Interaction Pipeline Integration
+### 2. Professional Sketch Engine (Step 5 Improvement)
+- **[MODIFY] core/sketch/SketchFeature.kt**:
+    - Improve data persistence for sketches. Each entity now tracks its own set of constraints.
 - **[MODIFY] ui/CADViewModel.kt**:
-    - Manage `activeManipulatorAxis` and `manipulationStartPoint`.
-    - In `onSketchDrag`, if in `MANIPULATING` state, calculate the 3D delta and apply it to the selected `Component3D` or `IFeature`.
-    - Support "Cancel" (reset to original transform) and "Confirm" (commit `MoveCommand` or `RotateCommand`).
+    - Implement a structured "Enter/Exit Sketch" flow that validates profiles (checking for closed loops).
+    - Convert stylus strokes into real CAD entities (`Line`, `Circle3D`, etc.) via `AddGeometryCommand`.
+- **[NEW] core/sketch/ProfileValidator.kt**: Utility to detect closed loops in a sketch for Extrude/Revolve operations.
 
-### 4. Selection Integration
-- The manipulator will automatically appear at the **Centroid** of the current selection (Body, Face, or Edge).
+### 3. ARCore Entegrasyonu (1:1 Scale)
+- **[MODIFY] core/rendering/ArCoreBridge.kt**:
+    - Implement actual AR session initialization.
+    - Map CAD world units (mm) to AR meters (1000mm = 1m) for 1:1 visualization.
+    - Provide a way to place the model on a detected horizontal surface.
+
+### 4. UI Branding & Header Fix
+- **[MODIFY] ui/topbar/CADTopBar.kt**:
+    - Implement the specific branding format requested in the image.
 
 ## Roadmap
 
-1.  **Math Foundation**: Ray-casting and intersection algorithms.
-2.  **Gizmo Visuals**: Implementation of planar and rotation handles.
-3.  **Interaction State**: Routing stylus events to the manipulation engine.
-4.  **Live Modeling**: Connecting manipulators to `ExtrudeFeature` and `MoveCommand`.
+1.  **Input & Camera**: Solidify the Finger/Stylus separation and ViewCube corners.
+2.  **Sketching Logic**: Profile validation and persistent sketch entity conversion.
+3.  **AR Foundation**: ARCore setup and unit scaling.
+4.  **Final Polish**: UI branding and transition animations.
 
 ## Verification Plan
 
 ### Automated Tests
-- Unit tests for Ray-Plane intersection accuracy.
-- Unit tests for Ray-Axis closest point calculation.
+- Unit tests for `ProfileValidator` (detecting a closed rectangle).
+- Test camera projection math for 90-degree orthographic views.
 
 ### Manual Verification
-- **Translation**: Drag the Red (X) arrow; verify the body moves only on the X axis and the numeric label matches the distance.
-- **Rotation**: Drag a rotation ring; verify the body rotates around its center.
-- **Extrude**: Select a face; drag its normal arrow; verify the `ExtrudeFeature` depth updates correctly.
-- **Undo**: After a move, tap Undo and verify the body snaps back to its previous position.
+- **Camera**: Tap ViewCube faces and corners; verify exact alignment. Perform pinch-zoom and 2-finger pan.
+- **Sketching**: Draw a closed shape; verify it highlights as a "Profile" ready for Extrude.
+- **AR**: Launch AR mode and verify the model appears on a table at its real physical size.

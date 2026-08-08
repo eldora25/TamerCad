@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.dp
 import com.tamercad.ui.CADViewModel
 import com.tamercad.ui.components.CADCanvas
 import com.tamercad.ui.components.NavigationCube
+import kotlin.math.*
 
 /**
  * TamerCAD Ana Viewport Katmanı.
@@ -32,9 +33,20 @@ fun CADViewport(
                 cameraPitch = viewModel.cameraPitch,
                 cameraYaw = viewModel.cameraYaw,
                 onViewChange = { p, y -> 
-                    viewModel.cameraPitch = p
-                    viewModel.cameraYaw = y
-                    viewModel.triggerUpdate()
+                    // Match navFaces pitch/yaw to ViewModel methods
+                    when {
+                        p == 0f && y == 0f -> viewModel.setFrontView()
+                        p == 0f && abs(y - PI.toFloat()) < 0.1f -> viewModel.setBackView()
+                        abs(p - PI.toFloat()/2f) < 0.1f -> viewModel.setTopView()
+                        abs(p + PI.toFloat()/2f) < 0.1f -> viewModel.setBottomView()
+                        y < 0 && abs(y + PI.toFloat()/2f) < 0.1f -> viewModel.setLeftView()
+                        y > 0 && abs(y - PI.toFloat()/2f) < 0.1f -> viewModel.setRightView()
+                        else -> {
+                            viewModel.cameraPitch = p
+                            viewModel.cameraYaw = y
+                            viewModel.triggerUpdate()
+                        }
+                    }
                 },
                 onDrag = { dx, dy ->
                     viewModel.cameraYaw += dx * 0.01f

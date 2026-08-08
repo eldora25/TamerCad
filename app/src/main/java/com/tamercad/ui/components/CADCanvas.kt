@@ -106,11 +106,25 @@ fun CADCanvas(viewModel: CADViewModel) {
             }
             // 1. NAVİGASYON (Sadece Parmak / Touch)
             .pointerInput(Unit) {
-                detectTransformGestures { _, pan, zoomDelta, _ ->
+                detectTransformGestures { centroid, pan, zoomDelta, rotation ->
                     if (!viewModel.isStylusInUse && viewModel.interactionState == InteractionState.CAMERA_NAVIGATION) {
-                        viewModel.panX += pan.x
-                        viewModel.panY += pan.y
+                        // Pinch Zoom
                         viewModel.zoom *= zoomDelta
+                        
+                        // Pan vs Orbit logic based on touch count?
+                        // Simplified: Horizontal/Vertical drag orbits, two fingers could pan.
+                        // Standard Compose detectTransformGestures doesn't expose touch count directly.
+                        // We will use pan for Orbit by default as in early TamerCAD version, 
+                        // but refined for professional feel.
+                        
+                        if (zoomDelta == 1f) { // Not zooming, so it's likely a drag
+                             viewModel.cameraYaw += pan.x * 0.005f
+                             viewModel.cameraPitch -= pan.y * 0.005f
+                        } else {
+                            viewModel.panX += pan.x
+                            viewModel.panY += pan.y
+                        }
+                        
                         viewModel.triggerUpdate()
                     }
                 }

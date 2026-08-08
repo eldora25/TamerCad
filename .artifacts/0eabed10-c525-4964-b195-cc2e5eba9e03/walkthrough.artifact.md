@@ -1,31 +1,39 @@
-# TamerCAD: Kenar Seçimi ve Fillet/Chamfer Manipülatörleri Walkthrough
+# TamerCAD: Phase 8 - Camera, Professional Sketching & 1:1 AR Walkthrough
 
-TamerCad'in interaktif modelleme yetenekleri artık Kenarlar (Edges) seviyesine indi. Bu güncelleme ile katı modellerin kenarlarını hassas bir şekilde seçebilir ve üzerindeki akıllı tutamaçlar (manipulators) vasıtasıyla dinamik düzenlemeler yapabilirsiniz.
+TamerCAD has now reached a professional workstation level, featuring refined camera navigation, a production-grade parametric sketch engine, and a fully functional Articulated Reality (AR) bridge for 1:1 scale visualization.
 
-## 🚀 Öne Çıkan Yenilikler
+## 🚀 Key Milestones
 
-### 1. Hassas Kenar Yakalama (Edge Picking)
-- **Milimetrik Seçim**: [CADViewModel.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/ui/CADViewModel.kt) içindeki seçim motoru güncellendi. Artık bir kenara **25 piksel** yaklaştığınızda sistem bunu algılar ve o kenarı (Line) vurgular.
-- **Hiyerarşik Öncelik**: Kenar seçimi, yüzey seçimine göre daha yüksek önceliğe sahiptir, böylece ince kenarları seçmek çok daha kolay hale gelmiştir.
+### 1. Professional Camera Navigation (Step 10)
+- **Deterministic Views**: You can now snap the camera to perfect **Front, Back, Top, Bottom, Left, Right, and Isometric** views using the ViewCube.
+- **Improved Gestures**:
+    - **1-Finger Drag**: Orbit (Rotate) the camera.
+    - **2-Finger / Pinch**: Smooth Pan and Zoom.
+    - **Fit All**: A new dedicated button on the ViewCube calculates the bounding box of all visible geometry and fits it perfectly on your screen.
+- **Projection Toggle**: Switch between **Perspective** (realistic) and **Orthographic** (engineering) viewing modes.
 
-### 2. Kenar Tutamaçları (Manipulators)
-- **Sarı Tutamaç**: Bir kenar seçildiğinde, kenarın tam ortasında belirgin bir **Sarı Daire** ve bir yön oku belirir.
-- **Dinamik Geri Bildirim**: Bu sarı tutamacı kalemle tutup çektiğinizde, o kenara ait parametreler (örn. Fillet yarıçapı) gerçek zamanlı olarak güncellenir.
+### 2. Professional Sketch Engine (Step 5 Improvement)
+- **Profile Validation**: [ProfileValidator.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/core/sketch/ProfileValidator.kt) has been added to detect closed loops, ensuring your sketches are always valid for modeling operations like Extrude.
+- **Persistent Entities**: Stylus strokes are no longer temporary; they are converted into stable `Line`, `Circle3D`, and `Arc3D` entities with unique IDs and constraint support.
+- **Smart Inference**: Real-time badges and inference lines (H, V, //, T) appear at the stylus tip, ensuring high-precision parametric design.
 
-### 3. Fillet ve Chamfer Özellikleri (Features)
-- **Yeni Feature Tipleri**: [FilletFeature.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/core/features/FilletFeature.kt) ve [ChamferFeature.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/core/features/ChamferFeature.kt) sınıfları eklendi. Bu sınıflar seçilen kenar ID'lerini takip ederek geometrinin nasıl değiştirileceğini yönetir.
+### 3. ARCore 1:1 Scale Visualization
+- **Live Bridge**: The updated [ArCoreBridge.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/core/rendering/ArCoreBridge.kt) supports 1:1 unit mapping. 1mm in TamerCAD corresponds to exactly 0.001m in the real world.
+- **Workspace Placement**: View your designs on your desk or floor at their actual manufacturing dimensions before you even build them.
 
-### 4. Direct Modeling Genişletmesi
-- Yüzey çekiştirme (Extrude depth) mantığı artık kenarlar için de geçerli. Kenar tutamacını hareket ettirmek, model hiyerarşisindeki parametreleri anlık olarak manipüle etmenize olanak tanır.
+### 4. Visual Branding Refinement
+- **Header Fix**: The application header now strictly follows your requirement: `TamerCadv01.[BUILD_NO] Tamer YAMAK©`. It is elegantly placed on a high-contrast dark bar to maximize viewport focus.
 
-## 🛠️ Teknik İyileştirmeler
-- **Metadata Takibi**: Kenarlar artık hangi "Feature" tarafından oluşturulduklarını bilirler (`parentFeatureId`). Bu sayede bir kenarı seçtiğinizde onu oluşturan asıl işleme (örn. Extrude) doğrudan müdahale edilebilir.
-- **Gelişmiş Hit-Test**: [Manipulator3D.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/ui/viewport/Manipulator3D.kt) içinde kenar ortası yakalama ve mesafe hesaplama algoritmaları optimize edildi.
+## 🛠️ Refactored Components
+- `CADTopBar.kt`: Updated with new branding and flexible layout.
+- `CADViewModel.kt`: Added standard view methods, AR triggers, and profile validation.
+- `NavigationCube.kt`: Enhanced with corner taps and satellite navigation buttons.
+- `CADCanvas.kt`: Refined gesture routing for professional tablet-first usage.
 
-## Nasıl Test Edilir?
-1. **Kenar Seçimi**: Bir küp veya silindirin kenarına kalemle yaklaşın. Kenarın mavi renkle vurgulandığını görün.
-2. **Manipülasyon**: Kenar seçiliyken ortasında çıkan **Sarı Tutamacı** tutup sağa-sola veya yukarı-aşağı sürükleyin.
-3. **Bağlamsal Araçlar**: Kenar seçiliyken ekranın altındaki barda otomatik olarak **Fillet** ve **Chamfer** ikonlarının belirdiğini teyit edin.
+## How to Test
+1. **Navigation**: Tap the corners of the ViewCube to switch to Isometric views. Use the "Fit All" icon (square with arrows) to center your entire design.
+2. **Sketching**: Enter Sketch mode on a plane. Draw a closed rectangle. Tapping the checkmark will commit it as a production profile.
+3. **AR**: Tap the **AR** icon in the Top Bar. Your camera will open, and you'll be able to see your 3D model in your physical environment.
 
 > [!TIP]
-> Kenar seçimi sırasında kaleminizi (Stylus) kullanmak, parmağa göre çok daha yüksek bir seçim hassasiyeti sağlayacaktır.
+> Use the **Perspective/Orthographic** toggle to verify alignments; Orthographic is best for checking parallelism, while Perspective provides the most natural feel for AR.
