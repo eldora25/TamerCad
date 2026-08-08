@@ -50,6 +50,9 @@ import com.tamercad.ui.interaction.InteractionState
 @Composable
 fun CADCanvas(viewModel: CADViewModel) {
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.toFloat()
+    val screenHeight = configuration.screenHeightDp.toFloat()
 
     Canvas(
         modifier = Modifier
@@ -62,7 +65,7 @@ fun CADCanvas(viewModel: CADViewModel) {
                         val event = awaitPointerEvent()
                         if (event.type == PointerEventType.Move) {
                             val pos = event.changes.first().position
-                            viewModel.onHover(pos, size.width.toFloat(), size.height.toFloat())
+                            viewModel.onHover(pos, screenWidth, screenHeight)
                         }
                     }
                 }
@@ -72,16 +75,19 @@ fun CADCanvas(viewModel: CADViewModel) {
                 viewModel.isStylusInUse = stylusEvent.type == PointerType.Stylus
                 viewModel.pencilDetector.processMotionEvent(motionEvent)
                 
-                // Interaction State Machine Routing
+                // --- Interaction State Machine Routing ---
                 if (viewModel.isStylusInUse) {
                     when (motionEvent.action) {
                         android.view.MotionEvent.ACTION_DOWN -> {
-                            viewModel.interactionState = InteractionState.SELECTING
+                            val hit = viewModel.pick3DEntity(motionEvent.x, motionEvent.y, screenWidth, screenHeight)
+                            if (hit != null && viewModel.activeManipulatorAxis != null) {
+                                viewModel.interactionState = InteractionState.MANIPULATING
+                            } else {
+                                viewModel.interactionState = if (viewModel.isSketchMode) InteractionState.SKETCHING else InteractionState.SELECTING
+                            }
                         }
                         android.view.MotionEvent.ACTION_MOVE -> {
-                            if (viewModel.interactionState == InteractionState.SELECTING) {
-                                viewModel.interactionState = if (viewModel.isSketchMode) InteractionState.SKETCHING else InteractionState.DRAGGING
-                            }
+                            // Sketching state persists until UP
                         }
                         android.view.MotionEvent.ACTION_UP -> {
                             viewModel.interactionState = InteractionState.IDLE
@@ -114,7 +120,7 @@ fun CADCanvas(viewModel: CADViewModel) {
                 detectTapGestures(
                     onTap = { offset -> 
                         if (viewModel.isStylusInUse) {
-                            viewModel.onTap(offset, size.width.toFloat(), size.height.toFloat()) 
+                            viewModel.onTap(offset, screenWidth, screenHeight) 
                         }
                     },
                     onLongPress = { 
@@ -128,12 +134,12 @@ fun CADCanvas(viewModel: CADViewModel) {
                 detectDragGestures(
                     onDragStart = { offset -> 
                         if (viewModel.isStylusInUse) {
-                            viewModel.onSketchDragStart(offset, size.width.toFloat(), size.height.toFloat(), context) 
+                            viewModel.onSketchDragStart(offset, screenWidth, screenHeight, context) 
                         }
                     },
                     onDrag = { change, dragAmount -> 
                         if (viewModel.isStylusInUse) {
-                            viewModel.onSketchDrag(change.position, dragAmount, size.width.toFloat(), size.height.toFloat(), context) 
+                            viewModel.onSketchDrag(change.position, dragAmount, screenWidth, screenHeight, context) 
                         }
                     },
                     onDragEnd = { 

@@ -7,6 +7,6 @@ public final class BuildConfig {
   public static final boolean DEBUG = Boolean.parseBoolean("true");
   public static final String APPLICATION_ID = "com.tamercad.debug";
   public static final String BUILD_TYPE = "debug";
-  public static final int VERSION_CODE = 63;
-  public static final String VERSION_NAME = "0.1.63-debug";
+  public static final int VERSION_CODE = 64;
+  public static final String VERSION_NAME = "0.1.64-debug";
 }
