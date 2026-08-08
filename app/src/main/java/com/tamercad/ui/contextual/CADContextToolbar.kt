@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.sp
 import com.tamercad.ui.components.LabeledSidebarIconButton
 import com.tamercad.ui.theme.IconRegistry
 import com.tamercad.ui.theme.TamerCadColors
+import com.tamercad.ui.theme.TamerCadDimensions
 
 enum class SelectionType {
     NONE, VERTEX, EDGE, FACE, BODY, SKETCH, FEATURE, MULTIPLE
@@ -30,14 +31,14 @@ fun CADContextToolbar(
 ) {
     Row(
         modifier = Modifier
-            .padding(bottom = 32.dp)
-            .height(80.dp)
-            .background(TamerCadColors.PanelColor, RoundedCornerShape(40.dp))
-            .border(1.dp, TamerCadColors.ActiveColor, RoundedCornerShape(40.dp))
-            .shadow(16.dp)
-            .padding(horizontal = 24.dp),
+            .padding(bottom = TamerCadDimensions.SpacingExtraLarge)
+            .height(TamerCadDimensions.ContextToolbarHeight)
+            .background(TamerCadColors.Surface, RoundedCornerShape(TamerCadDimensions.CornerExtraLarge))
+            .border(TamerCadDimensions.BorderThin, TamerCadColors.Primary, RoundedCornerShape(TamerCadDimensions.CornerExtraLarge))
+            .shadow(TamerCadDimensions.ElevationHigh)
+            .padding(horizontal = TamerCadDimensions.SpacingExtraLarge),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(TamerCadDimensions.SpacingMedium)
     ) {
         when (selectionType) {
             SelectionType.NONE -> {

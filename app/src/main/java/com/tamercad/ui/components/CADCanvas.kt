@@ -113,19 +113,19 @@ fun CADCanvas(viewModel: CADViewModel) {
 
         // 1. Grid Rendering
         for (i in -1..(size.width / gridSize).toInt() + 1) {
-            val color = if (isSketchMode) Color.LightGray.copy(alpha = 0.5f) else (if (i % 5 == 0) TamerCadColors.GridThickColor else TamerCadColors.GridColor)
+            val color = if (isSketchMode) TamerCadColors.Grid.copy(alpha = 0.5f) else (if (i % 5 == 0) TamerCadColors.GridThick else TamerCadColors.Grid)
             drawLine(color, Offset(offsetX + i * gridSize, 0f), Offset(offsetX + i * gridSize, size.height), if (i % 5 == 0) 2f else 1f)
         }
         for (i in -1..(size.height / gridSize).toInt() + 1) {
-            val color = if (isSketchMode) Color.LightGray.copy(alpha = 0.5f) else (if (i % 5 == 0) TamerCadColors.GridThickColor else TamerCadColors.GridColor)
+            val color = if (isSketchMode) TamerCadColors.Grid.copy(alpha = 0.5f) else (if (i % 5 == 0) TamerCadColors.GridThick else TamerCadColors.Grid)
             drawLine(color, Offset(0f, offsetY + i * gridSize), Offset(size.width, offsetY + i * gridSize), if (i % 5 == 0) 2f else 1f)
         }
 
         // 2. Axes
         val origin = viewModel.worldToScreen(Point3(0.0, 0.0, 0.0), screenWidth, screenHeight)
-        drawLine(Color.Red.copy(alpha = 0.6f), origin, viewModel.worldToScreen(Point3(500.0, 0.0, 0.0), screenWidth, screenHeight), 2f)
-        drawLine(Color.Green.copy(alpha = 0.6f), origin, viewModel.worldToScreen(Point3(0.0, 500.0, 0.0), screenWidth, screenHeight), 2f)
-        drawLine(Color.Blue.copy(alpha = 0.6f), origin, viewModel.worldToScreen(Point3(0.0, 0.0, 500.0), screenWidth, screenHeight), 2f)
+        drawLine(TamerCadColors.AxisX.copy(alpha = 0.8f), origin, viewModel.worldToScreen(Point3(500.0, 0.0, 0.0), screenWidth, screenHeight), 2f)
+        drawLine(TamerCadColors.AxisY.copy(alpha = 0.8f), origin, viewModel.worldToScreen(Point3(0.0, 500.0, 0.0), screenWidth, screenHeight), 2f)
+        drawLine(TamerCadColors.AxisZ.copy(alpha = 0.8f), origin, viewModel.worldToScreen(Point3(0.0, 0.0, 500.0), screenWidth, screenHeight), 2f)
 
         // --- SOLID BODY RENDERING ---
         val lightDirection = Vector3(0.5, 0.5, 1.0).normalize()

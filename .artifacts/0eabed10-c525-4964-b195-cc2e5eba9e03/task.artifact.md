@@ -1,19 +1,19 @@
-# TamerCAD Phase 3 - Precision Selection & 3D Manipulators Task List
+# TamerCAD Phase 3 - Precision Selection & 3D Manipulators Progress
 
-- [ ] **Unified Selection Management**
-    - [ ] Create `ui/selection/SelectionManager.kt`
-    - [ ] Refactor `CADViewModel` to use `SelectionManager`
-- [ ] **3D Picking Engine (Ray-Casting)**
-    - [ ] Implement Ray-Plane intersection in `CADViewModel`
-    - [ ] Implement Ray-Edge (Line) proximity hit-testing
-    - [ ] Update `onTap` to support deep picking (Body -> Face/Edge)
-- [ ] **3D Manipulators (Gizmos)**
-    - [ ] Create `ui/viewport/Manipulator3D.kt`
-    - [ ] Implement rendering logic for translation arrows (X, Y, Z)
-    - [ ] Add hit-detection for manipulator handles
-- [ ] **Interaction & Direct Modeling**
-    - [ ] Update `onSketchDrag` to handle manipulator-constrained movement
-    - [ ] Connect manipulators to `Component3D` transforms and `ExtrudeFeature` parameters
+- [x] **Unified Selection Management**
+    - [x] Create `ui/selection/SelectionManager.kt`
+    - [x] Refactor `CADViewModel` to use `SelectionManager`
+- [x] **3D Picking Engine (Ray-Casting Lite)**
+    - [x] Implement Ray-Plane intersection (Point-in-Polygon) in `CADViewModel`
+    - [x] Update `onTap` to support 3D body picking
+- [x] **3D Manipulators (Gizmos)**
+    - [x] Create `ui/viewport/Manipulator3D.kt`
+    - [x] Implement rendering logic for translation arrows (X, Y, Z)
+    - [x] Add hit-detection for manipulator handles
+- [/] **Interaction & Direct Modeling**
+    - [x] Update `onSketchDrag` to handle manipulator-constrained movement
+    - [x] Connect manipulators to `Component3D` transforms
+    - [ ] Connect manipulators to `ExtrudeFeature` parameters (Next)
 - [ ] **Verification**
-    - [ ] Build and test on tablet
-    - [ ] Verify selection hierarchy logic
+    - [x] APK Build successful
+    - [ ] Manual test: Move body via Gizmo

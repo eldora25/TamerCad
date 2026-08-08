@@ -33,7 +33,7 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(TamerCadColors.BgColor)
+                .background(TamerCadColors.Background)
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {

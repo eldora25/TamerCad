@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.tamercad.ui.components.LabeledSidebarIconButton
 import com.tamercad.ui.theme.IconRegistry
 import com.tamercad.ui.theme.TamerCadColors
+import com.tamercad.ui.theme.TamerCadDimensions
 
 /**
  * TamerCAD Profesyonel Tablet Side Toolbar.
@@ -25,16 +26,16 @@ fun CADSideToolbar(
 ) {
     Column(
         modifier = Modifier
-            .padding(start = 12.dp, top = 80.dp, bottom = 24.dp)
-            .width(72.dp)
+            .padding(start = TamerCadDimensions.SpacingMedium, top = 80.dp, bottom = TamerCadDimensions.SpacingExtraLarge)
+            .width(TamerCadDimensions.SideToolbarWidth)
             .fillMaxHeight()
-            .clip(RoundedCornerShape(36.dp))
-            .background(TamerCadColors.PanelColor)
-            .border(1.dp, TamerCadColors.PanelBorder, RoundedCornerShape(36.dp))
-            .shadow(12.dp)
-            .padding(vertical = 20.dp),
+            .clip(RoundedCornerShape(TamerCadDimensions.CornerExtraLarge))
+            .background(TamerCadColors.Surface)
+            .border(TamerCadDimensions.BorderThin, TamerCadColors.PanelBorder, RoundedCornerShape(TamerCadDimensions.CornerExtraLarge))
+            .shadow(TamerCadDimensions.ElevationMedium)
+            .padding(vertical = TamerCadDimensions.SpacingExtraLarge),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(TamerCadDimensions.SpacingLarge)
     ) {
         LabeledSidebarIconButton(IconRegistry.Select, "Select", activeCategory == ToolbarCategory.SELECT) { onCategoryClick(ToolbarCategory.SELECT) }
         LabeledSidebarIconButton(IconRegistry.Sketch, "Sketch", activeCategory == ToolbarCategory.SKETCH) { onCategoryClick(ToolbarCategory.SKETCH) }

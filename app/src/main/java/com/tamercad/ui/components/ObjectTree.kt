@@ -24,6 +24,7 @@ import com.tamercad.core.assembly.Assembly3D
 import com.tamercad.core.assembly.Component3D
 import com.tamercad.core.features.ExtrudeFeature
 import com.tamercad.ui.theme.TamerCadColors
+import com.tamercad.ui.theme.TamerCadDimensions
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 
@@ -52,13 +53,13 @@ fun ObjectTree(
     Box(
         modifier = Modifier
             .offset { IntOffset(offset.x.toInt(), offset.y.toInt()) }
-            .zIndex(100f) // En üstte olduğundan emin ol
-            .width(220.dp)
+            .zIndex(100f)
+            .width(TamerCadDimensions.BrowserWidth)
             .fillMaxHeight(0.6f)
-            .clip(RoundedCornerShape(12.dp))
-            .background(TamerCadColors.PanelColor)
-            .border(1.dp, TamerCadColors.PanelBorder, RoundedCornerShape(12.dp))
-            .shadow(8.dp)
+            .clip(RoundedCornerShape(TamerCadDimensions.CornerMedium))
+            .background(TamerCadColors.Surface)
+            .border(TamerCadDimensions.BorderThin, TamerCadColors.PanelBorder, RoundedCornerShape(TamerCadDimensions.CornerMedium))
+            .shadow(TamerCadDimensions.ElevationMedium)
     ) {
         Column {
             // Sürüklenebilir Başlık Çubuğu
@@ -66,27 +67,27 @@ fun ObjectTree(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(40.dp)
-                    .background(TamerCadColors.SecondaryBg)
+                    .background(TamerCadColors.SurfaceElevated)
                     .pointerInput(Unit) {
                         detectDragGestures { change, dragAmount ->
                             change.consume()
                             onOffsetChange(currentOffset + dragAmount)
                         }
                     }
-                    .padding(horizontal = 12.dp),
+                    .padding(horizontal = TamerCadDimensions.SpacingMedium),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Text(
                     "Browser",
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
-                    color = TamerCadColors.TextColor
+                    color = TamerCadColors.TextPrimary
                 )
             }
             
             LazyColumn(
-                modifier = Modifier.padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier.padding(TamerCadDimensions.SpacingMedium),
+                verticalArrangement = Arrangement.spacedBy(TamerCadDimensions.SpacingSmall)
             ) {
                 items(assembly.components) { comp ->
                     ObjectTreeItem(
@@ -118,29 +119,29 @@ fun ObjectTreeItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(6.dp))
-            .background(if (component.isSelected) TamerCadColors.ActiveColor.copy(alpha = 0.2f) else Color.Transparent)
+            .clip(RoundedCornerShape(TamerCadDimensions.CornerSmall))
+            .background(if (component.isSelected) TamerCadColors.Primary.copy(alpha = 0.2f) else Color.Transparent)
             .combinedClickable(
                 onClick = onSelect,
                 onDoubleClick = onRenameRequest
             )
-            .padding(horizontal = 4.dp, vertical = 6.dp),
+            .padding(horizontal = TamerCadDimensions.SpacingSmall, vertical = TamerCadDimensions.SpacingMedium),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Tür İkonu (Sol)
         Icon(
             icon,
             null,
-            tint = if (component.isSelected) TamerCadColors.ActiveColor else TamerCadColors.IconColor,
-            modifier = Modifier.size(16.dp)
+            tint = if (component.isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary,
+            modifier = Modifier.size(TamerCadDimensions.IconSmall)
         )
         
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(TamerCadDimensions.SpacingMedium))
         
         // İsim (Orta)
         Text(
             component.name,
-            color = if (component.isSelected) TamerCadColors.ActiveColor else TamerCadColors.TextColor,
+            color = if (component.isSelected) TamerCadColors.Primary else TamerCadColors.TextPrimary,
             fontSize = 13.sp,
             modifier = Modifier.weight(1f),
             maxLines = 1
@@ -148,11 +149,11 @@ fun ObjectTreeItem(
 
         // Göz İkonu (Sağ)
         Icon(
-            if (component.isVisible) Icons.Default.CheckCircle else Icons.Default.Clear, // Eye icon simülasyonu
+            if (component.isVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
             null,
-            tint = if (component.isVisible) TamerCadColors.ActiveColor else Color.Gray,
+            tint = if (component.isVisible) TamerCadColors.Primary else Color.Gray,
             modifier = Modifier
-                .size(18.dp)
+                .size(TamerCadDimensions.IconSmall)
                 .clickable { onVisibilityToggle() }
         )
     }

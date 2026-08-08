@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tamercad.ui.theme.IconRegistry
 import com.tamercad.ui.theme.TamerCadColors
+import com.tamercad.ui.theme.TamerCadDimensions
 
 /**
  * TamerCAD Profesyonel Üst Bar.
@@ -36,51 +37,51 @@ fun CADTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = TamerCadDimensions.SpacingLarge, vertical = TamerCadDimensions.SpacingMedium),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         // Sol Grup: Geri, Proje Adı ve Kaydet
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(24.dp))
-                .background(TamerCadColors.PanelColor)
-                .border(1.dp, TamerCadColors.PanelBorder, RoundedCornerShape(24.dp))
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .clip(RoundedCornerShape(TamerCadDimensions.CornerLarge))
+                .background(TamerCadColors.Surface)
+                .border(TamerCadDimensions.BorderThin, TamerCadColors.PanelBorder, RoundedCornerShape(TamerCadDimensions.CornerLarge))
+                .padding(horizontal = TamerCadDimensions.SpacingMedium, vertical = TamerCadDimensions.SpacingSmall),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack, modifier = Modifier.size(32.dp)) {
-                Icon(IconRegistry.Home, "Back", tint = Color.White, modifier = Modifier.size(20.dp))
+            IconButton(onClick = onBack, modifier = Modifier.size(TamerCadDimensions.IconButtonSize)) {
+                Icon(IconRegistry.Home, "Back", tint = Color.White, modifier = Modifier.size(TamerCadDimensions.IconSmall))
             }
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(TamerCadDimensions.SpacingMedium))
             Text(projectName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            Spacer(Modifier.width(8.dp))
-            IconButton(onClick = onSave, modifier = Modifier.size(32.dp)) {
-                Icon(IconRegistry.Save, "Save", tint = Color.White, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(TamerCadDimensions.SpacingMedium))
+            IconButton(onClick = onSave, modifier = Modifier.size(TamerCadDimensions.IconButtonSize)) {
+                Icon(IconRegistry.Save, "Save", tint = Color.White, modifier = Modifier.size(TamerCadDimensions.IconSmall))
             }
         }
 
         // Orta Grup: Undo / Redo
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(24.dp))
-                .background(TamerCadColors.PanelColor)
-                .border(1.dp, TamerCadColors.PanelBorder, RoundedCornerShape(24.dp))
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .clip(RoundedCornerShape(TamerCadDimensions.CornerLarge))
+                .background(TamerCadColors.Surface)
+                .border(TamerCadDimensions.BorderThin, TamerCadColors.PanelBorder, RoundedCornerShape(TamerCadDimensions.CornerLarge))
+                .padding(horizontal = TamerCadDimensions.SpacingMedium, vertical = TamerCadDimensions.SpacingSmall),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(TamerCadDimensions.SpacingSmall)
         ) {
-            IconButton(onClick = onUndo, modifier = Modifier.size(40.dp)) {
-                Icon(IconRegistry.Undo, "Undo", tint = Color.White, modifier = Modifier.size(24.dp))
+            IconButton(onClick = onUndo, modifier = Modifier.size(TamerCadDimensions.IconButtonSize)) {
+                Icon(IconRegistry.Undo, "Undo", tint = Color.White, modifier = Modifier.size(TamerCadDimensions.IconMedium))
             }
-            IconButton(onClick = onRedo, modifier = Modifier.size(40.dp)) {
-                Icon(IconRegistry.Redo, "Redo", tint = Color.White, modifier = Modifier.size(24.dp))
+            IconButton(onClick = onRedo, modifier = Modifier.size(TamerCadDimensions.IconButtonSize)) {
+                Icon(IconRegistry.Redo, "Redo", tint = Color.White, modifier = Modifier.size(TamerCadDimensions.IconMedium))
             }
         }
 
         // Sağ Grup: Ayarlar ve Yardım
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(TamerCadDimensions.SpacingMedium)
         ) {
             TopBarActionIcon(IconRegistry.Settings) { onSettings() }
             TopBarActionIcon(IconRegistry.Help) { onHelp() }
@@ -92,13 +93,13 @@ fun CADTopBar(
 fun TopBarActionIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .size(36.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(TamerCadColors.PanelColor)
-            .border(1.dp, TamerCadColors.PanelBorder, RoundedCornerShape(10.dp))
+            .size(TamerCadDimensions.IconButtonSize)
+            .clip(RoundedCornerShape(TamerCadDimensions.CornerMedium))
+            .background(TamerCadColors.Surface)
+            .border(TamerCadDimensions.BorderThin, TamerCadColors.PanelBorder, RoundedCornerShape(TamerCadDimensions.CornerMedium))
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(TamerCadDimensions.IconMedium))
     }
 }
