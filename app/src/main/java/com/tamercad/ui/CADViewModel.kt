@@ -100,7 +100,7 @@ class CADViewModel : ViewModel() {
     var selectionPoint by mutableStateOf<Offset?>(null)
     var dragHandle by mutableIntStateOf(-1)
     var rawStroke by mutableStateOf<List<Point3>>(emptyList())
-    var currentSnapType by mutableStateOf(SnapType.NONE)
+    var currentSnap by mutableStateOf<com.tamercad.core.sketch.SnapResult?>(null)
     var dynamicExtrudeHeight by mutableFloatStateOf(0f)
     var activeManipulatorAxis by mutableStateOf<String?>(null)
     
@@ -481,8 +481,8 @@ class CADViewModel : ViewModel() {
                     val newLine = Line(newStart, newEnd); allGeoms.add(newLine); activeSketch.clearWorkspace()
                     allGeoms.forEach { activeSketch.addGeometry(it) }; selectionManager.select(newLine)
                 } else {
-                    val snap = SnapEngine.snapPoint(pt, rawStroke.firstOrNull(), activeSketch.getGeometries().filterIsInstance<Line>(), zoom)
-                    currentSnapType = snap.type
+                    val snap = SnapEngine.snapPoint(pt, rawStroke.firstOrNull(), activeSketch.getGeometries(), mainAssembly.components, zoom)
+                    currentSnap = snap
                     rawStroke = rawStroke + snap.point
                     
                     // Live Inference during drawing
@@ -534,7 +534,7 @@ class CADViewModel : ViewModel() {
                             }
                             
                             // Coincident Inference (Snapping to endpoints)
-                            if (currentSnapType == SnapType.ENDPOINT) {
+                            if (currentSnap?.type == SnapType.ENDPOINT) {
                                 // Bulunan en yakın noktayı kısıtla (Basitleştirilmiş: Sadece mantık iskeleti)
                             }
                         }
@@ -555,7 +555,7 @@ class CADViewModel : ViewModel() {
             }
             else -> { rawStroke = emptyList(); dragHandle = -1; triggerUpdate() }
         }
-        pencilDetector.clearHistory(); currentSnapType = SnapType.NONE
+        pencilDetector.clearHistory(); currentSnap = null
     }
 
     fun applyDimension(newVal: Double) {

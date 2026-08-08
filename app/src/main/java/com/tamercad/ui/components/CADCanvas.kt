@@ -341,14 +341,40 @@ fun CADCanvas(viewModel: CADViewModel) {
             }
         }
 
-        // --- SMART INFERENCE ---
-        viewModel.activeInference?.let { inf ->
-            // Draw a badge or line indicating the inference
-            val lastPt = if (viewModel.rawStroke.isNotEmpty()) viewModel.worldToScreen(viewModel.rawStroke.last(), screenWidth, screenHeight) else null
-            lastPt?.let { pos ->
-                drawBadge(this, inf, Offset(pos.x + 30f, pos.y - 30f), viewModel.zoom)
+            if (viewModel.interactionState == InteractionState.SKETCHING) {
+                val snap = viewModel.currentSnap
+                if (snap != null && snap.type != SnapType.NONE) {
+                    val lastPt = viewModel.worldToScreen(snap.point, screenWidth, screenHeight)
+                    
+                    // Draw Snap Icon (Badge)
+                    val symbol = when (snap.type) {
+                        SnapType.HORIZONTAL -> "H"
+                        SnapType.VERTICAL -> "V"
+                        SnapType.PARALLEL -> "//"
+                        SnapType.PERPENDICULAR -> "T"
+                        SnapType.TANGENT -> "O"
+                        SnapType.ENDPOINT -> "*"
+                        SnapType.MIDPOINT -> "^"
+                        SnapType.CENTER -> "C"
+                        SnapType.INTERSECTION -> "X"
+                        SnapType.ORIGIN -> "0"
+                        SnapType.GRID -> "."
+                        else -> ""
+                    }
+                    
+                    if (symbol.isNotEmpty()) {
+                        drawBadge(this, symbol, Offset(lastPt.x + 30f, lastPt.y - 30f), viewModel.zoom)
+                    }
+                    
+                    // Specific highlight for snapping point
+                    drawCircle(
+                        color = TamerCadColors.Snap,
+                        radius = 8f * viewModel.zoom,
+                        center = lastPt,
+                        style = Stroke(width = 2f)
+                    )
+                }
             }
-        }
 
         // --- MEASUREMENT OVERLAY ---
         viewModel.currentMeasurement?.let { result ->

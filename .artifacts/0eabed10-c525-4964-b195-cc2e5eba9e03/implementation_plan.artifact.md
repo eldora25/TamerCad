@@ -1,55 +1,55 @@
-# TamerCAD UI Redesign - Phase 7: Measurements, Model Tree & Settings
+# TAMERCAD CAD DEVELOPMENT — STEP 4 — SNAP AND INFERENCE ENGINE
 
-This phase focuses on professionalizing the data inspection and configuration layers of TamerCAD. We will implement a robust measurement system, a hierarchical model tree, and a comprehensive settings suite.
+This plan focuses on implementing a professional-grade snapping and inference system for TamerCAD. The system will allow users to accurately snap to key geometric features such as endpoints, midpoints, centers, intersections, and more, significantly improving the precision of the stylus-based sketching experience.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Measurement Driving Constraints**: Editing a measurement value will attempt to apply a corresponding constraint (e.g., `DistanceConstraint`) to the involved geometries.
-> **Model Tree Hierarchy**: The tree will now show the full assembly structure: Assembly -> Components -> Features -> Sketches -> Geometries.
-> **Centralized Settings**: All application preferences will be moved to a single `SettingsState` managed by the `CADViewModel` or a dedicated `SettingsViewModel`.
+> **Extensible Architecture**: Snapping is now a separate pipeline. Stylus position is processed by the `SnapEngine` before reaching the active tool.
+> **Visual Badges**: Unique icons will appear for different snap types (e.g., Triangle for Midpoint, Circle for Center) to provide clear feedback.
+> **Performance**: To maintain fluid 60fps interaction, snapping logic uses spatial proximity thresholds and only checks visible geometries.
 
 ## Proposed Changes
 
-### 1. Advanced Measurement System (Step 15)
-- **[NEW] core/analysis/MeasurementEngine.kt**:
-    - Logic for computing distances, angles, areas, and volumes between various `IGeometry` types.
-- **[MODIFY] ui/CADViewModel.kt**:
-    - Add `measurementSelection: List<IGeometry>` state.
-    - Implement logic to handle multi-selection specifically for measurement mode.
+### 1. Enhanced Snap Model
+- **[MODIFY] core/sketch/SnapEngine.kt**:
+    - Expand `SnapType` enum: `MIDPOINT`, `CENTER`, `INTERSECTION`, `ORIGIN`, `FACE_CENTER`.
+    - Update `SnapResult` to include: `referencedGeometry: IGeometry?`, `confidence: Double`.
+
+### 2. Snap Logic Implementation
+- **[MODIFY] core/sketch/SnapEngine.kt**:
+    - **Origin Snap**: Snap to (0,0,0) when close.
+    - **Midpoint Snap**: Detect the middle of `Line` segments.
+    - **Center Snap**: Detect the center of `Circle3D` and `Arc3D` entities.
+    - **Intersection Snap**: Calculate and snap to points where two `Line` entities cross.
+    - **Grid Snap**: Snap to the nearest grid intersection (respecting zoom).
+
+### 3. Visual Feedback
 - **[MODIFY] ui/components/CADCanvas.kt**:
-    - Update `renderDimensionBubble` to support leader lines and specialized formatting for angles/areas.
-    - Render measurement labels for the active selection.
+    - Add rendering for new snap badges.
+    - Use dashed "Inference Lines" to show alignment with remote geometries (Parallel, Perpendicular).
 
-### 2. Hierarchical Model Tree (Step 16)
-- **[MODIFY] ui/components/ObjectTree.kt**:
-    - Refactor to support nested nodes.
-    - Implement expansion/collapse toggles for Components and Features.
-    - Add icons for different node types (Origin, Plane, Body, Sketch, Extrude, etc.).
-    - Implement context menus (long-press) for all node levels.
-- **[MODIFY] core/assembly/Component3D.kt**: Ensure features and sketches are correctly exposed for tree traversal.
-
-### 3. Professional CAD Settings (Step 17)
-- **[NEW] ui/app/SettingsScreen.kt**:
-    - Categorized settings UI: General, Navigation, Stylus, View, Selection, Performance, File.
-    - Use standard CAD toggles (e.g., Perspective vs Orthographic, Grid visibility).
-- **[NEW] ui/state/SettingsState.kt**: Data class to hold all configuration tokens.
-- **[MODIFY] ui/MainCADScreen.kt**: Add logic to show the Settings Screen as a full-screen overlay or large modal.
+### 4. Integration
+- **[MODIFY] ui/CADViewModel.kt**:
+    - Update `onSketchDrag` to handle the enriched `SnapResult`.
+    - Ensure snapping works consistently across all sketch tools (Line, Circle, Rectangle).
 
 ## Roadmap
 
-1.  **Model Tree Update**: Expand the browser to show the full feature history.
-2.  **Measurement Engine**: Implement the math for diverse measurement types and labels.
-3.  **Settings Suite**: Create the centralized settings state and UI.
-4.  **Integration**: Ensure settings (like Grid visibility) correctly affect the `CADCanvas`.
+1.  **Refactor Engine**: Update `SnapType` and `SnapResult` structures.
+2.  **Core Math**: Implement Midpoint, Center, and Intersection algorithms.
+3.  **Visualization**: Update `CADCanvas` to draw distinct icons for each snap type.
+4.  **Verification**: Test snapping with complex overlapping geometries.
 
 ## Verification Plan
 
 ### Automated Tests
-- Unit tests for `MeasurementEngine` (Point-to-Plane, Edge-to-Edge angle).
-- Verify `SettingsState` persistence (if implemented).
+- Unit tests for `SnapEngine.findIntersection(Line, Line)`.
+- Unit tests for `SnapEngine.findMidpoint(Line)`.
 
 ### Manual Verification
-- **Measurement**: Select two parallel faces; verify the distance label appears with a leader line between them. Edit the value and check if it moves the faces.
-- **Model Tree**: Expand a Body node; verify its "Extrude" feature and "Sketch" are visible. Rename a feature from the tree.
-- **Settings**: Toggle "Grid" off in Settings; verify it disappears from the viewport.
+- **Endpoint**: Verify snap to start/end of an existing line.
+- **Midpoint**: Verify a triangle icon appears at the center of a line.
+- **Center**: Verify a circle icon appears at the center of a 3D circle/arc.
+- **Intersection**: Draw two crossing lines and verify snapping to their meeting point.
+- **Horizontal/Vertical**: Verify auto-straightening snap with 'H'/'V' badges.
