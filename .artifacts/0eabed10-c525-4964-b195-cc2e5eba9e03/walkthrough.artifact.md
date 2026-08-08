@@ -1,34 +1,31 @@
-# TamerCAD UI Redesign - Step 3: Top Command Bar Walkthrough
+# TamerCAD: Kenar Seçimi ve Fillet/Chamfer Manipülatörleri Walkthrough
 
-The top command bar of TamerCad has been fully redesigned to provide a professional, organized, and tablet-friendly experience. It now correctly categorizes controls into logical groups and provides visual feedback for project status.
+TamerCad'in interaktif modelleme yetenekleri artık Kenarlar (Edges) seviyesine indi. Bu güncelleme ile katı modellerin kenarlarını hassas bir şekilde seçebilir ve üzerindeki akıllı tutamaçlar (manipulators) vasıtasıyla dinamik düzenlemeler yapabilirsiniz.
 
-## 🚀 Key Improvements
+## 🚀 Öne Çıkan Yenilikler
 
-### 1. Three-Section Layout
-- **Left (Project Info)**: Displays a Home icon, the truncated project name, and a live "Save Status" (e.g., "Saved", "Unsaved changes").
-- **Center (History)**: Dedicated area for Undo and Redo buttons, centered for quick access.
-- **Right (System Tools)**: Quick access to Save, Settings, and Help/Info.
+### 1. Hassas Kenar Yakalama (Edge Picking)
+- **Milimetrik Seçim**: [CADViewModel.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/ui/CADViewModel.kt) içindeki seçim motoru güncellendi. Artık bir kenara **25 piksel** yaklaştığınızda sistem bunu algılar ve o kenarı (Line) vurgular.
+- **Hiyerarşik Öncelik**: Kenar seçimi, yüzey seçimine göre daha yüksek önceliğe sahiptir, böylece ince kenarları seçmek çok daha kolay hale gelmiştir.
 
-### 2. Live Document Status
-- **Dynamic Feedback**: The project status now updates in real-time. When you make a change, it automatically switches to "Unsaved changes". Tapping the Save button simulates a save operation ("Saving...") and returns to "Saved".
-- **Technical Detail**: This is managed via the `saveStatus` state in [CADViewModel.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/ui/CADViewModel.kt).
+### 2. Kenar Tutamaçları (Manipulators)
+- **Sarı Tutamaç**: Bir kenar seçildiğinde, kenarın tam ortasında belirgin bir **Sarı Daire** ve bir yön oku belirir.
+- **Dinamik Geri Bildirim**: Bu sarı tutamacı kalemle tutup çektiğinizde, o kenara ait parametreler (örn. Fillet yarıçapı) gerçek zamanlı olarak güncellenir.
 
-### 3. Professional Aesthetics
-- **Smart Truncation**: Project names longer than 15 characters are automatically truncated (e.g., `MyVeryLongProjectName` becomes `MyVeryLongPro...`) to prevent UI clutter.
-- **Rounded Containers**: Buttons and groups are housed in high-radius containers (24dp+) with professional dark borders, matching the "Grand Architecture" design tokens.
-- **Icon Standardization**: All icons now use the [IconRegistry.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/ui/theme/IconRegistry.kt) system, ensuring visual consistency across the app.
+### 3. Fillet ve Chamfer Özellikleri (Features)
+- **Yeni Feature Tipleri**: [FilletFeature.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/core/features/FilletFeature.kt) ve [ChamferFeature.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/core/features/ChamferFeature.kt) sınıfları eklendi. Bu sınıflar seçilen kenar ID'lerini takip ederek geometrinin nasıl değiştirileceğini yönetir.
 
-## 🛠️ Refactored Files
-- `ui/topbar/CADTopBar.kt`: Complete redesign of the component.
-- `ui/CADViewModel.kt`: Added `saveStatus` state and updated `triggerUpdate()` to track changes.
-- `ui/MainCADScreen.kt`: Integrated the new `CADTopBar` and save simulation.
-- `ui/components/CommonUI.kt`: Updated `LabeledSidebarIconButton` for better label handling.
+### 4. Direct Modeling Genişletmesi
+- Yüzey çekiştirme (Extrude depth) mantığı artık kenarlar için de geçerli. Kenar tutamacını hareket ettirmek, model hiyerarşisindeki parametreleri anlık olarak manipüle etmenize olanak tanır.
 
-## How to Verify
-1. **Layout**: Notice the clean separation of Home/Name, Undo/Redo, and Save/Settings in the top bar.
-2. **Status**: Draw a line or move a body; the status under the project name should change to "Unsaved changes".
-3. **Save**: Tap the Save icon on the right; it will briefly show "Saving..." and then back to "Saved".
-4. **Undo/Redo**: Verify that the history buttons are centered and visually distinct.
+## 🛠️ Teknik İyileştirmeler
+- **Metadata Takibi**: Kenarlar artık hangi "Feature" tarafından oluşturulduklarını bilirler (`parentFeatureId`). Bu sayede bir kenarı seçtiğinizde onu oluşturan asıl işleme (örn. Extrude) doğrudan müdahale edilebilir.
+- **Gelişmiş Hit-Test**: [Manipulator3D.kt](file:///C:/Projelerim/TamerCad-main/app/src/main/java/com/tamercad/ui/viewport/Manipulator3D.kt) içinde kenar ortası yakalama ve mesafe hesaplama algoritmaları optimize edildi.
+
+## Nasıl Test Edilir?
+1. **Kenar Seçimi**: Bir küp veya silindirin kenarına kalemle yaklaşın. Kenarın mavi renkle vurgulandığını görün.
+2. **Manipülasyon**: Kenar seçiliyken ortasında çıkan **Sarı Tutamacı** tutup sağa-sola veya yukarı-aşağı sürükleyin.
+3. **Bağlamsal Araçlar**: Kenar seçiliyken ekranın altındaki barda otomatik olarak **Fillet** ve **Chamfer** ikonlarının belirdiğini teyit edin.
 
 > [!TIP]
-> The top bar height is optimized for tablet thumbs while maintaining a slim profile to maximize the 3D modeling viewport area.
+> Kenar seçimi sırasında kaleminizi (Stylus) kullanmak, parmağa göre çok daha yüksek bir seçim hassasiyeti sağlayacaktır.

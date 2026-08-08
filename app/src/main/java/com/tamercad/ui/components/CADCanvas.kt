@@ -235,6 +235,8 @@ fun CADCanvas(viewModel: CADViewModel) {
         val selected = viewModel.selectionManager.firstOrNull()
         if (selected is com.tamercad.core.geometry.Face3D) {
             Manipulator3D.drawFaceManipulator(this, viewModel, selected, screenWidth, screenHeight)
+        } else if (selected is com.tamercad.core.geometry.Line && selected.parentFeatureId != null) {
+            Manipulator3D.drawEdgeManipulator(this, viewModel, selected, screenWidth, screenHeight)
         } else {
             viewModel.getSelectedEntityCenter()?.let { center ->
                 Manipulator3D.drawTranslationGizmo(this, viewModel, center, screenWidth, screenHeight)

@@ -23,6 +23,9 @@ data class Line(
     // YENİ EKLENEN: Blueprints mantığı
     override var isFullyDefined: Boolean = false
     
+    // YENİ EKLENEN: Bu kenarı oluşturan özelliğe referans
+    var parentFeatureId: String? = null
+    
     fun length(): Double = startPoint.distanceTo(endPoint)
 
     // YENİ EKLENEN: Hit-Testing (Dokunma Algılama) Matematiği

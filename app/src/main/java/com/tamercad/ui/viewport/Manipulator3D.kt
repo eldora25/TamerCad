@@ -89,6 +89,48 @@ object Manipulator3D {
         drawArrow(drawScope, startScreen, endScreen, Color.Cyan, zoom)
     }
 
+    /**
+     * Seçili bir kenar için kenarın ortasında bir tutamaç çizer.
+     */
+    fun drawEdgeManipulator(
+        drawScope: DrawScope,
+        viewModel: CADViewModel,
+        edge: com.tamercad.core.geometry.Line,
+        screenWidth: Float,
+        screenHeight: Float
+    ) {
+        val zoom = viewModel.zoom
+        
+        // Kenarı içeren bileşeni bul
+        val component = viewModel.mainAssembly.components.find { comp ->
+            comp.features.any { feat ->
+                (feat as? com.tamercad.core.features.ExtrudeFeature)?.generatedGeometry?.lines?.contains(edge) == true
+            }
+        }
+        
+        val transform = component?.transform ?: com.tamercad.core.math.Matrix4.identity()
+        
+        // Kenar orta noktası
+        val midPt = com.tamercad.core.math.Point3(
+            (edge.startPoint.x + edge.endPoint.x) / 2.0,
+            (edge.startPoint.y + edge.endPoint.y) / 2.0,
+            (edge.startPoint.z + edge.endPoint.z) / 2.0
+        ).transform(transform)
+        
+        val screenMid = viewModel.worldToScreen(midPt, screenWidth, screenHeight)
+        
+        drawScope.drawCircle(
+            color = Color.Yellow,
+            radius = 12f * zoom,
+            center = screenMid
+        )
+        
+        // Opsiyonel: Bir de offset oku ekleyebiliriz
+        val offsetArrowEnd = midPt.add(com.tamercad.core.math.Vector3(0.0, 0.0, 50.0 / zoom)) // Örn: Z yönünde
+        val screenArrowEnd = viewModel.worldToScreen(offsetArrowEnd, screenWidth, screenHeight)
+        drawArrow(drawScope, screenMid, screenArrowEnd, Color.Yellow, zoom)
+    }
+
     private fun drawArrow(drawScope: DrawScope, start: Offset, end: Offset, color: Color, zoom: Float) {
         val arrowSize = 15f * zoom
         val angle = atan2(end.y - start.y, end.x - start.x)
@@ -135,6 +177,22 @@ object Manipulator3D {
             val endScreen = viewModel.worldToScreen(endPoint, screenWidth, screenHeight)
             if (isPointNearLine(tapPos, startScreen, endScreen, 40f)) return "FACE_NORMAL"
             return null
+        }
+        
+        if (selected is com.tamercad.core.geometry.Line && selected.parentFeatureId != null) {
+            // Kenar manipülatörü hiti
+            val component = viewModel.mainAssembly.components.find { comp ->
+                comp.features.any { (it as? com.tamercad.core.features.ExtrudeFeature)?.generatedGeometry?.lines?.contains(selected) == true }
+            }
+            val transform = component?.transform ?: com.tamercad.core.math.Matrix4.identity()
+            val midPt = com.tamercad.core.math.Point3(
+                (selected.startPoint.x + selected.endPoint.x) / 2.0,
+                (selected.startPoint.y + selected.endPoint.y) / 2.0,
+                (selected.startPoint.z + selected.endPoint.z) / 2.0
+            ).transform(transform)
+            val screenMid = viewModel.worldToScreen(midPt, screenWidth, screenHeight)
+            
+            if (tapPos.distanceTo(screenMid) < 50f) return "EDGE_OFFSET"
         }
 
         val center = viewModel.getSelectedEntityCenter() ?: return null

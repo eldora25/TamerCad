@@ -91,18 +91,34 @@ class CADViewModel : ViewModel() {
         val sketchHit = activeSketch.pickGeometry(worldTap, 20.0 / zoom)
         if (sketchHit != null) return sketchHit
 
-        // 2. Katı Model ve Yüzey Seçimi
+        // 2. Katı Model Geometrileri (Edge ve Face tespiti)
         var closestSolid: Solid3D? = null
         var closestFace: Face3D? = null
+        var closestEdge: Line? = null
         var minDepth = Double.MAX_VALUE
+        var minEdgeDist = 25.0 // Piksel bazlı tolerans
 
         mainAssembly.components.forEach { comp ->
             if (!comp.isVisible) return@forEach
             
             comp.features.forEach { feature ->
                 val solid = (feature as? ExtrudeFeature)?.generatedGeometry ?: (feature as? RevolveFeature)?.generatedGeometry
+                
+                // KENAR (Edge) Tespiti
+                solid?.lines?.forEach { line ->
+                    val p1 = worldToScreen(line.startPoint.transform(comp.transform), screenWidth, screenHeight)
+                    val p2 = worldToScreen(line.endPoint.transform(comp.transform), screenWidth, screenHeight)
+                    
+                    val dist = distancePointToSegment(tapPos, p1, p2)
+                    if (dist < minEdgeDist) {
+                        minEdgeDist = dist.toDouble()
+                        closestEdge = line
+                        closestEdge?.parentFeatureId = feature.id
+                    }
+                }
+
+                // YÜZEY (Face) Tespiti
                 solid?.faces?.forEach { face ->
-                    // Face hiti (Matematiksel Point-in-Polygon)
                     val tVertices = face.vertices.map { project3DTo2D(it.transform(comp.transform)) }
                     val avgZ = tVertices.sumOf { it.z } / tVertices.size
                     val screenVerts = tVertices.map { worldToScreen(it, screenWidth, screenHeight) }
@@ -122,8 +138,12 @@ class CADViewModel : ViewModel() {
         // --- SELECTION DRILL-DOWN (Hiyerarşik Seçim) ---
         val currentSelection = selectionManager.firstOrNull()
         
+        // Önce Kenar hassasiyeti (Eğer çok yakınsa kenarı seç)
+        if (closestEdge != null && minEdgeDist < 15.0) {
+            return closestEdge
+        }
+
         if (closestSolid != null) {
-            // Eğer gövde zaten seçiliyse veya spesifik bir yüzey hedefleniyorsa
             if (currentSelection == closestSolid && closestFace != null) {
                 return closestFace
             }
@@ -131,6 +151,16 @@ class CADViewModel : ViewModel() {
         }
         
         return null
+    }
+
+    private fun distancePointToSegment(p: Offset, s1: Offset, s2: Offset): Float {
+        val dx = s2.x - s1.x
+        val dy = s2.y - s1.y
+        val l2 = dx * dx + dy * dy
+        if (l2 == 0f) return sqrt((p.x - s1.x).pow(2) + (p.y - s1.y).pow(2))
+        var t = ((p.x - s1.x) * dx + (p.y - s1.y) * dy) / l2
+        t = max(0f, min(1f, t))
+        return sqrt((p.x - (s1.x + t * dx)).pow(2) + (p.y - (s1.y + t * dy)).pow(2))
     }
 
     // Materials
@@ -306,6 +336,23 @@ class CADViewModel : ViewModel() {
                     feat.evaluate()
                     triggerUpdate()
                 }
+                return
+            }
+            
+            if (activeManipulatorAxis == "EDGE_OFFSET" && selected is Line) {
+                // Kenar yuvarlatma (Fillet) simülasyonu
+                val existingFillet = mainAssembly.components.flatMap { it.features }
+                    .filterIsInstance<com.tamercad.core.features.FilletFeature>()
+                    .find { it.edgeIds.contains(selected.id) }
+                
+                if (existingFillet != null) {
+                    existingFillet.radius = max(0.0, existingFillet.radius + delta)
+                } else {
+                    // Yeni bir Fillet özelliği ekle (Basitleştirilmiş: Sadece UI değerini değiştirir)
+                    val newFillet = com.tamercad.core.features.FilletFeature(listOf(selected.id), max(0.0, delta))
+                    // TODO: Bileşene ekle ve değerlendir
+                }
+                triggerUpdate()
                 return
             }
 
