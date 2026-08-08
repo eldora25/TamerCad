@@ -4,28 +4,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.tamercad.ui.CADViewModel
 import com.tamercad.ui.components.LabeledSidebarIconButton
-import com.tamercad.ui.theme.IconRegistry
 import com.tamercad.ui.theme.TamerCadColors
 import com.tamercad.ui.theme.TamerCadDimensions
-
-import com.tamercad.ui.CADViewModel
-import com.tamercad.core.geometry.Line
 
 enum class SelectionType {
     NONE, VERTEX, EDGE, FACE, BODY, SKETCH, FEATURE, MULTIPLE
 }
 
 /**
- * TamerCAD Bağlamsal (Contextual) Araç Çubuğu.
+ * TamerCAD Profesyonel Bağlamsal Araç Çubuğu.
+ * Seçilen nesneye göre SelectionContextResolver üzerinden dinamik araçlar yükler.
  */
 @Composable
 fun CADContextToolbar(
@@ -33,67 +28,30 @@ fun CADContextToolbar(
     onCommandClick: (String) -> Unit
 ) {
     val selectionType = viewModel.selectionManager.getSelectionType()
+    val availableTools = SelectionContextResolver.getAvailableTools(selectionType)
     
+    if (availableTools.isEmpty()) return
+
     Row(
         modifier = Modifier
             .padding(bottom = TamerCadDimensions.SpacingExtraLarge)
             .height(TamerCadDimensions.ContextToolbarHeight)
+            .wrapContentWidth()
             .background(TamerCadColors.Surface, RoundedCornerShape(TamerCadDimensions.CornerExtraLarge))
-            .border(TamerCadDimensions.BorderThin, TamerCadColors.Primary, RoundedCornerShape(TamerCadDimensions.CornerExtraLarge))
+            .border(TamerCadDimensions.BorderThin, TamerCadColors.Primary.copy(alpha = 0.5f), RoundedCornerShape(TamerCadDimensions.CornerExtraLarge))
             .shadow(TamerCadDimensions.ElevationHigh)
-            .padding(horizontal = TamerCadDimensions.SpacingExtraLarge),
+            .padding(horizontal = TamerCadDimensions.SpacingLarge),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(TamerCadDimensions.SpacingMedium)
+        horizontalArrangement = Arrangement.spacedBy(TamerCadDimensions.SpacingSmall)
     ) {
-        when (selectionType) {
-            SelectionType.NONE -> {
-                LabeledSidebarIconButton(IconRegistry.Select, "Select", false) { onCommandClick("select") }
-                LabeledSidebarIconButton(IconRegistry.Sketch, "Sketch", false) { onCommandClick("sketch") }
-                LabeledSidebarIconButton(IconRegistry.Measure, "Measure", false) { onCommandClick("measure") }
-            }
-            SelectionType.FACE -> {
-                LabeledSidebarIconButton(IconRegistry.Extrude, "Extrude", false) { onCommandClick("extrude") }
-                LabeledSidebarIconButton(IconRegistry.Fillet, "Fillet", false) { onCommandClick("fillet") }
-                LabeledSidebarIconButton(IconRegistry.Chamfer, "Chamfer", false) { onCommandClick("chamfer") }
-                LabeledSidebarIconButton(IconRegistry.Measure, "Offset", false) { onCommandClick("offset") }
-                LabeledSidebarIconButton(IconRegistry.Delete, "Delete", false) { onCommandClick("delete") }
-            }
-            SelectionType.EDGE -> {
-                LabeledSidebarIconButton(IconRegistry.Fillet, "Fillet", false) { onCommandClick("fillet") }
-                LabeledSidebarIconButton(IconRegistry.Chamfer, "Chamfer", false) { onCommandClick("chamfer") }
-                LabeledSidebarIconButton(IconRegistry.Measure, "Measure", false) { onCommandClick("measure") }
-                LabeledSidebarIconButton(IconRegistry.Delete, "Delete", false) { onCommandClick("delete") }
-            }
-            SelectionType.VERTEX -> {
-                LabeledSidebarIconButton(IconRegistry.Select, "Move", false) { onCommandClick("move") }
-                LabeledSidebarIconButton(IconRegistry.Measure, "Measure", false) { onCommandClick("measure") }
-                LabeledSidebarIconButton(IconRegistry.Delete, "Delete", false) { onCommandClick("delete") }
-            }
-            SelectionType.BODY -> {
-                LabeledSidebarIconButton(IconRegistry.Select, "Move", false) { onCommandClick("move") }
-                LabeledSidebarIconButton(IconRegistry.Redo, "Rotate", false) { onCommandClick("rotate") }
-                LabeledSidebarIconButton(IconRegistry.Mirror, "Mirror", false) { onCommandClick("mirror") }
-                LabeledSidebarIconButton(IconRegistry.Pattern, "Pattern", false) { onCommandClick("pattern") }
-                LabeledSidebarIconButton(IconRegistry.Hidden, "Hide", false) { onCommandClick("hide") }
-                LabeledSidebarIconButton(IconRegistry.Delete, "Delete", false) { onCommandClick("delete") }
-            }
-            SelectionType.SKETCH -> {
-                LabeledSidebarIconButton(IconRegistry.Sketch, "Edit", false) { onCommandClick("edit_sketch") }
-                LabeledSidebarIconButton(IconRegistry.Visible, "Show", false) { onCommandClick("show") }
-                LabeledSidebarIconButton(IconRegistry.Delete, "Delete", false) { onCommandClick("delete") }
-            }
-            SelectionType.MULTIPLE -> {
-                val selected = viewModel.selectionManager.selectedEntities
-                if (selected.all { it is Line }) {
-                    LabeledSidebarIconButton(IconRegistry.Modify, "Parallel", false) { onCommandClick("parallel") }
-                }
-                LabeledSidebarIconButton(IconRegistry.Measure, "Measure", false) { onCommandClick("measure") }
-                LabeledSidebarIconButton(IconRegistry.Delete, "Delete", false) { onCommandClick("delete") }
-            }
-            SelectionType.FEATURE -> {
-                LabeledSidebarIconButton(IconRegistry.Settings, "Edit", false) { onCommandClick("edit_feature") }
-                LabeledSidebarIconButton(IconRegistry.Delete, "Delete", false) { onCommandClick("delete") }
-            }
+        availableTools.forEach { tool ->
+            LabeledSidebarIconButton(
+                icon = tool.icon,
+                label = tool.label,
+                isSelected = false,
+                enabled = tool.enabled,
+                onClick = { onCommandClick(tool.id) }
+            )
         }
     }
 }

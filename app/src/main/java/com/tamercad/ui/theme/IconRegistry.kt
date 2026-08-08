@@ -44,6 +44,10 @@ object IconRegistry {
     val Mirror = Icons.Default.Flip
     val Pattern = Icons.Default.GridView
 
+    val Union = Icons.Default.Add
+    val Subtract = Icons.Default.Remove
+    val Intersect = Icons.Default.FilterCenterFocus
+    
     // Visibility
     val Visible = Icons.Default.Visibility
     val Hidden = Icons.Default.VisibilityOff

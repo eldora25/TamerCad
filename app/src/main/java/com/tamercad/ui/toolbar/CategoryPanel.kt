@@ -28,9 +28,12 @@ import com.tamercad.ui.theme.TamerCadDimensions
 @Composable
 fun CategoryPanel(
     category: ToolbarCategory,
+    viewModel: com.tamercad.ui.CADViewModel, // Lojiği SelectionManager'dan çekmek için
     onToolClick: (ToolDefinition) -> Unit
 ) {
     if (category == ToolbarCategory.NONE) return
+    
+    val selectionType = viewModel.selectionManager.getSelectionType()
 
     Column(
         modifier = Modifier
@@ -53,7 +56,7 @@ fun CategoryPanel(
             modifier = Modifier.padding(bottom = 4.dp)
         )
 
-        val tools = getToolsForCategory(category)
+        val tools = getToolsForCategory(category, selectionType)
         
         // Grid şeklinde gösterelim (Daha profesyonel)
         FlowRow(
@@ -75,7 +78,7 @@ fun CategoryPanel(
     }
 }
 
-private fun getToolsForCategory(category: ToolbarCategory): List<ToolDefinition> {
+private fun getToolsForCategory(category: ToolbarCategory, selectionType: com.tamercad.ui.contextual.SelectionType): List<ToolDefinition> {
     return when (category) {
         ToolbarCategory.SKETCH -> listOf(
             ToolDefinition("line", "Line", IconRegistry.Line),
@@ -86,20 +89,23 @@ private fun getToolsForCategory(category: ToolbarCategory): List<ToolDefinition>
             ToolDefinition("trim", "Trim", IconRegistry.Trim)
         )
         ToolbarCategory.CREATE -> listOf(
-            ToolDefinition("extrude", "Extrude", IconRegistry.Extrude),
-            ToolDefinition("revolve", "Revolve", IconRegistry.Revolve),
+            ToolDefinition("extrude", "Extrude", IconRegistry.Extrude, enabled = selectionType == com.tamercad.ui.contextual.SelectionType.FACE || selectionType == com.tamercad.ui.contextual.SelectionType.SKETCH),
+            ToolDefinition("revolve", "Revolve", IconRegistry.Revolve, enabled = selectionType == com.tamercad.ui.contextual.SelectionType.FACE || selectionType == com.tamercad.ui.contextual.SelectionType.SKETCH),
             ToolDefinition("sweep", "Sweep", IconRegistry.Revolve, enabled = false, tooltip = "Coming Soon"),
             ToolDefinition("loft", "Loft", IconRegistry.Select, enabled = false, tooltip = "Coming Soon"),
-            ToolDefinition("hole", "Hole", IconRegistry.Circle, enabled = false, tooltip = "Coming Soon"),
-            ToolDefinition("thread", "Thread", IconRegistry.Modify, enabled = false),
-            ToolDefinition("emboss", "Emboss", IconRegistry.Sketch, enabled = false),
-            ToolDefinition("rib", "Rib", IconRegistry.Construct, enabled = false)
+            ToolDefinition("hole", "Hole", IconRegistry.Circle, enabled = false, tooltip = "Coming Soon")
         )
         ToolbarCategory.MODIFY -> listOf(
-            ToolDefinition("fillet", "Fillet", IconRegistry.Fillet),
-            ToolDefinition("chamfer", "Chamfer", IconRegistry.Chamfer),
-            ToolDefinition("mirror", "Mirror", IconRegistry.Mirror),
-            ToolDefinition("pattern", "Pattern", IconRegistry.Pattern)
+            ToolDefinition("fillet", "Fillet", IconRegistry.Fillet, enabled = selectionType == com.tamercad.ui.contextual.SelectionType.EDGE || selectionType == com.tamercad.ui.contextual.SelectionType.FACE),
+            ToolDefinition("chamfer", "Chamfer", IconRegistry.Chamfer, enabled = selectionType == com.tamercad.ui.contextual.SelectionType.EDGE || selectionType == com.tamercad.ui.contextual.SelectionType.FACE),
+            ToolDefinition("shell", "Shell", IconRegistry.Hidden, enabled = selectionType == com.tamercad.ui.contextual.SelectionType.FACE),
+            ToolDefinition("offset_face", "Offset Face", IconRegistry.Measure, enabled = selectionType == com.tamercad.ui.contextual.SelectionType.FACE),
+            ToolDefinition("draft", "Draft", IconRegistry.Select, enabled = selectionType == com.tamercad.ui.contextual.SelectionType.FACE),
+            ToolDefinition("mirror", "Mirror", IconRegistry.Mirror, enabled = selectionType == com.tamercad.ui.contextual.SelectionType.BODY),
+            ToolDefinition("pattern", "Pattern", IconRegistry.Pattern, enabled = selectionType == com.tamercad.ui.contextual.SelectionType.BODY),
+            ToolDefinition("union", "Union", IconRegistry.Union, enabled = selectionType == com.tamercad.ui.contextual.SelectionType.MULTIPLE),
+            ToolDefinition("subtract", "Subtract", IconRegistry.Subtract, enabled = selectionType == com.tamercad.ui.contextual.SelectionType.MULTIPLE),
+            ToolDefinition("intersect", "Intersect", IconRegistry.Intersect, enabled = selectionType == com.tamercad.ui.contextual.SelectionType.MULTIPLE)
         )
         ToolbarCategory.CONSTRUCT -> listOf(
             ToolDefinition("plane", "Plane", IconRegistry.Construct)

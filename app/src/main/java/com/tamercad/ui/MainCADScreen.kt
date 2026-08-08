@@ -91,6 +91,7 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
             // KATEGORİ PANELİ: Rail üzerinden seçilen araçlar
             CategoryPanel(
                 category = viewModel.activeCategory,
+                viewModel = viewModel,
                 onToolClick = { tool ->
                     if (tool.enabled) {
                         Toast.makeText(context, "Tool: ${tool.label}", Toast.LENGTH_SHORT).show()

@@ -5,7 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="86bf953a-6114-4ac9-aefb-735364799590" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/toolbar/ToolDefinition.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/contextual/SelectionContextResolver.kt" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/build_eldora.bat" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/build_eldora.ps1" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/lib/persistence_service.dart" afterDir="false" />
@@ -21,7 +21,7 @@
       <change beforePath="$PROJECT_DIR$/.gradle/configuration-cache/8n69rgkc6du3d23khyo03bbub/buildfingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/configuration-cache/8n69rgkc6du3d23khyo03bbub/buildfingerprint.bin" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/configuration-cache/8n69rgkc6du3d23khyo03bbub/projectfingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/configuration-cache/8n69rgkc6du3d23khyo03bbub/projectfingerprint.bin" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/configuration-cache/8n69rgkc6du3d23khyo03bbub/work.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/configuration-cache/8n69rgkc6du3d23khyo03bbub/work.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.kotlin/sessions/kotlin-compiler-5536205335766740005.salive" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.kotlin/sessions/kotlin-compiler-8584954907978449181.salive" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/arm64-v8a/configure_fingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/arm64-v8a/configure_fingerprint.bin" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/armeabi-v7a/configure_fingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/armeabi-v7a/configure_fingerprint.bin" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/x86/configure_fingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/x86/configure_fingerprint.bin" afterDir="false" />
@@ -42,7 +42,6 @@
       <change beforePath="$PROJECT_DIR$/app/build/intermediates/packaged_manifests/debug/processDebugManifestForPackage/output-metadata.json" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/intermediates/packaged_manifests/debug/processDebugManifestForPackage/output-metadata.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/build/intermediates/project_dex_archive/debug/dexBuilderDebug/out/com/tamercad/BuildConfig.dex" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/intermediates/project_dex_archive/debug/dexBuilderDebug/out/com/tamercad/BuildConfig.dex" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/build/intermediates/project_dex_archive/debug/dexBuilderDebug/out/com/tamercad/ui/MainCADScreenKt$MainCADScreen$1.dex" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/intermediates/project_dex_archive/debug/dexBuilderDebug/out/com/tamercad/ui/MainCADScreenKt$MainCADScreen$1.dex" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/build/intermediates/project_dex_archive/debug/dexBuilderDebug/out/com/tamercad/ui/MainCADScreenKt.dex" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/intermediates/project_dex_archive/debug/dexBuilderDebug/out/com/tamercad/ui/MainCADScreenKt.dex" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/build/intermediates/project_dex_archive/debug/dexBuilderDebug/out/com/tamercad/ui/TamerCadInfoDialogKt.dex" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/intermediates/project_dex_archive/debug/dexBuilderDebug/out/com/tamercad/ui/TamerCadInfoDialogKt.dex" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab.values" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab.values" afterDir="false" />
@@ -77,15 +76,13 @@
       <change beforePath="$PROJECT_DIR$/app/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab.values.s" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab.values.s" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/build/kotlin/compileDebugKotlin/cacheable/last-build.bin" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/kotlin/compileDebugKotlin/cacheable/last-build.bin" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/build/kotlin/compileDebugKotlin/local-state/build-history.bin" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/kotlin/compileDebugKotlin/local-state/build-history.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/build/outputs/apk/debug/TamerCad_v0.1.48.apk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/outputs/apk/debug/TamerCad_v0.1.50.apk" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/app/build/outputs/apk/debug/output-metadata.json" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/outputs/apk/debug/output-metadata.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/build/tmp/compileDebugJavaWithJavac/compileTransaction/stash-dir/BuildConfig.class.uniqueId0" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/tmp/compileDebugJavaWithJavac/compileTransaction/stash-dir/BuildConfig.class.uniqueId0" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/build/tmp/compileDebugJavaWithJavac/previous-compilation-data.bin" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/tmp/compileDebugJavaWithJavac/previous-compilation-data.bin" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/build/tmp/kotlin-classes/debug/com/tamercad/ui/MainCADScreenKt$MainCADScreen$1.class" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/tmp/kotlin-classes/debug/com/tamercad/ui/MainCADScreenKt$MainCADScreen$1.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/build/tmp/kotlin-classes/debug/com/tamercad/ui/MainCADScreenKt.class" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/tmp/kotlin-classes/debug/com/tamercad/ui/MainCADScreenKt.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/build/tmp/kotlin-classes/debug/com/tamercad/ui/TamerCadInfoDialogKt.class" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/tmp/kotlin-classes/debug/com/tamercad/ui/TamerCadInfoDialogKt.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/components/CommonUI.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/components/CommonUI.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/toolbar/CategoryPanel.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/toolbar/CategoryPanel.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/contextual/CADContextToolbar.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/contextual/CADContextToolbar.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/version.properties" beforeDir="false" afterPath="$PROJECT_DIR$/version.properties" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/.metadata" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/.metadata" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/app/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/app/build.gradle.kts" afterDir="false" />
