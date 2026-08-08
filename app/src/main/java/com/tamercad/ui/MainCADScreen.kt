@@ -25,6 +25,7 @@ import com.tamercad.ui.toolbar.CategoryPanel
 import com.tamercad.ui.selection.SelectionFilterPanel
 import com.tamercad.ui.sketch.PlaneSelector
 import com.tamercad.ui.modeling.ExtrudePanel
+import com.tamercad.ui.app.SettingsScreen
 import com.tamercad.ui.viewport.CADViewport
 import com.tamercad.ui.contextual.CADContextToolbar
 import com.tamercad.ui.contextual.SelectionType
@@ -34,159 +35,153 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
     val context = LocalContext.current
 
     TamerCadTheme {
-        Column(modifier = Modifier.fillMaxSize().background(TamerCadColors.Background)) {
-            // 0. BRANDING HEADER (As requested)
-            Row(
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(TamerCadColors.Background)
+        ) {
+            // 1. KATMAN: 3D VIEWPORT
+            CADViewport(
+                viewModel = viewModel,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // 2. KATMAN: UI KONTROLLERİ
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.Black)
+                    .align(Alignment.TopCenter)
+                    .zIndex(10f)
                     .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "TamerCadv01.${BuildConfig.VERSION_CODE} Tamer YAMAK©",
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
+                CADTopBar(
+                    designName = viewModel.mainAssembly.name,
+                    buildNo = BuildConfig.VERSION_CODE.toString(),
+                    saveStatus = viewModel.saveStatus,
+                    onUndo = { viewModel.onUndo() },
+                    onRedo = { viewModel.onRedo() },
+                    onSave = { 
+                        viewModel.saveStatus = "Saving..."
+                        Toast.makeText(context, "Proje Kaydedildi", Toast.LENGTH_SHORT).show()
+                        viewModel.saveStatus = "Saved"
+                    },
+                    onSettings = { viewModel.showSettings = true },
+                    onHelp = { viewModel.showInfoDialog = true },
+                    onAR = { 
+                        Toast.makeText(context, "AR Mode Starting (1:1 Scale)...", Toast.LENGTH_LONG).show()
+                        com.tamercad.core.rendering.ArCoreBridge(context).startArView(viewModel.mainAssembly)
+                    },
+                    onBack = { /* Project Selection */ }
                 )
             }
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                // 1. KATMAN: 3D VIEWPORT
-                CADViewport(
-                    viewModel = viewModel,
-                    modifier = Modifier.fillMaxSize()
+            // SOL SIDEBAR: Tool Rail
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .zIndex(10f)
+            ) {
+                CADSideToolbar(
+                    activeCategory = viewModel.activeCategory,
+                    isSketchMode = viewModel.isSketchMode,
+                    onCategoryClick = { cat -> 
+                        viewModel.activeCategory = if (viewModel.activeCategory == cat) ToolbarCategory.NONE else cat
+                    },
+                    onExitSketch = { commit -> viewModel.exitSketchMode(commit) }
                 )
+            }
 
-                // 2. KATMAN: UI KONTROLLERİ
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .zIndex(10f)
-                ) {
-                    CADTopBar(
-                        designName = viewModel.mainAssembly.name,
-                        buildNo = BuildConfig.VERSION_CODE.toString(),
-                        saveStatus = viewModel.saveStatus,
-                        onUndo = { viewModel.onUndo() },
-                        onRedo = { viewModel.onRedo() },
-                        onSave = { 
-                            viewModel.saveStatus = "Saving..."
-                            Toast.makeText(context, "Proje Kaydedildi", Toast.LENGTH_SHORT).show()
-                            viewModel.saveStatus = "Saved"
-                        },
-                        onSettings = { /* Settings Dialog */ },
-                        onHelp = { viewModel.showInfoDialog = true },
-                        onAR = { 
-                            Toast.makeText(context, "AR Mode Starting (1:1 Scale)...", Toast.LENGTH_LONG).show()
-                            com.tamercad.core.rendering.ArCoreBridge(context).startArView(viewModel.mainAssembly)
-                        },
-                        onBack = { /* Project Selection */ }
-                    )
+            // SELECTION FILTER
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 72.dp)
+                    .zIndex(10f)
+            ) {
+                SelectionFilterPanel(manager = viewModel.selectionManager)
+            }
+
+            // KATEGORİ PANELİ
+            CategoryPanel(
+                category = viewModel.activeCategory,
+                viewModel = viewModel,
+                onToolClick = { tool ->
+                    if (tool.enabled) {
+                        viewModel.runCommand(tool.id, context)
+                    }
                 }
+            )
 
-                // SOL SIDEBAR: Tool Rail
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .zIndex(10f)
-                ) {
-                    CADSideToolbar(
-                        activeCategory = viewModel.activeCategory,
-                        isSketchMode = viewModel.isSketchMode,
-                        onCategoryClick = { cat -> 
-                            viewModel.activeCategory = if (viewModel.activeCategory == cat) ToolbarCategory.NONE else cat
-                        },
-                        onExitSketch = { commit -> viewModel.exitSketchMode(commit) }
-                    )
-                }
-
-                // SELECTION FILTER
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .padding(start = 72.dp)
-                        .zIndex(10f)
-                ) {
-                    SelectionFilterPanel(manager = viewModel.selectionManager)
-                }
-
-                // KATEGORİ PANELİ
-                CategoryPanel(
-                    category = viewModel.activeCategory,
+            // ALT BAĞLAM BAR
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .zIndex(10f)
+                    .navigationBarsPadding()
+            ) {
+                CADContextToolbar(
                     viewModel = viewModel,
-                    onToolClick = { tool ->
-                        if (tool.enabled) {
-                            viewModel.runCommand(tool.id, context)
+                    onCommandClick = { cmd -> 
+                        if (cmd == "sketch") {
+                            viewModel.startSketchFlow()
+                        } else {
+                            viewModel.runCommand(cmd, context)
                         }
                     }
                 )
+            }
 
-                // ALT BAĞLAM BAR
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .zIndex(10f)
-                        .navigationBarsPadding()
-                ) {
-                    CADContextToolbar(
-                        viewModel = viewModel,
-                        onCommandClick = { cmd -> 
-                            if (cmd == "sketch") {
-                                viewModel.startSketchFlow()
-                            } else {
-                                viewModel.runCommand(cmd, context)
-                            }
-                        }
+            // 3. KATMAN: YÜZEN PANELLER
+            ObjectTree(
+                assembly = viewModel.mainAssembly,
+                onVisibilityToggle = { comp -> comp.isVisible = !comp.isVisible; viewModel.triggerUpdate() },
+                onRenameRequest = { comp -> viewModel.renameInput = comp.name; viewModel.showRenameDialog = comp },
+                onSelect = { comp -> comp.isSelected = !comp.isSelected; viewModel.triggerUpdate() },
+                offset = viewModel.browserOffset,
+                onOffsetChange = { viewModel.browserOffset = it },
+                updateTrigger = viewModel.updateTrigger,
+                isVisible = viewModel.activeCategory == ToolbarCategory.INSPECT
+            )
+
+            if (viewModel.selectionPoint != null) {
+                Box(modifier = Modifier.zIndex(150f)) {
+                    SelectionMenu(
+                        selectionPoint = viewModel.selectionPoint!!,
+                        onFillet = { /* TODO */ },
+                        onChamfer = { /* TODO */ },
+                        onDelete = { viewModel.selectionPoint = null }
                     )
                 }
+            }
 
-                // 3. KATMAN: YÜZEN PANELLER
-                ObjectTree(
-                    assembly = viewModel.mainAssembly,
-                    onVisibilityToggle = { comp -> comp.isVisible = !comp.isVisible; viewModel.triggerUpdate() },
-                    onRenameRequest = { comp -> viewModel.renameInput = comp.name; viewModel.showRenameDialog = comp },
-                    onSelect = { comp -> comp.isSelected = !comp.isSelected; viewModel.triggerUpdate() },
-                    offset = viewModel.browserOffset,
-                    onOffsetChange = { viewModel.browserOffset = it },
-                    updateTrigger = viewModel.updateTrigger,
-                    isVisible = viewModel.activeCategory == ToolbarCategory.INSPECT
+            // DİALOG KATMANI
+            DialogLayer(viewModel)
+
+            // EXTRUDE OVERLAY
+            if (viewModel.currentMode == CadMode.EXTRUDE) {
+                Box(modifier = Modifier.align(Alignment.TopEnd).padding(top = 100.dp, end = 24.dp)) {
+                    ExtrudePanel(
+                        distance = viewModel.dynamicExtrudeHeight.toDouble(),
+                        onDistanceChange = { v -> viewModel.dynamicExtrudeHeight = v.toFloatOrNull() ?: 0f },
+                        onAccept = { viewModel.onSketchDragEnd(context) },
+                        onCancel = { viewModel.currentMode = CadMode.SMART_SKETCH; viewModel.dynamicExtrudeHeight = 0f }
+                    )
+                }
+            }
+
+            // PLANE SELECTOR OVERLAY
+            if (viewModel.showPlaneSelector) {
+                PlaneSelector(
+                    onPlaneSelected = { plane -> viewModel.enterSketchMode(plane) },
+                    onCancel = { viewModel.showPlaneSelector = false }
                 )
+            }
 
-                if (viewModel.selectionPoint != null) {
-                    Box(modifier = Modifier.zIndex(150f)) {
-                        SelectionMenu(
-                            selectionPoint = viewModel.selectionPoint!!,
-                            onFillet = { /* TODO */ },
-                            onChamfer = { /* TODO */ },
-                            onDelete = { viewModel.selectionPoint = null }
-                        )
-                    }
-                }
-
-                // DİALOG KATMANI
-                DialogLayer(viewModel)
-
-                // EXTRUDE OVERLAY
-                if (viewModel.currentMode == CadMode.EXTRUDE) {
-                    Box(modifier = Modifier.align(Alignment.TopEnd).padding(top = 100.dp, end = 24.dp)) {
-                        ExtrudePanel(
-                            distance = viewModel.dynamicExtrudeHeight.toDouble(),
-                            onDistanceChange = { v -> viewModel.dynamicExtrudeHeight = v.toFloatOrNull() ?: 0f },
-                            onAccept = { viewModel.onSketchDragEnd(context) },
-                            onCancel = { viewModel.currentMode = CadMode.SMART_SKETCH; viewModel.dynamicExtrudeHeight = 0f }
-                        )
-                    }
-                }
-
-                // PLANE SELECTOR OVERLAY
-                if (viewModel.showPlaneSelector) {
-                    PlaneSelector(
-                        onPlaneSelected = { plane -> viewModel.enterSketchMode(plane) },
-                        onCancel = { viewModel.showPlaneSelector = false }
-                    )
-                }
+            // SETTINGS OVERLAY
+            if (viewModel.showSettings) {
+                SettingsScreen(
+                    state = viewModel.settings,
+                    onClose = { viewModel.showSettings = false }
+                )
             }
         }
     }

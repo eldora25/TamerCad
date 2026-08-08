@@ -1,67 +1,55 @@
-# TamerCAD: Phase 6 - Professional Sketch Mode, Stylus UX, and B-Rep Kernel Deepening
+# TamerCAD UI Redesign - Phase 7: Measurements, Model Tree & Settings
 
-This massive update focuses on bridging the gap between a "tool" and a "workstation". We will implement a dedicated Sketch Mode with plane selection, a highly refined stylus-first drawing experience with smart inference, an interactive Extrude system with real-time manipulators, and a deeper B-Rep kernel in C++.
+This phase focuses on professionalizing the data inspection and configuration layers of TamerCAD. We will implement a robust measurement system, a hierarchical model tree, and a comprehensive settings suite.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Sketch Plane Transition**: Tapping "Create Sketch" will now dim the 3D scene and present XY, XZ, and YZ planes. Selecting a plane will align the camera and enter a specialized "Sketch Mode".
-> **Stylus Priority**: When the stylus is down in Sketch Mode, all touch inputs are strictly ignored for drawing (Palm Rejection) but two-finger navigation remains available.
-> **B-Rep Kernel**: We are transitioning from simple meshes to a "Boundary Representation" topology. This is a significant change in the C++ layer that will allow for robust Boolean operations.
-> **ARCore Integration**: We will implement 1:1 scale visualization. This requires ARCore-compatible hardware and will switch the background to the live camera feed.
+> **Measurement Driving Constraints**: Editing a measurement value will attempt to apply a corresponding constraint (e.g., `DistanceConstraint`) to the involved geometries.
+> **Model Tree Hierarchy**: The tree will now show the full assembly structure: Assembly -> Components -> Features -> Sketches -> Geometries.
+> **Centralized Settings**: All application preferences will be moved to a single `SettingsState` managed by the `CADViewModel` or a dedicated `SettingsViewModel`.
 
 ## Proposed Changes
 
-### 1. Dedicated Sketch Mode (Step 11)
+### 1. Advanced Measurement System (Step 15)
+- **[NEW] core/analysis/MeasurementEngine.kt**:
+    - Logic for computing distances, angles, areas, and volumes between various `IGeometry` types.
 - **[MODIFY] ui/CADViewModel.kt**:
-    - Add `activeSketchPlane: Plane?` and `isSketchMode: Boolean`.
-    - Implement `enterSketchMode(plane)` and `exitSketchMode(commit: Boolean)`.
-- **[NEW] ui/sketch/PlaneSelector.kt**: UI component for selecting the initial 2D plane (XY, XZ, YZ).
-- **[MODIFY] ui/toolbar/CategoryPanel.kt**: Update to show the full Sketch Toolbar (Line, Circle, Arc, Slot, Spline, Trim, Constraints) when in Sketch Mode.
-- **[NEW] ui/sketch/SketchStatusLabel.kt**: Bottom-right indicator for "Fully-Constrained", etc.
-
-### 2. Stylus-First Sketching & Inference (Step 12)
-- **[MODIFY] ui/CADViewModel.kt**:
-    - Implement real-time `previewGeometry` during drag.
-    - Enhance `SnapEngine` with Midpoint, Center, and Tangent detection.
+    - Add `measurementSelection: List<IGeometry>` state.
+    - Implement logic to handle multi-selection specifically for measurement mode.
 - **[MODIFY] ui/components/CADCanvas.kt**:
-    - Render real-time inference lines (dashed orange lines for H/V or Parallel alignments).
-    - Show "Coincident" or "Tangent" badges under the stylus tip before release.
+    - Update `renderDimensionBubble` to support leader lines and specialized formatting for angles/areas.
+    - Render measurement labels for the active selection.
 
-### 3. Interactive Extrude & Boolean UI (Step 13)
-- **[NEW] ui/modeling/ExtrudeController.kt**:
-    - Manage temporary `ExtrudePreview`.
-    - Handle Boolean operation toggles (Join, Cut, Intersect).
-- **[MODIFY] ui/viewport/Manipulator3D.kt**: Add a specialized Extrude handle (3D Arrow with numeric floating label).
-- **[MODIFY] ui/MainCADScreen.kt**: Add a small overlay for Extrude parameters (Distance, Symmetric, Reverse).
+### 2. Hierarchical Model Tree (Step 16)
+- **[MODIFY] ui/components/ObjectTree.kt**:
+    - Refactor to support nested nodes.
+    - Implement expansion/collapse toggles for Components and Features.
+    - Add icons for different node types (Origin, Plane, Body, Sketch, Extrude, etc.).
+    - Implement context menus (long-press) for all node levels.
+- **[MODIFY] core/assembly/Component3D.kt**: Ensure features and sketches are correctly exposed for tree traversal.
 
-### 4. B-Rep Kernel Deepening (Parasolid Lite)
-- **[MODIFY] app/src/main/cpp/tamercad_kernel.cpp**:
-    - Implement `BRepTopology` structure: `Solid` -> `Shell` -> `Face` -> `Loop` -> `Edge` -> `Vertex`.
-    - Add `computeBoolean(SolidA, SolidB, Type)` placeholder with basic AABB pruning.
-- **[NEW] app/src/main/java/com/tamercad/core/kernel/NativeKernelBridge.kt**: Formalize JNI calls for complex modeling features.
-
-### 5. ARCore 1:1 Scale (Next Steps)
-- **[MODIFY] core/rendering/ArCoreBridge.kt**:
-    - Implement Plane tracking.
-    - Implement 1:1 scaling logic (Project units -> Meters).
-    - Background camera feed integration.
+### 3. Professional CAD Settings (Step 17)
+- **[NEW] ui/app/SettingsScreen.kt**:
+    - Categorized settings UI: General, Navigation, Stylus, View, Selection, Performance, File.
+    - Use standard CAD toggles (e.g., Perspective vs Orthographic, Grid visibility).
+- **[NEW] ui/state/SettingsState.kt**: Data class to hold all configuration tokens.
+- **[MODIFY] ui/MainCADScreen.kt**: Add logic to show the Settings Screen as a full-screen overlay or large modal.
 
 ## Roadmap
 
-1.  **Sketch Infrastructure**: Mode switching and Plane Selection.
-2.  **Stylus Refinement**: Live preview, SnapEngine upgrades, and Smart Inference.
-3.  **Modeling Interaction**: Extrude Gizmo and Boolean UI.
-4.  **Native Kernel**: B-Rep data structures and JNI bridge.
-5.  **ARCore**: 1:1 visualization mode.
+1.  **Model Tree Update**: Expand the browser to show the full feature history.
+2.  **Measurement Engine**: Implement the math for diverse measurement types and labels.
+3.  **Settings Suite**: Create the centralized settings state and UI.
+4.  **Integration**: Ensure settings (like Grid visibility) correctly affect the `CADCanvas`.
 
 ## Verification Plan
 
 ### Automated Tests
-- GCS integration tests for multi-plane constraints.
-- Native kernel unit tests (via NDK tests) for topology consistency.
+- Unit tests for `MeasurementEngine` (Point-to-Plane, Edge-to-Edge angle).
+- Verify `SettingsState` persistence (if implemented).
 
 ### Manual Verification
-- **Sketch**: Enter Sketch mode on XZ plane; verify camera rotates correctly. Draw a line with grid snap.
-- **Extrude**: Select a closed circle; click Extrude; drag the arrow; verify 3D volume updates.
-- **AR**: Enter AR mode; verify the model sits on the floor at correct dimensions.
+- **Measurement**: Select two parallel faces; verify the distance label appears with a leader line between them. Edit the value and check if it moves the faces.
+- **Model Tree**: Expand a Body node; verify its "Extrude" feature and "Sketch" are visible. Rename a feature from the tree.
+- **Settings**: Toggle "Grid" off in Settings; verify it disappears from the viewport.

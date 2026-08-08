@@ -1,19 +1,16 @@
-# TamerCAD Phase 5 - Professional Interaction & Assembly Progress
+# TamerCAD Phase 7 - Measurements, Model Tree & Settings Task List
 
-- [ ] **Branding & Versioning**
-    - [ ] Update `CADTopBar.kt` header text and truncation.
-- [ ] **Advanced Selection System (Step 8)**
-    - [ ] Upgrade `SelectionManager.kt` with full state support.
-    - [ ] Implement hover and multi-select in `CADViewModel.kt`.
-    - [ ] Update `CADCanvas.kt` for selection visualization.
-- [ ] **Professional View Navigation (Step 9)**
-    - [ ] Overhaul `NavigationCube.kt` with corner support.
-    - [ ] Implement `fitAll()` in `CADViewModel.kt`.
-    - [ ] Add satellite nav buttons.
-- [ ] **Assembly & Mate System**
-    - [ ] Create `MateModels.kt`.
-    - [ ] Implement Mate Solver in `Assembly3D.kt`.
-    - [ ] Add Mate tools to `CADContextToolbar.kt`.
+- [/] **Advanced Measurement System (Step 15)**
+    - [ ] Create `core/analysis/MeasurementEngine.kt`.
+    - [ ] Add `measurementSelection` to `CADViewModel.kt`.
+    - [ ] Update `CADCanvas.kt` to render advanced labels with leader lines.
+- [ ] **Hierarchical Model Tree (Step 16)**
+    - [ ] Update `ObjectTree.kt` to show nested features and sketches.
+    - [ ] Implement context menus for model tree nodes.
+- [ ] **Professional CAD Settings (Step 17)**
+    - [ ] Create `ui/state/SettingsState.kt`.
+    - [ ] Create `ui/app/SettingsScreen.kt`.
+    - [ ] Integrate settings into `MainCADScreen.kt`.
 - [ ] **VCS & Build**
     - [ ] Build APK.
     - [ ] Push to GitHub.

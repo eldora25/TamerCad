@@ -35,14 +35,18 @@ import com.tamercad.ui.interaction.StylusInputManager
 import com.tamercad.ui.interaction.StylusEvent
 import androidx.compose.ui.input.pointer.PointerType
 
+import com.tamercad.core.analysis.MeasurementEngine
 import com.tamercad.core.math.Vector3
 import com.tamercad.ui.viewport.Manipulator3D
 import com.tamercad.ui.selection.SelectionManager
+
+import com.tamercad.ui.state.SettingsState
 
 class CADViewModel : ViewModel() {
     // UI State
     var activeCategory by mutableStateOf(ToolbarCategory.INSPECT)
     
+    val settings = SettingsState()
     val selectionManager = SelectionManager()
     val stylusInputManager = StylusInputManager()
     var isStylusInUse by mutableStateOf(false)
@@ -73,6 +77,7 @@ class CADViewModel : ViewModel() {
     var showRenameDialog by mutableStateOf<Component3D?>(null)
     var renameInput by mutableStateOf("")
     var showInfoDialog by mutableStateOf(false)
+    var showSettings by mutableStateOf(false)
     var showDimDialog by mutableStateOf(false)
     var dimInput by mutableStateOf("")
     
@@ -88,6 +93,9 @@ class CADViewModel : ViewModel() {
     var currentSnapType by mutableStateOf(SnapType.NONE)
     var dynamicExtrudeHeight by mutableFloatStateOf(0f)
     var activeManipulatorAxis by mutableStateOf<String?>(null)
+    
+    // Measurement State
+    var currentMeasurement by mutableStateOf<MeasurementEngine.MeasurementResult?>(null)
 
     /**
      * 3D Nesne Seçimi (Ray-Casting)
@@ -304,9 +312,13 @@ class CADViewModel : ViewModel() {
             if (clickedGeom != null) {
                 selectionManager.select(clickedGeom)
                 selectionPoint = offset
+                
+                // Update Measurement automatically based on selection
+                currentMeasurement = MeasurementEngine.measure(selectionManager.selectedEntities)
             } else {
                 selectionManager.clear()
                 selectionPoint = null
+                currentMeasurement = null
             }
             triggerUpdate()
         }

@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tamercad.core.assembly.Assembly3D
 import com.tamercad.core.assembly.Component3D
-import com.tamercad.core.features.ExtrudeFeature
 import com.tamercad.ui.theme.TamerCadColors
 import com.tamercad.ui.theme.TamerCadDimensions
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -89,13 +88,32 @@ fun ObjectTree(
                 modifier = Modifier.padding(TamerCadDimensions.SpacingMedium),
                 verticalArrangement = Arrangement.spacedBy(TamerCadDimensions.SpacingSmall)
             ) {
+                // BODIES & FEATURES
                 items(assembly.components) { comp ->
-                    ObjectTreeItem(
-                        component = comp,
-                        onVisibilityToggle = { onVisibilityToggle(comp) },
-                        onRenameRequest = { onRenameRequest(comp) },
-                        onSelect = { onSelect(comp) }
-                    )
+                    var isExpanded by remember { mutableStateOf(false) }
+                    
+                    Column {
+                        ObjectTreeItem(
+                            name = comp.name,
+                            isSelected = comp.isSelected,
+                            isVisible = comp.isVisible,
+                            isExpanded = isExpanded,
+                            onVisibilityToggle = { onVisibilityToggle(comp) },
+                            onRenameRequest = { onRenameRequest(comp) },
+                            onSelect = { onSelect(comp); isExpanded = !isExpanded },
+                            icon = Icons.Default.ViewInAr
+                        )
+                        
+                        if (isExpanded) {
+                            comp.features.forEach { feat ->
+                                ObjectTreeSubItem(
+                                    name = feat.name,
+                                    icon = if (feat.type == "ExtrudeFeature") Icons.Default.Upload else Icons.Default.Settings,
+                                    onSelect = { /* TODO */ }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -105,22 +123,20 @@ fun ObjectTree(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ObjectTreeItem(
-    component: Component3D,
+    name: String,
+    isSelected: Boolean,
+    isVisible: Boolean,
+    isExpanded: Boolean,
+    icon: ImageVector,
     onVisibilityToggle: () -> Unit,
     onRenameRequest: () -> Unit,
     onSelect: () -> Unit
 ) {
-    val icon = when {
-        component.name.contains("Sketch", true) -> Icons.Default.Create
-        component.name.contains("Plane", true) -> Icons.Default.Menu
-        else -> Icons.Default.Build // Solid/Body icon
-    }
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(TamerCadDimensions.CornerSmall))
-            .background(if (component.isSelected) TamerCadColors.Primary.copy(alpha = 0.2f) else Color.Transparent)
+            .background(if (isSelected) TamerCadColors.Primary.copy(alpha = 0.2f) else Color.Transparent)
             .combinedClickable(
                 onClick = onSelect,
                 onDoubleClick = onRenameRequest
@@ -128,33 +144,59 @@ fun ObjectTreeItem(
             .padding(horizontal = TamerCadDimensions.SpacingSmall, vertical = TamerCadDimensions.SpacingMedium),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Tür İkonu (Sol)
+        Icon(
+            if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+            null,
+            tint = TamerCadColors.TextSecondary,
+            modifier = Modifier.size(14.dp)
+        )
+        
+        Spacer(Modifier.width(4.dp))
+        
         Icon(
             icon,
             null,
-            tint = if (component.isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary,
+            tint = if (isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary,
             modifier = Modifier.size(TamerCadDimensions.IconSmall)
         )
         
         Spacer(Modifier.width(TamerCadDimensions.SpacingMedium))
         
-        // İsim (Orta)
         Text(
-            component.name,
-            color = if (component.isSelected) TamerCadColors.Primary else TamerCadColors.TextPrimary,
+            name,
+            color = if (isSelected) TamerCadColors.Primary else TamerCadColors.TextPrimary,
             fontSize = 13.sp,
             modifier = Modifier.weight(1f),
             maxLines = 1
         )
 
-        // Göz İkonu (Sağ)
         Icon(
-            if (component.isVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+            if (isVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
             null,
-            tint = if (component.isVisible) TamerCadColors.Primary else Color.Gray,
+            tint = if (isVisible) TamerCadColors.Primary else Color.Gray,
             modifier = Modifier
                 .size(TamerCadDimensions.IconSmall)
                 .clickable { onVisibilityToggle() }
         )
+    }
+}
+
+@Composable
+fun ObjectTreeSubItem(
+    name: String,
+    icon: ImageVector,
+    onSelect: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 24.dp)
+            .clickable { onSelect() }
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = TamerCadColors.TextSecondary, modifier = Modifier.size(12.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(name, color = TamerCadColors.TextSecondary, fontSize = 11.sp, maxLines = 1)
     }
 }

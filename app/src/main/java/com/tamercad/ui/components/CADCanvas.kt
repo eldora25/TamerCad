@@ -325,6 +325,15 @@ fun CADCanvas(viewModel: CADViewModel) {
             }
         }
 
+        // --- MEASUREMENT OVERLAY ---
+        viewModel.currentMeasurement?.let { result ->
+            val center = viewModel.getSelectedEntityCenter() ?: Point3(0.0, 0.0, 0.0)
+            val pos = viewModel.worldToScreen(center, screenWidth, screenHeight)
+            val text = "${result.label}: ${String.format(Locale.US, "%.2f", result.value)} ${result.unit}"
+            
+            drawMeasurementLabel(this, text, pos, viewModel.zoom)
+        }
+
         // --- MANIPULATOR (GIZMO) ---
         val selected = viewModel.selectionManager.firstOrNull()
         val isActive = viewModel.activeManipulatorAxis != null
@@ -371,6 +380,38 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.renderDimensionBubb
     drawRoundRect(color = Color.White, topLeft = Offset(midX - (textWidth / 2) - 15f, midY - 45f), size = Size(textWidth + 30f, 40f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(20f, 20f))
     drawRoundRect(color = TamerCadColors.AccentBlue, topLeft = Offset(midX - (textWidth / 2) - 15f, midY - 45f), size = Size(textWidth + 30f, 40f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(20f, 20f), style = Stroke(width = 2f))
     drawContext.canvas.nativeCanvas.drawText(text, midX, midY - 18f, textPaint)
+}
+
+private fun drawMeasurementLabel(
+    drawScope: androidx.compose.ui.graphics.drawscope.DrawScope,
+    text: String,
+    position: Offset,
+    zoom: Float
+) {
+    val paint = android.graphics.Paint().apply {
+        color = 0xFFFFFFFF.toInt()
+        textSize = 16f * zoom
+        textAlign = android.graphics.Paint.Align.CENTER
+        isAntiAlias = true
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+    }
+    val textWidth = paint.measureText(text)
+    val h = 30f * zoom
+    
+    drawScope.apply {
+        drawRoundRect(
+            color = TamerCadColors.Accent.copy(alpha = 0.9f),
+            topLeft = Offset(position.x - (textWidth / 2) - 10f, position.y - h - 10f),
+            size = Size(textWidth + 20f, h),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(10f * zoom)
+        )
+        drawContext.canvas.nativeCanvas.drawText(
+            text,
+            position.x,
+            position.y - (h / 2),
+            paint
+        )
+    }
 }
 
 private fun drawBadge(
