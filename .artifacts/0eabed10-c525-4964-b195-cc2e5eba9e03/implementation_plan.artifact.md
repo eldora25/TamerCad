@@ -1,50 +1,48 @@
-# TamerCAD: Phase 2 UI Redesign (Left Tool Rail) & Sprint 004 (Parametric Constraints)
+# TamerCAD UI Redesign - Step 5: Create Tools
 
-This plan covers the transition to a professional "Tool Rail" system and the implementation of a fully parametric sketch engine with geometric constraints.
+This plan modernizes the "Create" tool category in TamerCad. It introduces a professional `ToolDefinition` system to manage tool metadata (labels, icons, commands, and states) and ensures that advanced features are correctly represented even if they are not yet fully implemented in the CAD kernel.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Tool Rail Interaction:** Tapping a category on the rail opens a secondary panel to the right. Tapping the same category again closes it.
-> **Constraint Badges:** Icons like "H" (Horizontal) and "V" (Vertical) will appear automatically near lines. They are persistent and can be deleted by tapping them in "Select" mode.
-> **Solver Stability:** The GCS (Geometric Constraint Solver) will use a Newton-Raphson style iterative approach.
+> **No Fake CAD Operations**: Tools that are not yet implemented in the kernel will be displayed as `disabled`.
+> **Extrude & Revolve**: These are the primary tools currently supported by the UI/Kernel interaction.
+> **Advanced Tools**: Sweep, Loft, Hole, Thread, Emboss, and Rib will be added to the UI but marked as disabled/coming soon.
 
 ## Proposed Changes
 
-### 1. Left Tool Rail Redesign (Step 4)
-- **[MODIFY] ui/toolbar/CADSideToolbar.kt**: Refactor to `CADToolRail`. It will only show the 7 primary categories.
-- **[NEW] ui/toolbar/CategoryPanel.kt**: A sleek, dark, floating panel that opens when a category is active.
-    - Displays icons + labels for specific tools (e.g., Line, Rectangle under Sketch).
-    - Uses `TamerCadDimensions` for tablet-optimized touch targets.
+### 1. Tool Model & Definitions
+- **[NEW] ui/toolbar/ToolDefinition.kt**:
+    - Data class to hold tool metadata: `id`, `label`, `icon`, `commandId`, `enabled`, `visible`, `tooltip`.
+- **[MODIFY] ui/toolbar/CategoryPanel.kt**:
+    - Update `getToolsForCategory` to return `List<ToolDefinition>`.
+    - Populate the `CREATE` category with: Extrude (Enabled), Revolve (Enabled), Sweep (Disabled), Loft (Disabled), Hole (Disabled), Thread (Disabled), Emboss (Disabled), Rib (Disabled).
 
-### 2. SPRINT 004: Geometric Constraints (Core)
-- **[NEW] core/constraints/CoincidentConstraint.kt**: Locks two points.
-- **[NEW] core/constraints/HorizontalConstraint.kt**: Locks a line to 0/180 degrees.
-- **[NEW] core/constraints/VerticalConstraint.kt**: Locks a line to 90/270 degrees.
-- **[NEW] core/constraints/ParallelConstraint.kt**: Forces two lines to have the same slope.
-- **[NEW] core/constraints/TangentConstraint.kt**: Locks a line to the tangent of a circle/arc.
-- **[MODIFY] core/constraints/GCSManager.kt**: Enhanced solver loop with error detection.
+### 2. UI Presentation Layer
+- **[MODIFY] ui/components/CommonUI.kt**:
+    - Enhance `LabeledSidebarIconButton` to respect the `enabled` state (using alpha/grayscale for disabled tools).
+- **[MODIFY] ui/toolbar/CategoryPanel.kt**:
+    - Render the category panel using the new `ToolDefinition` list.
+    - Add tooltips/status labels for disabled tools (e.g., "Coming Soon").
 
-### 3. SPRINT 004: Visualization & Interaction
-- **[MODIFY] ui/components/CADCanvas.kt**:
-    - Draw constraint badges (H, V, //, T) at the midpoint of geometries.
-    - Implement color-coded status: Blue (Under-defined), Black (Fully-defined), Red (Conflict).
-- **[MODIFY] core/sketch/SnapEngine.kt**: Add "Smart Inference" to suggest H/V constraints while drawing.
+### 3. Command Binding
+- **[MODIFY] ui/MainCADScreen.kt**:
+    - Ensure the `onToolClick` callback correctly maps the `id` from `ToolDefinition` to the appropriate `CadMode` or kernel command.
 
 ## Roadmap
 
-1.  **Tool Rail & Panels:** Modernize the left-side interaction.
-2.  **Constraint Models:** Implement the math for H, V, and Coincident.
-3.  **Solver Update:** Integrate multi-constraint resolution.
-4.  **Canvas Rendering:** Show constraint badges and update line colors.
+1.  **Define Model**: Create the `ToolDefinition` structure.
+2.  **Populate Create Category**: Update the tool registry within `CategoryPanel.kt`.
+3.  **Visual Update**: Implement the disabled state styling in the UI components.
+4.  **Integration**: Connect the new system to the main orkestrator.
 
 ## Verification Plan
 
 ### Automated Tests
-- Test cases for a constrained rectangle (4 coincident, 2 horizontal, 2 vertical).
-- Test cases for tangent lines.
+- Build verification to ensure all `ToolDefinition` properties are accessed correctly.
 
 ### Manual Verification
-- Verify Tool Rail opens/closes category panels.
-- Draw a nearly horizontal line; verify it snaps and shows 'H'.
-- Apply dimensions; verify the line turns Black.
+- Open the "Create" category from the Tool Rail.
+- Verify that **Extrude** and **Revolve** are clickable and active.
+- Verify that **Sweep, Loft, Hole, etc.** are visually disabled (grayed out) and non-clickable.
+- Verify that touch targets remain at the standard 44dp+ size.

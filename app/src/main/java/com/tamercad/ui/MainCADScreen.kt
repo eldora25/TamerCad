@@ -92,8 +92,9 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
             CategoryPanel(
                 category = viewModel.activeCategory,
                 onToolClick = { tool ->
-                    Toast.makeText(context, "Tool selected: $tool", Toast.LENGTH_SHORT).show()
-                    // TODO: Map string tool name to CadMode and update viewModel.currentMode
+                    if (tool.enabled) {
+                        Toast.makeText(context, "Tool: ${tool.label}", Toast.LENGTH_SHORT).show()
+                    }
                 }
             )
 

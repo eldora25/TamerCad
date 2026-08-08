@@ -1,5 +1,6 @@
 package com.tamercad.ui.toolbar
 
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -27,14 +28,14 @@ import com.tamercad.ui.theme.TamerCadDimensions
 @Composable
 fun CategoryPanel(
     category: ToolbarCategory,
-    onToolClick: (String) -> Unit
+    onToolClick: (ToolDefinition) -> Unit
 ) {
     if (category == ToolbarCategory.NONE) return
 
     Column(
         modifier = Modifier
             .padding(start = 100.dp, top = 80.dp) // Tool Rail'in hemen sağına
-            .width(180.dp)
+            .width(200.dp)
             .wrapContentHeight()
             .clip(RoundedCornerShape(TamerCadDimensions.CornerMedium))
             .background(TamerCadColors.Surface)
@@ -54,53 +55,57 @@ fun CategoryPanel(
 
         val tools = getToolsForCategory(category)
         
-        tools.forEach { tool ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(TamerCadDimensions.CornerSmall))
-                    .background(Color.Transparent) // Highlight eklenebilir
-                    .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Burada LabeledSidebarIconButton'ı yatay formda veya basitleştirilmiş kullanabiliriz
-                // Şimdilik standart buton yapısını koruyalım
+        // Grid şeklinde gösterelim (Daha profesyonel)
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            maxItemsInEachRow = 3,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            tools.forEach { tool ->
                 LabeledSidebarIconButton(
-                    icon = tool.second,
-                    label = tool.first,
+                    icon = tool.icon,
+                    label = tool.label,
                     isSelected = false,
-                    onClick = { onToolClick(tool.first.lowercase()) }
+                    enabled = tool.enabled,
+                    onClick = { onToolClick(tool) }
                 )
             }
         }
     }
 }
 
-private fun getToolsForCategory(category: ToolbarCategory): List<Pair<String, androidx.compose.ui.graphics.vector.ImageVector>> {
+private fun getToolsForCategory(category: ToolbarCategory): List<ToolDefinition> {
     return when (category) {
         ToolbarCategory.SKETCH -> listOf(
-            "Line" to IconRegistry.Line,
-            "Arc" to IconRegistry.Arc,
-            "Circle" to IconRegistry.Circle,
-            "Rectangle" to IconRegistry.Rectangle,
-            "Spline" to IconRegistry.Spline,
-            "Trim" to IconRegistry.Trim
+            ToolDefinition("line", "Line", IconRegistry.Line),
+            ToolDefinition("arc", "Arc", IconRegistry.Arc),
+            ToolDefinition("circle", "Circle", IconRegistry.Circle),
+            ToolDefinition("rect", "Rect", IconRegistry.Rectangle),
+            ToolDefinition("spline", "Spline", IconRegistry.Spline),
+            ToolDefinition("trim", "Trim", IconRegistry.Trim)
         )
         ToolbarCategory.CREATE -> listOf(
-            "Extrude" to IconRegistry.Extrude,
-            "Revolve" to IconRegistry.Revolve
+            ToolDefinition("extrude", "Extrude", IconRegistry.Extrude),
+            ToolDefinition("revolve", "Revolve", IconRegistry.Revolve),
+            ToolDefinition("sweep", "Sweep", IconRegistry.Revolve, enabled = false, tooltip = "Coming Soon"),
+            ToolDefinition("loft", "Loft", IconRegistry.Select, enabled = false, tooltip = "Coming Soon"),
+            ToolDefinition("hole", "Hole", IconRegistry.Circle, enabled = false, tooltip = "Coming Soon"),
+            ToolDefinition("thread", "Thread", IconRegistry.Modify, enabled = false),
+            ToolDefinition("emboss", "Emboss", IconRegistry.Sketch, enabled = false),
+            ToolDefinition("rib", "Rib", IconRegistry.Construct, enabled = false)
         )
         ToolbarCategory.MODIFY -> listOf(
-            "Fillet" to IconRegistry.Fillet,
-            "Chamfer" to IconRegistry.Chamfer,
-            "Mirror" to IconRegistry.Mirror,
-            "Pattern" to IconRegistry.Pattern
+            ToolDefinition("fillet", "Fillet", IconRegistry.Fillet),
+            ToolDefinition("chamfer", "Chamfer", IconRegistry.Chamfer),
+            ToolDefinition("mirror", "Mirror", IconRegistry.Mirror),
+            ToolDefinition("pattern", "Pattern", IconRegistry.Pattern)
         )
         ToolbarCategory.CONSTRUCT -> listOf(
-            "Plane" to IconRegistry.Construct
+            ToolDefinition("plane", "Plane", IconRegistry.Construct)
         )
         ToolbarCategory.MEASURE -> listOf(
-            "Measure" to IconRegistry.Measure
+            ToolDefinition("measure", "Measure", IconRegistry.Measure)
         )
         else -> emptyList()
     }

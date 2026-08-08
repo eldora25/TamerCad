@@ -71,13 +71,16 @@ fun LabeledSidebarIconButton(
     icon: ImageVector,
     label: String,
     isSelected: Boolean,
-    status: String? = null, // "Saved", "Saving..." vb. için
+    status: String? = null, 
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
+    val alpha = if (enabled) 1.0f else 0.4f
+    
     Column(
         modifier = Modifier
             .width(64.dp)
-            .clickable { onClick() }
+            .clickable(enabled = enabled) { onClick() }
             .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -85,23 +88,28 @@ fun LabeledSidebarIconButton(
             modifier = Modifier
                 .size(40.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(if (isSelected) TamerCadColors.Primary.copy(alpha = 0.2f) else Color.Transparent),
+                .background(if (isSelected) TamerCadColors.Primary.copy(alpha = 0.2f * alpha) else Color.Transparent),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = label, tint = if (isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary, modifier = Modifier.size(20.dp))
+            Icon(
+                icon, 
+                contentDescription = label, 
+                tint = (if (isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary).copy(alpha = alpha), 
+                modifier = Modifier.size(20.dp)
+            )
         }
         if (label.isNotEmpty()) {
             Spacer(Modifier.height(2.dp))
             Text(
                 label,
-                color = if (isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary,
+                color = (if (isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary).copy(alpha = alpha),
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1
             )
         }
         if (status != null) {
-            Text(status, color = TamerCadColors.TextSecondary.copy(alpha = 0.7f), fontSize = 8.sp)
+            Text(status, color = TamerCadColors.TextSecondary.copy(alpha = 0.7f * alpha), fontSize = 8.sp)
         }
     }
 }
