@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Önceden oluşturduğumuz premium koyu arka planı çağırır -->
+    <background android:drawable="@drawable/ic_launcher_background" />
+    
+    <!-- Önceden oluşturduğumuz mavi 3D İzometrik Küp logosunu çağırır -->
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    
+    <!-- Android 13+ (Material You) tematik monokrom ikon desteği -->
+    <monochrome android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>

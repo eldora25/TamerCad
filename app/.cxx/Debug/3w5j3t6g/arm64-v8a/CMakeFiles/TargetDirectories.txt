@@ -1,0 +1,3 @@
+C:/Projelerim/TamerCad-main/app/.cxx/Debug/3w5j3t6g/arm64-v8a/CMakeFiles/tamercad_kernel.dir
+C:/Projelerim/TamerCad-main/app/.cxx/Debug/3w5j3t6g/arm64-v8a/CMakeFiles/edit_cache.dir
+C:/Projelerim/TamerCad-main/app/.cxx/Debug/3w5j3t6g/arm64-v8a/CMakeFiles/rebuild_cache.dir

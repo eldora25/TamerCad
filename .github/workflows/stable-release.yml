@@ -1,0 +1,64 @@
+name: TamerCAD STABLE Release Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*' # Sadece 'v' ile başlayan etiketlerde (ör: v0.1.0) çalışır.
+
+jobs:
+  build-and-release:
+    name: Build & Release (STABLE)
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Kaynak Kodu Çek
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Java JDK 21 Kurulumu
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Gradle Wrapper Kütüphanesini İndir
+      run: |
+        mkdir -p gradle/wrapper
+        wget -O gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar
+
+    - name: Gradle İzinlerini Ayarla
+      run: chmod +x gradlew
+
+    # Gelecekte eklenecek tam kapsamlı Kernel ve Benchmark Testleri
+    - name: Kritik Testleri Çalıştır
+      run: ./gradlew test
+
+    - name: Kararlı (Release) APK Derle
+      run: ./gradlew assembleRelease
+
+    - name: Dosyaları Release İçin İsimlendir
+      run: |
+        # Sürüm numarasını tag'den (örneğin refs/tags/v0.3.14) alıyoruz
+        VERSION_TAG=${GITHUB_REF#refs/tags/}
+        
+        # Artifact isimlendirmeleri
+        mv app/build/outputs/apk/release/app-release-unsigned.apk TamerCAD-${VERSION_TAG}-build${{ github.run_number }}.apk
+        git archive --format=zip -o tamercad-source-${VERSION_TAG}.zip HEAD
+        
+        echo "APK_FILE=TamerCAD-${VERSION_TAG}-build${{ github.run_number }}.apk" >> $GITHUB_ENV
+        echo "SOURCE_FILE=tamercad-source-${VERSION_TAG}.zip" >> $GITHUB_ENV
+
+    - name: GitHub Release Otomatik Oluştur
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          ${{ env.APK_FILE }}
+          ${{ env.SOURCE_FILE }}
+        name: TamerCAD Release ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

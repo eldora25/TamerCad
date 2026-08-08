@@ -1,0 +1,52 @@
+name: TamerCAD DEV Pipeline
+
+on:
+  push:
+    branches:
+      - '**' # Tüm dallarda (branches) tetiklenir
+    tags-ignore:
+      - 'v*' # Sürüm tag'lerinde (v0.1.0 vb.) çalışmaz, o işi STABLE kanalına bırakır
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-verify:
+    name: Build & Verify (DEV)
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Kaynak Kodu Çek
+      uses: actions/checkout@v4
+
+    - name: Java JDK 21 Kurulumu
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Gradle Wrapper Kütüphanesini İndir
+      run: |
+        mkdir -p gradle/wrapper
+        wget -O gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar
+
+    - name: Gradle İzinlerini Ayarla
+      run: chmod +x gradlew
+
+    # İleride test altyapısını kurduğumuzda bu adımı aktifleştireceğiz
+    # - name: Birim Testlerini (Unit Tests) Çalıştır
+    #   run: ./gradlew testDebugUnitTest
+
+    - name: Geliştirici (Debug) APK Derle
+      run: ./gradlew assembleDebug
+
+    - name: Dinamik İsimlendirme (Dev Build)
+      run: |
+        mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/TamerCAD-dev-build${{ github.run_number }}.apk
+
+    - name: DEV APK'yı Sisteme Yükle
+      uses: actions/upload-artifact@v4
+      with:
+        name: TamerCAD-DEV-b${{ github.run_number }}
+        path: app/build/outputs/apk/debug/TamerCAD-dev-build${{ github.run_number }}.apk
+        retention-days: 7 # Dev build'ler sunucuda yer kaplamaması için 7 gün sonra silinir

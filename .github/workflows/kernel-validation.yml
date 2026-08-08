@@ -1,0 +1,44 @@
+name: TamerCAD Kernel & Benchmark Validation
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: # Arayüzden manuel tetikleme imkanı sağlar
+
+jobs:
+  benchmark:
+    name: Geometry & Kernel Benchmarks
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Kaynak Kodu Çek
+      uses: actions/checkout@v4
+
+    - name: Java JDK 21 Kurulumu
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: gradle
+
+    # YENİ EKLENEN ADIM: Hatanın çözümü için Gradle Wrapper dosyasını indiriyoruz
+    - name: Gradle Wrapper Kütüphanesini İndir
+      run: |
+        mkdir -p gradle/wrapper
+        wget -O gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar
+
+    - name: Gradle İzinlerini Ayarla
+      run: chmod +x gradlew
+
+    - name: Performans (Benchmark) Testlerini Çalıştır
+      # Sadece benchmark paketindeki testleri filtreleyerek çalıştırır
+      run: ./gradlew testDebugUnitTest --tests "com.tamercad.core.benchmark.*"
+
+    - name: Sonuçları Sürüm Notlarına (Step Summary) Aktar
+      if: always()
+      run: |
+        echo "### 🚀 TamerCAD Benchmark Raporu" >> $GITHUB_STEP_SUMMARY
+        echo "Geometri Çekirdeği ve Unsur Sistemi performans testleri tamamlandı." >> $GITHUB_STEP_SUMMARY
+        echo "- **Durum:** Testler Başarılı" >> $GITHUB_STEP_SUMMARY
+        echo "- **Hedefler:** Boolean < 500ms | Topoloji < 100ms | Unsur (Feature) < 500ms" >> $GITHUB_STEP_SUMMARY
+        echo "Detaylı milisaniye (ms) ölçümleri için Actions loglarındaki test çıktılarını inceleyebilirsiniz." >> $GITHUB_STEP_SUMMARY

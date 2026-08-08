@@ -1,0 +1,9 @@
+# ninja log v5
+1	1690	8078400379865324	CMakeFiles/tamercad_kernel.dir/tamercad_kernel.cpp.o	87829bce1b636771
+1697	1835	8078400381325652	C:/Projelerim/TamerCad-main/app/build/intermediates/cxx/Debug/3w5j3t6g/obj/arm64-v8a/libtamercad_kernel.so	2de8b0a9f395de12
+11	1513	8078424059158946	CMakeFiles/tamercad_kernel.dir/tamercad_kernel.cpp.o	87829bce1b636771
+1514	1692	8078424060999364	C:/Projelerim/TamerCad-main/app/build/intermediates/cxx/Debug/3w5j3t6g/obj/arm64-v8a/libtamercad_kernel.so	2de8b0a9f395de12
+19	1436	8078449473638571	CMakeFiles/tamercad_kernel.dir/tamercad_kernel.cpp.o	87829bce1b636771
+1437	1623	8078449475435240	C:/Projelerim/TamerCad-main/app/build/intermediates/cxx/Debug/3w5j3t6g/obj/arm64-v8a/libtamercad_kernel.so	2de8b0a9f395de12
+16	1591	8078482150491776	CMakeFiles/tamercad_kernel.dir/tamercad_kernel.cpp.o	87829bce1b636771
+1591	1781	8078482152352195	C:/Projelerim/TamerCad-main/app/build/intermediates/cxx/Debug/3w5j3t6g/obj/arm64-v8a/libtamercad_kernel.so	2de8b0a9f395de12
