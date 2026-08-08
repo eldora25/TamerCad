@@ -68,9 +68,31 @@ object Manipulator3D {
         viewModel: CADViewModel,
         center: Point3,
         screenWidth: Float,
-        screenHeight: Float
+        screenHeight: Float,
+        activeAxis: String? = null,
+        currentAngle: Double? = null
     ) {
-        // TODO: Implement circular handles for rotation
+        val zoom = viewModel.zoom
+        val radius = 80.0 / zoom
+        val centerScreen = viewModel.worldToScreen(center, screenWidth, screenHeight)
+
+        // Circles representing rotation axes
+        drawRotationRing(drawScope, centerScreen, radius.toFloat(), AxisX, activeAxis == "ROT_X", zoom)
+        drawRotationRing(drawScope, centerScreen, radius.toFloat() * 1.1f, AxisY, activeAxis == "ROT_Y", zoom)
+        drawRotationRing(drawScope, centerScreen, radius.toFloat() * 1.2f, AxisZ, activeAxis == "ROT_Z", zoom)
+
+        if (activeAxis?.startsWith("ROT_") == true && currentAngle != null) {
+            drawNumericLabel(drawScope, centerScreen, "Angle: ${String.format(Locale.US, "%.1f°", currentAngle)}", zoom)
+        }
+    }
+
+    private fun drawRotationRing(drawScope: DrawScope, center: Offset, radius: Float, color: Color, isActive: Boolean, zoom: Float) {
+        drawScope.drawCircle(
+            color = if (isActive) Color.White else color,
+            radius = radius,
+            center = center,
+            style = Stroke(width = (if (isActive) 4f else 2f) * zoom)
+        )
     }
 
     private fun drawArrow(drawScope: DrawScope, start: Offset, end: Offset, color: Color, zoom: Float) {

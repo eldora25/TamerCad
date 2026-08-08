@@ -409,7 +409,13 @@ fun CADCanvas(viewModel: CADViewModel) {
                     "Z" -> viewModel.mainAssembly.components.find { it.isSelected }?.tz
                     else -> null
                 }
-                Manipulator3D.drawTranslationGizmo(this, viewModel, center, screenWidth, screenHeight, viewModel.activeManipulatorAxis, currentValue)
+                
+                if (viewModel.currentMode == CadMode.MOVE_ROTATE) {
+                    Manipulator3D.drawTranslationGizmo(this, viewModel, center, screenWidth, screenHeight, viewModel.activeManipulatorAxis, currentValue)
+                    Manipulator3D.drawRotationGizmo(this, viewModel, center, screenWidth, screenHeight, viewModel.activeManipulatorAxis, null)
+                } else {
+                    Manipulator3D.drawTranslationGizmo(this, viewModel, center, screenWidth, screenHeight, viewModel.activeManipulatorAxis, currentValue)
+                }
             }
         }
     }

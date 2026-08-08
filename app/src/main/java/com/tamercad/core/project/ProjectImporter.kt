@@ -71,7 +71,12 @@ class ProjectImporter {
                                     comp.features.add(extrude)
                                 } else if (featType == "RevolveFeature") {
                                     val segments = featJson.optInt("segments", 16)
-                                    val revolve = RevolveFeature(baseSketch, segments, featJson.optString("name", "Revolve"), featJson.optString("id", UUID.randomUUID().toString()))
+                                    val revolve = RevolveFeature(
+                                        sketch = baseSketch, 
+                                        segments = segments, 
+                                        name = featJson.optString("name", "Revolve"), 
+                                        id = featJson.optString("id", UUID.randomUUID().toString())
+                                    )
                                     revolve.evaluate()
                                     comp.features.add(revolve)
                                 }

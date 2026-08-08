@@ -20,6 +20,8 @@ class ExtrudeFeature(
     var depth: Double,
     override val name: String,
     var operation: ExtrudeOperation = ExtrudeOperation.NEW_BODY,
+    var isSymmetric: Boolean = false,
+    var isReversed: Boolean = false,
     override var id: String = UUID.randomUUID().toString()
 ) : IFeature {
     
@@ -39,31 +41,37 @@ class ExtrudeFeature(
         val faces = mutableListOf<Face3D>()
         val lines = mutableListOf<Line>()
         
-        // Basitleştirilmiş Extrude: Taslağı kopyala ve yükselt
+        val actualDepth = if (isReversed) -depth else depth
+        val startZ = if (isSymmetric) -actualDepth / 2.0 else 0.0
+        val endZ = if (isSymmetric) actualDepth / 2.0 else actualDepth
+
         baseGeoms.forEach { line ->
             val p1 = line.startPoint
             val p2 = line.endPoint
-            val p1Up = Point3(p1.x, p1.y, p1.z + depth)
-            val p2Up = Point3(p2.x, p2.y, p2.z + depth)
+            val p1Start = Point3(p1.x, p1.y, p1.z + startZ)
+            val p2Start = Point3(p2.x, p2.y, p2.z + startZ)
+            val p1End = Point3(p1.x, p1.y, p1.z + endZ)
+            val p2End = Point3(p2.x, p2.y, p2.z + endZ)
             
-            // Yan Yüzey (Side Face)
-            val sideFace = Face3D(listOf(p1, p2, p2Up, p1Up)).apply { parentFeatureId = id }
+            // Side Face
+            val sideFace = Face3D(listOf(p1Start, p2Start, p2End, p1End)).apply { parentFeatureId = id }
             faces.add(sideFace)
             
-            lines.add(Line(p1, p2))
-            lines.add(Line(p1Up, p2Up))
-            lines.add(Line(p1, p1Up))
-            lines.add(Line(p2, p2Up))
+            lines.add(Line(p1Start, p2Start))
+            lines.add(Line(p1End, p2End))
+            lines.add(Line(p1Start, p1End))
+            lines.add(Line(p2Start, p2End))
         }
         
-        // Üst Yüzey (Cap Face)
-        val capVerts = baseGeoms.map { Point3(it.startPoint.x, it.startPoint.y, it.startPoint.z + depth) }
-        if (capVerts.size >= 3) {
-            faces.add(Face3D(capVerts).apply { parentFeatureId = id })
+        // Cap Faces
+        val startVerts = baseGeoms.map { Point3(it.startPoint.x, it.startPoint.y, it.startPoint.z + startZ) }
+        val endVerts = baseGeoms.map { Point3(it.startPoint.x, it.startPoint.y, it.startPoint.z + endZ) }
+        
+        if (startVerts.size >= 3) {
+            faces.add(Face3D(startVerts).apply { parentFeatureId = id })
+            faces.add(Face3D(endVerts).apply { parentFeatureId = id })
         }
 
-        generatedGeometry = Solid3D(lines, faces).apply { 
-            // parentFeatureId gibi bir alan Solid3D'de yok ama hiyerarşi için eklenebilir
-        }
+        generatedGeometry = Solid3D(lines, faces)
     }
 }

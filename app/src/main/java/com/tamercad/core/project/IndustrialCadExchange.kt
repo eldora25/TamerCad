@@ -123,13 +123,13 @@ class IndustrialCadExchange(private val context: Context) {
                 
                 val dummySketch = SketchFeature("Parsed_Sketch")
                 geomLines.forEach { dummySketch.addGeometry(it) }
-                val extrude = ExtrudeFeature(dummySketch, 50.0, "Parsed_BRep_Feature")
+                val extrude = ExtrudeFeature(sketch = dummySketch, depth = 50.0, name = "Parsed_BRep_Feature")
                 importedComponent.features.add(extrude)
             } else {
                 // Varsayılan endüstriyel yedek geometri
                 val dummySketch = SketchFeature("Default_Import_Sketch")
                 dummySketch.addGeometry(Line(Point3(0.0, 0.0, 0.0), Point3(100.0, 100.0, 0.0)))
-                val extrude = ExtrudeFeature(dummySketch, 50.0, "Imported_Feature")
+                val extrude = ExtrudeFeature(sketch = dummySketch, depth = 50.0, name = "Imported_Feature")
                 importedComponent.features.add(extrude)
             }
 

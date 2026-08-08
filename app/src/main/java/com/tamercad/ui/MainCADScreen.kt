@@ -162,8 +162,14 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
                     ExtrudePanel(
                         distance = viewModel.dynamicExtrudeHeight.toDouble(),
                         onDistanceChange = { v -> viewModel.dynamicExtrudeHeight = v.toFloatOrNull() ?: 0f },
-                        onAccept = { viewModel.onSketchDragEnd(context) },
-                        onCancel = { viewModel.currentMode = CadMode.SMART_SKETCH; viewModel.dynamicExtrudeHeight = 0f }
+                        operation = viewModel.extrudeOperation,
+                        onOperationChange = { viewModel.extrudeOperation = it },
+                        isSymmetric = viewModel.isExtrudeSymmetric,
+                        onSymmetricToggle = { viewModel.isExtrudeSymmetric = !viewModel.isExtrudeSymmetric },
+                        isReversed = viewModel.isExtrudeReversed,
+                        onReverseToggle = { viewModel.isExtrudeReversed = !viewModel.isExtrudeReversed },
+                        onAccept = { viewModel.runCommand("confirm_extrude", context) },
+                        onCancel = { viewModel.currentMode = CadMode.NAVIGATE; viewModel.dynamicExtrudeHeight = 0f }
                     )
                 }
             }

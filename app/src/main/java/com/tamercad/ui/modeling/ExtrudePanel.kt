@@ -17,16 +17,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tamercad.ui.theme.TamerCadColors
 import com.tamercad.ui.theme.TamerCadDimensions
+import com.tamercad.core.features.ExtrudeOperation
 import java.util.Locale
 
-/**
- * TamerCAD Extrude (Katılama) Paneli.
- * Mesafe ayarı ve Boolean işlemlerini yönetir.
- */
 @Composable
 fun ExtrudePanel(
     distance: Double,
     onDistanceChange: (String) -> Unit,
+    operation: ExtrudeOperation,
+    onOperationChange: (ExtrudeOperation) -> Unit,
+    isSymmetric: Boolean,
+    onSymmetricToggle: () -> Unit,
+    isReversed: Boolean,
+    onReverseToggle: () -> Unit,
     onAccept: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -65,16 +68,16 @@ fun ExtrudePanel(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OperationButton("New Body", true)
-                OperationButton("Join", false)
-                OperationButton("Cut", false)
-                OperationButton("Intersect", false)
+                OperationButton("New Body", operation == ExtrudeOperation.NEW_BODY) { onOperationChange(ExtrudeOperation.NEW_BODY) }
+                OperationButton("Join", operation == ExtrudeOperation.JOIN) { onOperationChange(ExtrudeOperation.JOIN) }
+                OperationButton("Cut", operation == ExtrudeOperation.CUT) { onOperationChange(ExtrudeOperation.CUT) }
+                OperationButton("Intersect", operation == ExtrudeOperation.INTERSECT) { onOperationChange(ExtrudeOperation.INTERSECT) }
             }
 
             // MODIFIERS
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ModifierToggle("Symmetric", false)
-                ModifierToggle("Reverse", false)
+                ModifierToggle("Symmetric", isSymmetric, onSymmetricToggle)
+                ModifierToggle("Reverse", isReversed, onReverseToggle)
             }
 
             // Onay / İptal
@@ -94,7 +97,7 @@ fun ExtrudePanel(
 }
 
 @Composable
-private fun RowScope.OperationButton(label: String, isSelected: Boolean) {
+private fun FlowRowScope.OperationButton(label: String, isSelected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .weight(1f)
@@ -102,7 +105,7 @@ private fun RowScope.OperationButton(label: String, isSelected: Boolean) {
             .clip(RoundedCornerShape(8.dp))
             .background(if (isSelected) TamerCadColors.Primary else TamerCadColors.SurfaceElevated)
             .border(1.dp, if (isSelected) TamerCadColors.Primary else TamerCadColors.PanelBorder, RoundedCornerShape(8.dp))
-            .clickable { /* TODO */ },
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Text(label, color = if (isSelected) Color.White else TamerCadColors.TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -110,7 +113,7 @@ private fun RowScope.OperationButton(label: String, isSelected: Boolean) {
 }
 
 @Composable
-private fun RowScope.ModifierToggle(label: String, isSelected: Boolean) {
+private fun RowScope.ModifierToggle(label: String, isSelected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .weight(1f)
@@ -118,7 +121,7 @@ private fun RowScope.ModifierToggle(label: String, isSelected: Boolean) {
             .clip(RoundedCornerShape(16.dp))
             .background(if (isSelected) TamerCadColors.Primary.copy(alpha = 0.2f) else Color.Transparent)
             .border(1.dp, if (isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-            .clickable { /* TODO */ },
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Text(label, color = if (isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary, fontSize = 10.sp)

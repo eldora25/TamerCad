@@ -102,6 +102,9 @@ class CADViewModel : ViewModel() {
     var rawStroke by mutableStateOf<List<Point3>>(emptyList())
     var currentSnap by mutableStateOf<com.tamercad.core.sketch.SnapResult?>(null)
     var dynamicExtrudeHeight by mutableFloatStateOf(0f)
+    var isExtrudeSymmetric by mutableStateOf(false)
+    var isExtrudeReversed by mutableStateOf(false)
+    var extrudeOperation by mutableStateOf(com.tamercad.core.features.ExtrudeOperation.NEW_BODY)
     var activeManipulatorAxis by mutableStateOf<String?>(null)
     
     // Measurement State
@@ -545,7 +548,11 @@ class CADViewModel : ViewModel() {
             }
             CadMode.EXTRUDE -> {
                 if (activeSketch.getGeometries().isNotEmpty() && abs(dynamicExtrudeHeight) > 5f) {
-                    val extrude = ExtrudeFeature(activeSketch, dynamicExtrudeHeight.toDouble(), "Extrude ${mainAssembly.components.size}")
+                    val extrude = ExtrudeFeature(
+                        sketch = activeSketch, 
+                        depth = dynamicExtrudeHeight.toDouble(), 
+                        name = "Extrude ${mainAssembly.components.size}"
+                    )
                     val newComp = Component3D("Gövde ${mainAssembly.components.size + 1}").apply { features.add(extrude) }
                     commandManager.execute(AddComponentCommand(mainAssembly, newComp))
                     activeSketch.clearWorkspace(); dynamicExtrudeHeight = 0f; currentMode = CadMode.SMART_SKETCH
@@ -699,7 +706,31 @@ class CADViewModel : ViewModel() {
             "sketch" -> startSketchFlow()
             "line" -> currentMode = CadMode.SKETCH_LINE_MANUAL
             "circle" -> currentMode = CadMode.SMART_SKETCH 
-            "extrude" -> currentMode = CadMode.EXTRUDE
+            "extrude" -> {
+                val selected = selectionManager.firstOrNull()
+                if (selected != null) {
+                    currentMode = CadMode.EXTRUDE
+                    dynamicExtrudeHeight = 10f // Default preview
+                } else {
+                    Toast.makeText(context, "Please select a sketch profile", Toast.LENGTH_SHORT).show()
+                }
+            }
+            "confirm_extrude" -> {
+                val sketchToUse = (selectionManager.firstOrNull() as? SketchFeature) ?: activeSketch
+                val extrude = ExtrudeFeature(
+                    sketch = sketchToUse,
+                    depth = dynamicExtrudeHeight.toDouble(),
+                    name = "Extrude ${mainAssembly.components.size + 1}",
+                    operation = extrudeOperation,
+                    isSymmetric = isExtrudeSymmetric,
+                    isReversed = isExtrudeReversed
+                )
+                val newComp = Component3D(extrude.name).apply { features.add(extrude) }
+                commandManager.execute(AddComponentCommand(mainAssembly, newComp))
+                currentMode = CadMode.NAVIGATE
+                dynamicExtrudeHeight = 0f
+                selectionManager.clear()
+            }
             "fillet" -> currentMode = CadMode.FILLET
             "mate_coincident" -> {
                 val selected = selectionManager.selectedEntities
