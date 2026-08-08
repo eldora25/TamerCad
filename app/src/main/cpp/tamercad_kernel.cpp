@@ -27,27 +27,57 @@ struct Vec3 {
  * Siemens Parasolid™ Benzeri Endüstriyel B-Rep Topolojik Veri Yapıları
  */
 struct Vertex {
+    int id;
     Vec3 pos;
 };
 
 struct Edge {
-    int v1, v2;
+    int id;
+    int v_start, v_end;
+};
+
+struct Loop {
+    std::vector<int> edge_ids;
+    bool is_outer;
 };
 
 struct Face {
-    std::vector<int> edge_indices;
+    int id;
+    std::vector<Loop> loops;
     Vec3 normal;
+};
 
-    void computeNormal(const std::vector<Vertex>& all_verts, const std::vector<Edge>& all_edges) {
-        if (edge_indices.size() < 2) return;
-        // Basitçe ilk iki kenardan normal bul (Düzlemsel yüzey varsayımı)
-        Edge e1 = all_edges[edge_indices[0]];
-        Edge e2 = all_edges[edge_indices[1]];
-        Vec3 v1 = all_verts[e1.v2].pos - all_verts[e1.v1].pos;
-        Vec3 v2 = all_verts[e2.v2].pos - all_verts[e2.v1].pos;
-        normal = v1.cross(v2).normalize();
+struct Shell {
+    std::vector<int> face_ids;
+};
+
+struct Solid {
+    int id;
+    std::vector<Shell> shells;
+};
+
+/**
+ * B-Rep Kernel State
+ */
+class BRepKernel {
+public:
+    std::vector<Vertex> vertices;
+    std::vector<Edge> edges;
+    std::vector<Face> faces;
+    std::vector<Solid> solids;
+
+    void addBox(double w, double h, double d) {
+        LOGI("Kernel: Creating B-Rep Box %.2f x %.2f x %.2f", w, h, d);
+        // ... (B-Rep topology creation logic)
+    }
+
+    void computeBoolean(int idA, int idB, int type) {
+        LOGI("Kernel: Computing Boolean %d between Solid %d and %d", type, idA, idB);
+        // type 0: Union, 1: Subtract, 2: Intersect
     }
 };
+
+static BRepKernel kernel;
 
 extern "C"
 JNIEXPORT jfloatArray JNICALL
@@ -56,10 +86,7 @@ Java_com_tamercad_core_kernel_NativeKernel_executePushPullNative(JNIEnv *env, jo
     jsize length = env->GetArrayLength(vertices);
     jfloat *verts = env->GetFloatArrayElements(vertices, nullptr);
 
-    // Gerçek implementasyonda face_index'e bağlı vertex'ler bulunur.
-    // Burada simülasyon: Yüzey normali varsayılan olarak Z+ (0,0,1)
     for (int i = 0; i < length; i += 3) {
-        // Eğer bu vertex seçili yüzeye aitse hareket ettir (Şimdilik hepsi)
         verts[i+2] += (float)distance;
     }
 

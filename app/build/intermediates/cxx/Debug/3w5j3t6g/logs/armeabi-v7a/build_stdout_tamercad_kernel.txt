@@ -1,2 +1,3 @@
 ninja: Entering directory `C:\Projelerim\TamerCad-main\app\.cxx\Debug\3w5j3t6g\armeabi-v7a'
-ninja: no work to do.
+[1/2] Building CXX object CMakeFiles/tamercad_kernel.dir/tamercad_kernel.cpp.o
+[2/2] Linking CXX shared library C:\Projelerim\TamerCad-main\app\build\intermediates\cxx\Debug\3w5j3t6g\obj\armeabi-v7a\libtamercad_kernel.so

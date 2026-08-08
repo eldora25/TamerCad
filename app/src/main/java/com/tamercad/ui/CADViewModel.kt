@@ -60,6 +60,15 @@ class CADViewModel : ViewModel() {
     var saveStatus by mutableStateOf("Saved") // "Saved", "Saving...", "Unsaved changes"
     var isPerspective by mutableStateOf(false)
     
+    // Sketch Mode State
+    var isSketchMode by mutableStateOf(false)
+    var selectedSketchPlane by mutableStateOf<String?>(null) // "XY", "XZ", "YZ"
+    var showPlaneSelector by mutableStateOf(false)
+    
+    // Live Preview State
+    var previewGeometry by mutableStateOf<IGeometry?>(null)
+    var activeInference by mutableStateOf<String?>(null) // "H", "V", "Parallel", etc.
+    
     // Dialog States
     var showRenameDialog by mutableStateOf<Component3D?>(null)
     var renameInput by mutableStateOf("")
@@ -417,9 +426,12 @@ class CADViewModel : ViewModel() {
             triggerUpdate()
         } else if (currentMode == CadMode.SMART_SKETCH) {
             val pt = screenToWorld(position.x, position.y, screenWidth, screenHeight)
+            
             if (pencilDetector.checkDwellCondition()) {
                 val straightened = PredictiveSketchEngine.straighten(rawStroke.first(), pt)
                 rawStroke = listOf(rawStroke.first(), straightened.endPoint)
+                previewGeometry = Line(rawStroke.first(), straightened.endPoint)
+                activeInference = if (abs(straightened.endPoint.y - rawStroke.first().y) < 0.1) "H" else "V"
             } else {
                 val geom = selectionManager.firstOrNull()
                 if (dragHandle in 0..1 && geom is Line) {
@@ -432,7 +444,21 @@ class CADViewModel : ViewModel() {
                     allGeoms.forEach { activeSketch.addGeometry(it) }; selectionManager.select(newLine)
                 } else {
                     val snap = SnapEngine.snapPoint(pt, rawStroke.firstOrNull(), activeSketch.getGeometries().filterIsInstance<Line>(), zoom)
-                    currentSnapType = snap.type; rawStroke = rawStroke + snap.point
+                    currentSnapType = snap.type
+                    rawStroke = rawStroke + snap.point
+                    
+                    // Live Inference during drawing
+                    if (rawStroke.size > 2) {
+                        previewGeometry = Line(rawStroke.first(), snap.point)
+                        activeInference = when(snap.type) {
+                            SnapType.HORIZONTAL -> "H"
+                            SnapType.VERTICAL -> "V"
+                            SnapType.PARALLEL -> "//"
+                            SnapType.PERPENDICULAR -> "T"
+                            SnapType.TANGENT -> "O"
+                            else -> null
+                        }
+                    }
                 }
             }
             triggerUpdate()
@@ -443,6 +469,8 @@ class CADViewModel : ViewModel() {
 
     fun onSketchDragEnd(context: Context) {
         activeManipulatorAxis = null
+        previewGeometry = null
+        activeInference = null
         when (currentMode) {
             CadMode.TRIM -> { rawStroke = emptyList(); currentMode = CadMode.SMART_SKETCH; triggerUpdate() }
             CadMode.SMART_SKETCH -> {
@@ -586,6 +614,36 @@ class CADViewModel : ViewModel() {
         panX = 0f
         panY = 0f
         zoom = 1.5f
+        triggerUpdate()
+    }
+
+    fun startSketchFlow() {
+        showPlaneSelector = true
+    }
+
+    fun enterSketchMode(plane: String) {
+        selectedSketchPlane = plane
+        isSketchMode = true
+        showPlaneSelector = false
+        currentMode = CadMode.SMART_SKETCH
+        activeCategory = ToolbarCategory.SKETCH // Switch to sketch toolbar
+        
+        // Align camera to plane
+        when(plane) {
+            "XY" -> { cameraPitch = 0f; cameraYaw = 0f }
+            "XZ" -> { cameraPitch = 1.57f; cameraYaw = 0f }
+            "YZ" -> { cameraPitch = 0f; cameraYaw = 1.57f }
+        }
+        triggerUpdate()
+    }
+
+    fun exitSketchMode(commit: Boolean) {
+        if (!commit) {
+            // TODO: Rollback changes?
+        }
+        isSketchMode = false
+        selectedSketchPlane = null
+        currentMode = CadMode.NAVIGATE
         triggerUpdate()
     }
 

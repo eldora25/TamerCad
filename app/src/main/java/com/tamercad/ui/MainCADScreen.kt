@@ -21,6 +21,8 @@ import com.tamercad.ui.toolbar.CADSideToolbar
 import com.tamercad.ui.toolbar.ToolbarCategory
 import com.tamercad.ui.toolbar.CategoryPanel
 import com.tamercad.ui.selection.SelectionFilterPanel
+import com.tamercad.ui.sketch.PlaneSelector
+import com.tamercad.ui.modeling.ExtrudePanel
 import com.tamercad.ui.viewport.CADViewport
 import com.tamercad.ui.contextual.CADContextToolbar
 import com.tamercad.ui.contextual.SelectionType
@@ -88,9 +90,11 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
             ) {
                 CADSideToolbar(
                     activeCategory = viewModel.activeCategory,
+                    isSketchMode = viewModel.isSketchMode,
                     onCategoryClick = { cat -> 
                         viewModel.activeCategory = if (viewModel.activeCategory == cat) ToolbarCategory.NONE else cat
-                    }
+                    },
+                    onExitSketch = { commit -> viewModel.exitSketchMode(commit) }
                 )
             }
 
@@ -125,7 +129,11 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
                 CADContextToolbar(
                     viewModel = viewModel,
                     onCommandClick = { cmd -> 
-                        viewModel.runCommand(cmd, context)
+                        if (cmd == "sketch") {
+                            viewModel.startSketchFlow()
+                        } else {
+                            viewModel.runCommand(cmd, context)
+                        }
                     }
                 )
             }
@@ -160,6 +168,26 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
 
             // DİALOG KATMANI
             DialogLayer(viewModel)
+
+            // EXTRUDE OVERLAY
+            if (viewModel.currentMode == CadMode.EXTRUDE) {
+                Box(modifier = Modifier.align(Alignment.TopEnd).padding(top = 100.dp, end = 24.dp)) {
+                    ExtrudePanel(
+                        distance = viewModel.dynamicExtrudeHeight.toDouble(),
+                        onDistanceChange = { v -> viewModel.dynamicExtrudeHeight = v.toFloatOrNull() ?: 0f },
+                        onAccept = { viewModel.onSketchDragEnd(context) }, // Reuse for commit
+                        onCancel = { viewModel.currentMode = CadMode.SMART_SKETCH; viewModel.dynamicExtrudeHeight = 0f }
+                    )
+                }
+            }
+
+            // PLANE SELECTOR OVERLAY
+            if (viewModel.showPlaneSelector) {
+                PlaneSelector(
+                    onPlaneSelected = { plane -> viewModel.enterSketchMode(plane) },
+                    onCancel = { viewModel.showPlaneSelector = false }
+                )
+            }
         }
     }
 }

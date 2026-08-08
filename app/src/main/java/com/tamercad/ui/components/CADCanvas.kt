@@ -302,6 +302,29 @@ fun CADCanvas(viewModel: CADViewModel) {
             drawPath(path, color = strokeColor, style = Stroke(width = 4f * viewModel.zoom))
         }
 
+        // --- SKETCH PREVIEW (Stylus Drawing) ---
+        viewModel.previewGeometry?.let { geom ->
+            when (geom) {
+                is Line -> {
+                    drawLine(
+                        color = TamerCadColors.Primary.copy(alpha = 0.8f),
+                        start = viewModel.worldToScreen(geom.startPoint, screenWidth, screenHeight),
+                        end = viewModel.worldToScreen(geom.endPoint, screenWidth, screenHeight),
+                        strokeWidth = 3f * viewModel.zoom
+                    )
+                }
+            }
+        }
+
+        // --- SMART INFERENCE ---
+        viewModel.activeInference?.let { inf ->
+            // Draw a badge or line indicating the inference
+            val lastPt = if (viewModel.rawStroke.isNotEmpty()) viewModel.worldToScreen(viewModel.rawStroke.last(), screenWidth, screenHeight) else null
+            lastPt?.let { pos ->
+                drawBadge(this, inf, Offset(pos.x + 30f, pos.y - 30f), viewModel.zoom)
+            }
+        }
+
         // --- MANIPULATOR (GIZMO) ---
         val selected = viewModel.selectionManager.firstOrNull()
         if (selected is com.tamercad.core.geometry.Face3D) {

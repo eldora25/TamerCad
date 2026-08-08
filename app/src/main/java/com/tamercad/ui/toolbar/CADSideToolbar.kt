@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -24,12 +25,14 @@ import com.tamercad.ui.theme.TamerCadDimensions
 @Composable
 fun CADSideToolbar(
     activeCategory: ToolbarCategory,
-    onCategoryClick: (ToolbarCategory) -> Unit
+    isSketchMode: Boolean = false,
+    onCategoryClick: (ToolbarCategory) -> Unit,
+    onExitSketch: (Boolean) -> Unit
 ) {
     Column(
         modifier = Modifier
             .padding(start = TamerCadDimensions.SpacingMedium, top = 80.dp)
-            .width(64.dp) // Daha dar bir rail
+            .width(64.dp) 
             .wrapContentHeight()
             .clip(RoundedCornerShape(TamerCadDimensions.CornerLarge))
             .background(TamerCadColors.Surface)
@@ -39,6 +42,12 @@ fun CADSideToolbar(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        if (isSketchMode) {
+            ToolRailItem(IconRegistry.Save, "Done", false, TamerCadColors.Success) { onExitSketch(true) }
+            ToolRailItem(IconRegistry.Delete, "Cancel", false, TamerCadColors.Error) { onExitSketch(false) }
+            HorizontalDivider(modifier = Modifier.width(32.dp), color = TamerCadColors.PanelBorder)
+        }
+        
         ToolRailItem(IconRegistry.Select, "Select", activeCategory == ToolbarCategory.SELECT) { onCategoryClick(ToolbarCategory.SELECT) }
         ToolRailItem(IconRegistry.Sketch, "Sketch", activeCategory == ToolbarCategory.SKETCH) { onCategoryClick(ToolbarCategory.SKETCH) }
         ToolRailItem(IconRegistry.Create, "Create", activeCategory == ToolbarCategory.CREATE) { onCategoryClick(ToolbarCategory.CREATE) }
@@ -54,6 +63,7 @@ private fun ToolRailItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     isSelected: Boolean,
+    tint: Color? = null,
     onClick: () -> Unit
 ) {
     Box(
@@ -67,7 +77,7 @@ private fun ToolRailItem(
         Icon(
             icon,
             contentDescription = label,
-            tint = if (isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary,
+            tint = tint ?: (if (isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary),
             modifier = Modifier.size(24.dp)
         )
     }
