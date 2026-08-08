@@ -37,10 +37,11 @@ fun CADTopBar(
     onAR: () -> Unit,
     onBack: () -> Unit
 ) {
-    // Branding and version info combined as requested
+    // Exact Branding from requirement
     val branding = "TamerCadv01.$buildNo"
     val copyright = "Tamer YAMAK©"
-    val displayTitle = if (designName.isNotEmpty()) "$branding $copyright - $designName" else "$branding $copyright"
+    
+    val fullTitle = if (designName.isNotEmpty()) "$branding $copyright - $designName" else "$branding $copyright"
 
     Row(
         modifier = Modifier
@@ -64,7 +65,7 @@ fun CADTopBar(
             }
             Column(modifier = Modifier.padding(start = TamerCadDimensions.SpacingSmall, end = TamerCadDimensions.SpacingMedium)) {
                 Text(
-                    text = displayTitle,
+                    text = fullTitle,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,

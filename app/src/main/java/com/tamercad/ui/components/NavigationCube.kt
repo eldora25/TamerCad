@@ -88,6 +88,15 @@ fun NavigationCube(
                     .fillMaxSize()
                     .pointerInput(cameraPitch, cameraYaw) {
                         detectTapGestures(onTap = { offset ->
+                            val w = size.width; val h = size.height
+                            
+                            // Corners (Isometric Views)
+                            if (offset.x < w*0.25f && offset.y < h*0.25f) { onViewChange(0.6f, 0.6f); return@detectTapGestures }
+                            if (offset.x > w*0.75f && offset.y < h*0.25f) { onViewChange(0.6f, -0.6f); return@detectTapGestures }
+                            if (offset.x < w*0.25f && offset.y > h*0.75f) { onViewChange(-0.6f, 0.6f); return@detectTapGestures }
+                            if (offset.x > w*0.75f && offset.y > h*0.75f) { onViewChange(-0.6f, -0.6f); return@detectTapGestures }
+
+                            // Faces
                             val projectedHitFaces = navFaces.map { face ->
                                 val tNormal = projectNav3DTo2D(face.normal, cameraPitch, cameraYaw)
                                 val tVertices = face.vertices.map { v -> 
@@ -102,15 +111,6 @@ fun NavigationCube(
                                     onViewChange(face.pitch, face.yaw)
                                     return@detectTapGestures
                                 }
-                            }
-                            
-                            // Corners (Isometric Views)
-                            val w = size.width; val h = size.height
-                            when {
-                                offset.x < w*0.3f && offset.y < h*0.3f -> onViewChange(0.6f, 0.6f)
-                                offset.x > w*0.7f && offset.y < h*0.3f -> onViewChange(0.6f, -0.6f)
-                                offset.x < w*0.3f && offset.y > h*0.7f -> onViewChange(-0.6f, 0.6f)
-                                offset.x > w*0.7f && offset.y > h*0.7f -> onViewChange(-0.6f, -0.6f)
                             }
                         })
                     }

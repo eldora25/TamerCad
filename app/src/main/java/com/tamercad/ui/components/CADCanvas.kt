@@ -41,6 +41,8 @@ import com.tamercad.ui.viewport.Manipulator3D
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 
+import com.tamercad.ui.interaction.InteractionState
+
 /**
  * TamerCAD Akıllı Çizim Alanı.
  */
@@ -52,7 +54,7 @@ fun CADCanvas(viewModel: CADViewModel) {
     Canvas(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (viewModel.currentMode == CadMode.NAVIGATE) TamerCadColors.BgColor else TamerCadColors.SketchBgColor)
+            .background(if (viewModel.isSketchMode) TamerCadColors.SketchBgColor else TamerCadColors.BgColor)
             // HOVER TESPİTİ
             .pointerInput(Unit) {
                 awaitPointerEventScope {
@@ -70,15 +72,36 @@ fun CADCanvas(viewModel: CADViewModel) {
                 viewModel.isStylusInUse = stylusEvent.type == PointerType.Stylus
                 viewModel.pencilDetector.processMotionEvent(motionEvent)
                 
+                // Interaction State Machine Routing
                 if (viewModel.isStylusInUse) {
-                    if (viewModel.currentMode == CadMode.NAVIGATE) viewModel.currentMode = CadMode.SMART_SKETCH
+                    when (motionEvent.action) {
+                        android.view.MotionEvent.ACTION_DOWN -> {
+                            viewModel.interactionState = InteractionState.SELECTING
+                        }
+                        android.view.MotionEvent.ACTION_MOVE -> {
+                            if (viewModel.interactionState == InteractionState.SELECTING) {
+                                viewModel.interactionState = if (viewModel.isSketchMode) InteractionState.SKETCHING else InteractionState.DRAGGING
+                            }
+                        }
+                        android.view.MotionEvent.ACTION_UP -> {
+                            viewModel.interactionState = InteractionState.IDLE
+                        }
+                    }
+                } else {
+                    // Finger interaction defaults to navigation if not interacting with UI
+                    if (motionEvent.action == android.view.MotionEvent.ACTION_DOWN) {
+                        viewModel.interactionState = InteractionState.CAMERA_NAVIGATION
+                    } else if (motionEvent.action == android.view.MotionEvent.ACTION_UP) {
+                        viewModel.interactionState = InteractionState.IDLE
+                    }
                 }
+                
                 false
             }
             // 1. NAVİGASYON (Sadece Parmak / Touch)
             .pointerInput(Unit) {
                 detectTransformGestures { _, pan, zoomDelta, _ ->
-                    if (!viewModel.isStylusInUse) {
+                    if (!viewModel.isStylusInUse && viewModel.interactionState == InteractionState.CAMERA_NAVIGATION) {
                         viewModel.panX += pan.x
                         viewModel.panY += pan.y
                         viewModel.zoom *= zoomDelta
@@ -87,7 +110,7 @@ fun CADCanvas(viewModel: CADViewModel) {
                 }
             }
             // 2. ÜRETİM (Sadece Kalem / Stylus)
-            .pointerInput(viewModel.currentMode) {
+            .pointerInput(viewModel.isSketchMode, viewModel.interactionState) {
                 detectTapGestures(
                     onTap = { offset -> 
                         if (viewModel.isStylusInUse) {
@@ -101,7 +124,7 @@ fun CADCanvas(viewModel: CADViewModel) {
                     }
                 )
             }
-            .pointerInput(viewModel.currentMode) {
+            .pointerInput(viewModel.isSketchMode, viewModel.interactionState) {
                 detectDragGestures(
                     onDragStart = { offset -> 
                         if (viewModel.isStylusInUse) {

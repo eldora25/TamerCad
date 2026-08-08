@@ -44,9 +44,12 @@ import com.tamercad.ui.state.SettingsState
 
 import com.tamercad.core.document.CADDocument
 
+import com.tamercad.ui.interaction.InteractionState
+
 class CADViewModel : ViewModel() {
     // UI State
     var activeCategory by mutableStateOf(ToolbarCategory.INSPECT)
+    var interactionState by mutableStateOf(InteractionState.IDLE)
     
     val settings = SettingsState()
     val selectionManager = SelectionManager()
@@ -105,8 +108,7 @@ class CADViewModel : ViewModel() {
     var currentMeasurement by mutableStateOf<MeasurementEngine.MeasurementResult?>(null)
 
     /**
-     * 3D Nesne Seçimi (Ray-Casting)
-     * Ekranda dokunulan noktadan 3D dünyaya bir ışın (Ray) gönderir ve kesişen en yakın nesneyi döner.
+     * 3D Nesne Seçimi (Ray-Casting) - Gelişmiş Hiyerarşik Öncelik
      */
     fun pick3DEntity(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): IGeometry? {
         val tapPos = Offset(screenX, screenY)
@@ -120,20 +122,33 @@ class CADViewModel : ViewModel() {
             }
         }
 
-        // 2. Katı Model Geometrileri (Edge ve Face tespiti)
+        // 2. Katı Model Geometrileri
         var closestSolid: Solid3D? = null
         var closestFace: Face3D? = null
         var closestEdge: Line? = null
+        
         var minDepth = Double.MAX_VALUE
         var minEdgeDist = 25.0 
-
+        var minVertexDist = 30.0
+        
         mainAssembly.components.forEach { comp ->
             if (!comp.isVisible) return@forEach
             
             comp.features.forEach { feature ->
                 val solid = (feature as? ExtrudeFeature)?.generatedGeometry ?: (feature as? RevolveFeature)?.generatedGeometry
                 
-                // Filter: showEdges
+                // --- 1. VERTEX DETECTION (Highest Priority) ---
+                if (selectionManager.showVertices) {
+                    solid?.faces?.flatMap { it.vertices }?.forEach { v ->
+                        val sv = worldToScreen(v.transform(comp.transform), screenWidth, screenHeight)
+                        val d = sqrt((sv.x - tapPos.x).pow(2) + (sv.y - tapPos.y).pow(2))
+                        if (d < minVertexDist) {
+                            minVertexDist = d.toDouble()
+                        }
+                    }
+                }
+
+                // --- 2. EDGE DETECTION (Medium Priority) ---
                 if (selectionManager.showEdges) {
                     solid?.lines?.forEach { line ->
                         val p1 = worldToScreen(line.startPoint.transform(comp.transform), screenWidth, screenHeight)
@@ -147,7 +162,7 @@ class CADViewModel : ViewModel() {
                     }
                 }
 
-                // Filter: showFaces & showBodies
+                // --- 3. FACE & BODY DETECTION (Lower Priority) ---
                 if (selectionManager.showFaces || selectionManager.showBodies) {
                     solid?.faces?.forEach { face ->
                         val tVertices = face.vertices.map { project3DTo2D(it.transform(comp.transform)) }
@@ -167,11 +182,14 @@ class CADViewModel : ViewModel() {
             }
         }
         
-        // SELECTION PRIORITY
-        if (selectionManager.showEdges && closestEdge != null && minEdgeDist < 12.0) return closestEdge
-        
+        // Final Decision based on Priority
+        if (selectionManager.showEdges && minEdgeDist < 12.0 && closestEdge != null) {
+            return closestEdge
+        }
+
         val currentSelection = selectionManager.selectedEntities.firstOrNull()
         if (closestSolid != null) {
+            // Drill-down: If body is already selected, select face.
             if (selectionManager.showFaces && (currentSelection == closestSolid || !selectionManager.showBodies) && closestFace != null) {
                 return closestFace
             }
@@ -680,25 +698,35 @@ class CADViewModel : ViewModel() {
         when (cmdId) {
             "sketch" -> startSketchFlow()
             "line" -> currentMode = CadMode.SKETCH_LINE_MANUAL
-            "circle" -> currentMode = CadMode.SMART_SKETCH // Or specific circle mode
+            "circle" -> currentMode = CadMode.SMART_SKETCH 
             "extrude" -> currentMode = CadMode.EXTRUDE
             "fillet" -> currentMode = CadMode.FILLET
             "mate_coincident" -> {
                 val selected = selectionManager.selectedEntities
                 if (selected.size >= 2) {
-                    val solidA = selected[0] as? Solid3D
-                    val solidB = selected[1] as? Solid3D
-                    val compA = mainAssembly.components.find { c -> c.features.any { (it as? ExtrudeFeature)?.generatedGeometry == solidA } }
-                    val compB = mainAssembly.components.find { c -> c.features.any { (it as? ExtrudeFeature)?.generatedGeometry == solidB } }
-                    if (compA != null && compB != null) {
-                        mainAssembly.addMate(com.tamercad.core.assembly.CoincidentMate(compA, compB))
-                        Toast.makeText(context, "Coincident Mate Applied", Toast.LENGTH_SHORT).show()
+                    val faceA = selected[0] as? Face3D
+                    val faceB = selected[1] as? Face3D
+                    val solidA = if (faceA != null) null else selected[0] as? Solid3D
+                    val solidB = if (faceB != null) null else selected[1] as? Solid3D
+                    
+                    val compA = mainAssembly.components.find { c -> 
+                        c.features.any { (it as? ExtrudeFeature)?.generatedGeometry == (solidA ?: (selected[0] as? Solid3D)) } ||
+                        c.features.any { (it as? ExtrudeFeature)?.generatedGeometry?.faces?.contains(faceA) == true }
+                    }
+                    val compB = mainAssembly.components.find { c -> 
+                        c.features.any { (it as? ExtrudeFeature)?.generatedGeometry == (solidB ?: (selected[1] as? Solid3D)) } ||
+                        c.features.any { (it as? ExtrudeFeature)?.generatedGeometry?.faces?.contains(faceB) == true }
+                    }
+                    
+                    if (compA != null && compB != null && compA != compB) {
+                        mainAssembly.addMate(com.tamercad.core.assembly.CoincidentMate(compA, compB, faceA, faceB))
+                        Toast.makeText(context, "Mate Applied!", Toast.LENGTH_SHORT).show()
+                        selectionManager.clear()
                     }
                 }
             }
             "delete" -> {
                 selectionManager.selectedEntities.forEach { entity ->
-                    // Remove from active sketch or assembly
                     if (activeSketch.getGeometries().contains(entity)) {
                         activeSketch.removeGeometry(entity)
                     }

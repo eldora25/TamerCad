@@ -12,18 +12,39 @@ import java.util.UUID
 class CoincidentMate(
     override val componentA: Component3D,
     override val componentB: Component3D,
+    val faceA: com.tamercad.core.geometry.Face3D? = null,
+    val faceB: com.tamercad.core.geometry.Face3D? = null,
     override val id: String = UUID.randomUUID().toString()
 ) : IMate {
     
     override val type: String = "CoincidentMate"
 
     override fun solve(): Boolean {
-        // A bileşeninin dünya koordinatlarındaki merkezini (Orijin) bul
-        val centerA = Point3(0.0, 0.0, 0.0).transform(componentA.transform)
-        
-        // B bileşeninin merkezini doğrudan A'nın merkezine eşitleyecek öteleme (Translation) matrisini uygula
-        // Bu işlem B'yi uzayda A'nın tam üzerine "yapıştırır".
-        componentB.transform = Matrix4.translation(centerA.x, centerA.y, centerA.z)
+        // A bileşeninin dünya koordinatlarındaki hedef noktasını bul (Varsayılan Orijin)
+        val worldTarget = if (faceA != null) {
+            val avg = faceA.vertices.map { it.transform(componentA.transform) }
+            Point3(avg.map { it.x }.average(), avg.map { it.y }.average(), avg.map { it.z }.average())
+        } else {
+            Point3(0.0, 0.0, 0.0).transform(componentA.transform)
+        }
+
+        // B bileşeninin taşınacak noktasını bul
+        val bSource = if (faceB != null) {
+            val avg = faceB.vertices.map { it.transform(componentB.transform) }
+            Point3(avg.map { it.x }.average(), avg.map { it.y }.average(), avg.map { it.z }.average())
+        } else {
+            Point3(0.0, 0.0, 0.0).transform(componentB.transform)
+        }
+
+        // B'yi A'ya yapıştır (Translation only for simple coincident)
+        val dx = worldTarget.x - bSource.x
+        val dy = worldTarget.y - bSource.y
+        val dz = worldTarget.z - bSource.z
+
+        componentB.tx += dx
+        componentB.ty += dy
+        componentB.tz += dz
+        componentB.updateTransform()
         
         return true
     }

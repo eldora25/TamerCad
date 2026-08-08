@@ -53,8 +53,9 @@ object SelectionContextResolver {
                 ToolDefinition("delete", "Delete", IconRegistry.Delete)
             )
             SelectionType.MULTIPLE -> listOf(
-                ToolDefinition("mate_coincident", "Coincident Mate", IconRegistry.Home),
-                ToolDefinition("mate_concentric", "Concentric Mate", IconRegistry.Revolve),
+                ToolDefinition("mate_coincident", "Coincident", IconRegistry.Home),
+                ToolDefinition("mate_concentric", "Concentric", IconRegistry.Revolve),
+                ToolDefinition("mate_parallel", "Parallel", IconRegistry.Redo),
                 ToolDefinition("measure", "Measure", IconRegistry.Measure),
                 ToolDefinition("delete", "Delete", IconRegistry.Delete)
             )
