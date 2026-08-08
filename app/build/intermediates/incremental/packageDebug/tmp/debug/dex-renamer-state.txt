@@ -1,4 +1,4 @@
-#Sat Aug 08 04:42:24 TRT 2026
+#Sat Aug 08 04:45:07 TRT 2026
 base.0=C\:\\Projelerim\\TamerCad-main\\app\\build\\intermediates\\dex\\debug\\mergeExtDexDebug\\classes.dex
 base.1=C\:\\Projelerim\\TamerCad-main\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\0\\classes.dex
 base.10=C\:\\Projelerim\\TamerCad-main\\app\\build\\intermediates\\dex\\debug\\mergeProjectDexDebug\\4\\classes.dex

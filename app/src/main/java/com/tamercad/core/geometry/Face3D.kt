@@ -3,10 +3,22 @@ package com.tamercad.core.geometry
 import com.tamercad.core.math.Point3
 import com.tamercad.core.math.Vector3
 
+import java.util.UUID
+
 /**
  * 3D uzayda katı modelin bir yüzeyini (Poligon) temsil eder.
  */
-data class Face3D(val vertices: List<Point3>) {
+data class Face3D(
+    val vertices: List<Point3>,
+    override val id: String = UUID.randomUUID().toString()
+) : IGeometry {
+
+    override val type: String = "Face3D"
+    override var isSelected: Boolean = false
+    override var isFullyDefined: Boolean = true
+    
+    // Bu yüzeyi oluşturan özelliğe (Feature) referans
+    var parentFeatureId: String? = null
     
     /**
      * Işıklandırma (Gölgelendirme) için yüzeyin dikme (Normal) vektörünü hesaplar.

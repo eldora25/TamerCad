@@ -16,6 +16,11 @@ import kotlin.math.*
  */
 object Manipulator3D {
 
+    // Axis Indicators
+    val AxisX = Color(0xFFEB5757) // Red
+    val AxisY = Color(0xFF27AE60) // Green
+    val AxisZ = Color(0xFF4A90E2) // Blue
+
     fun drawTranslationGizmo(
         drawScope: DrawScope,
         viewModel: CADViewModel,
@@ -38,11 +43,40 @@ object Manipulator3D {
         val zScreen = viewModel.worldToScreen(zEnd, screenWidth, screenHeight)
 
         // X Ok (Kırmızı)
-        drawArrow(drawScope, centerScreen, xScreen, Color.Red, zoom)
+        drawArrow(drawScope, centerScreen, xScreen, AxisX, zoom)
         // Y Ok (Yeşil)
-        drawArrow(drawScope, centerScreen, yScreen, Color.Green, zoom)
+        drawArrow(drawScope, centerScreen, yScreen, AxisY, zoom)
         // Z Ok (Mavi)
-        drawArrow(drawScope, centerScreen, zScreen, Color.Blue, zoom)
+        drawArrow(drawScope, centerScreen, zScreen, AxisZ, zoom)
+    }
+
+    /**
+     * Seçili bir yüzey için yüzey normaline paralel tek bir ok çizer.
+     */
+    fun drawFaceManipulator(
+        drawScope: DrawScope,
+        viewModel: CADViewModel,
+        face: com.tamercad.core.geometry.Face3D,
+        screenWidth: Float,
+        screenHeight: Float
+    ) {
+        val zoom = viewModel.zoom
+        val handleLength = 100.0 / zoom
+        
+        // Yüzeyin merkezini bul
+        val center = Point3(
+            face.vertices.map { it.x }.average(),
+            face.vertices.map { it.y }.average(),
+            face.vertices.map { it.z }.average()
+        )
+        
+        val normal = face.normal()
+        val endPoint = center.add(normal.multiply(handleLength))
+        
+        val startScreen = viewModel.worldToScreen(center, screenWidth, screenHeight)
+        val endScreen = viewModel.worldToScreen(endPoint, screenWidth, screenHeight)
+        
+        drawArrow(drawScope, startScreen, endScreen, Color.Cyan, zoom)
     }
 
     private fun drawArrow(drawScope: DrawScope, start: Offset, end: Offset, color: Color, zoom: Float) {
@@ -76,19 +110,30 @@ object Manipulator3D {
     fun hitTest(
         tapPos: Offset,
         viewModel: CADViewModel,
-        center: Point3,
         screenWidth: Float,
         screenHeight: Float
     ): String? {
+        val selected = viewModel.selectionManager.firstOrNull() ?: return null
         val zoom = viewModel.zoom
         val handleLength = 100.0 / zoom
         
+        if (selected is com.tamercad.core.geometry.Face3D) {
+            val center = Point3(selected.vertices.map { it.x }.average(), selected.vertices.map { it.y }.average(), selected.vertices.map { it.z }.average())
+            val normal = selected.normal()
+            val endPoint = center.add(normal.multiply(handleLength))
+            val startScreen = viewModel.worldToScreen(center, screenWidth, screenHeight)
+            val endScreen = viewModel.worldToScreen(endPoint, screenWidth, screenHeight)
+            if (isPointNearLine(tapPos, startScreen, endScreen, 40f)) return "FACE_NORMAL"
+            return null
+        }
+
+        val center = viewModel.getSelectedEntityCenter() ?: return null
         val centerScreen = viewModel.worldToScreen(center, screenWidth, screenHeight)
         
         val axes = listOf(
-            Triple("X", Point3(center.x + handleLength, center.y, center.z), Color.Red),
-            Triple("Y", Point3(center.x, center.y + handleLength, center.z), Color.Green),
-            Triple("Z", Point3(center.x, center.y, center.z + handleLength), Color.Blue)
+            Triple("X", Point3(center.x + handleLength, center.y, center.z), AxisX),
+            Triple("Y", Point3(center.x, center.y + handleLength, center.z), AxisY),
+            Triple("Z", Point3(center.x, center.y, center.z + handleLength), AxisZ)
         )
         
         for (axis in axes) {

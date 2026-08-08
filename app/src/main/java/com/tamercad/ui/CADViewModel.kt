@@ -13,6 +13,7 @@ import com.tamercad.core.geometry.IGeometry
 import com.tamercad.core.geometry.Line
 import com.tamercad.core.geometry.Circle3D
 import com.tamercad.core.geometry.Solid3D
+import com.tamercad.core.geometry.Face3D
 import com.tamercad.core.math.Point3
 import com.tamercad.core.sketch.PredictiveSketchEngine
 import com.tamercad.core.sketch.SketchFeature
@@ -89,8 +90,9 @@ class CADViewModel : ViewModel() {
         val sketchHit = activeSketch.pickGeometry(worldTap, 20.0 / zoom)
         if (sketchHit != null) return sketchHit
 
-        // 2. Katı Model Geometrileri
-        var closestHit: IGeometry? = null
+        // 2. Katı Model ve Yüzey Seçimi
+        var closestSolid: Solid3D? = null
+        var closestFace: Face3D? = null
         var minDepth = Double.MAX_VALUE
 
         mainAssembly.components.forEach { comp ->
@@ -106,14 +108,28 @@ class CADViewModel : ViewModel() {
                     if (isPointInPolygon(tapPos, screenVerts)) {
                         if (avgZ < minDepth) { 
                             minDepth = avgZ
-                            closestHit = solid
+                            closestSolid = solid
+                            closestFace = face
+                            closestFace?.parentFeatureId = feature.id
                         }
                     }
                 }
             }
         }
         
-        return closestHit
+        // --- DRILL-DOWN LOGIC ---
+        val currentSelection = selectionManager.firstOrNull()
+        
+        if (closestSolid != null) {
+            // Eğer gövde zaten seçiliyse ve bir yüzeye vurduysak, yüzeyi seç
+            if (currentSelection == closestSolid && closestFace != null) {
+                return closestFace
+            }
+            // Aksi takdirde gövdeyi seç
+            return closestSolid
+        }
+        
+        return null
     }
 
     // Materials
@@ -251,12 +267,10 @@ class CADViewModel : ViewModel() {
 
     fun onSketchDragStart(offset: Offset, screenWidth: Float, screenHeight: Float, context: Context) {
         // 0. Manipülatör Hiti Kontrolü
-        getSelectedEntityCenter()?.let { center ->
-            val axis = Manipulator3D.hitTest(offset, this, center, screenWidth, screenHeight)
-            if (axis != null) {
-                activeManipulatorAxis = axis
-                return
-            }
+        val axis = Manipulator3D.hitTest(offset, this, screenWidth, screenHeight)
+        if (axis != null) {
+            activeManipulatorAxis = axis
+            return
         }
 
         val rawPoint = screenToWorld(offset.x, offset.y, screenWidth, screenHeight)
@@ -282,6 +296,17 @@ class CADViewModel : ViewModel() {
             val delta = dragAmount.y * -0.5 / zoom
             val selected = selectionManager.firstOrNull()
             
+            if (activeManipulatorAxis == "FACE_NORMAL" && selected is Face3D) {
+                // Direct Modeling: Yüzeyi normali yönünde çekiştir
+                val feat = mainAssembly.components.flatMap { it.features }.find { it.id == selected.parentFeatureId }
+                if (feat is ExtrudeFeature) {
+                    feat.depth += delta
+                    feat.evaluate()
+                    triggerUpdate()
+                }
+                return
+            }
+
             // Seçili nesneyi içeren bileşeni bul
             val component = mainAssembly.components.find { comp ->
                 comp.features.any { feat ->
