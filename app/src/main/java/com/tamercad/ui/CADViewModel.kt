@@ -37,6 +37,7 @@ class CADViewModel : ViewModel() {
     val selectionManager = SelectionManager()
     val stylusInputManager = StylusInputManager()
     var isStylusInUse by mutableStateOf(false)
+    var pointerCount by mutableIntStateOf(0)
     
     // Core Document
     val document = CADDocument()
