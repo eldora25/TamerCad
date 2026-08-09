@@ -11,9 +11,9 @@
       "type": "SINGLE",
       "filters": [],
       "attributes": [],
-      "versionCode": 87,
-      "versionName": "0.1.87-debug",
-      "outputFile": "TamerCad_v0.1.87.apk"
+      "versionCode": 90,
+      "versionName": "0.1.90-debug",
+      "outputFile": "TamerCad_v0.1.90.apk"
     }
   ],
   "elementType": "File",

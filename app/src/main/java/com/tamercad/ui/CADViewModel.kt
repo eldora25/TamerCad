@@ -125,11 +125,12 @@ class CADViewModel : ViewModel() {
     // Materials
     val componentMaterials = mutableStateMapOf<Component3D, RenderMaterial>()
 
-    // Authoritative Coordinate Pipeline (PHASE 2.0)
+    // Authoritative Coordinate Pipeline (PHASE 2.0.1 FIX)
     fun getPickRay(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): Ray3 {
         val centerX = screenWidth / 2f
         val centerY = screenHeight / 2f
         
+        // Convert screen pixels to Viewport Space (centered, Y-up)
         val vx = (screenX - panX - centerX) / zoom.toDouble()
         val vy = (centerY + panY - screenY) / zoom.toDouble()
         
@@ -138,13 +139,17 @@ class CADViewModel : ViewModel() {
         val cosP = cos(cameraPitch.toDouble())
         val sinP = sin(cameraPitch.toDouble())
         
+        // Ray origin at vz=0 in View Space, transformed to World Space
+        // Using R^T where R is the view matrix from project3DTo2D
         val rayOrigin = Vec3(
-            vx * cosY + vy * (sinP * sinY),
+            vx * cosY - vy * sinP * sinY,
             vy * cosP,
-            vx * (-sinY) + vy * (-sinP * cosY)
+            -vx * sinY - vy * sinP * cosY
         )
         
-        val rayDir = Vec3(-cosP * sinY, sinP, cosP * cosY)
+        // Ray direction is the View Space Z-axis transformed to World Space
+        // (The third row of the R matrix)
+        val rayDir = Vec3(sinY * cosP, sinP, cosY * cosP)
         
         return Ray3(rayOrigin, rayDir)
     }
@@ -188,7 +193,7 @@ class CADViewModel : ViewModel() {
 
     // --- INTERACTION HANDLERS ---
 
-    fun onSketchDragStart(offset: Offset, screenWidth: Float, screenHeight: Float, context: Context) {
+    fun onSketchDragStart(offset: Offset, screenWidth: Float, screenHeight: Float, context: Context?) {
         val sketchPt = screenToSketchPoint(offset.x, offset.y, screenWidth, screenHeight) ?: return
         
         // Stabilize snap search on plane
@@ -199,11 +204,12 @@ class CADViewModel : ViewModel() {
         val localSnapPt = activeSketchPlane.worldToLocal(Vec3.fromPoint3(snapResult.point))
         
         startSnap = snapResult
+        currentSnap = snapResult // Initialize currentSnap on start!
         rawSketchPoints = listOf(localSnapPt)
         interactionState = if (isSketchMode) InteractionState.STYLUS_DRAWING else InteractionState.STYLUS_MANIPULATING
     }
 
-    fun onSketchDrag(position: Offset, dragAmount: Offset, screenWidth: Float, screenHeight: Float, context: Context) {
+    fun onSketchDrag(position: Offset, dragAmount: Offset, screenWidth: Float, screenHeight: Float, context: Context?) {
         val sketchPt = screenToSketchPoint(position.x, position.y, screenWidth, screenHeight) ?: return
         val worldPt = activeSketchPlane.localToWorld(sketchPt).toPoint3()
         
@@ -235,7 +241,7 @@ class CADViewModel : ViewModel() {
         triggerUpdate()
     }
 
-    fun onSketchDragEnd(context: Context) {
+    fun onSketchDragEnd(context: Context?) {
         val sketchPt = currentSnap?.let { activeSketchPlane.worldToLocal(Vec3.fromPoint3(it.point)) } ?: return
         
         if (interactionState == InteractionState.STYLUS_DRAWING && rawSketchPoints.isNotEmpty()) {
@@ -273,7 +279,12 @@ class CADViewModel : ViewModel() {
                 else -> {}
             }
         }
-        previewGeometry = null; rawSketchPoints = emptyList(); interactionState = InteractionState.IDLE; triggerUpdate()
+        previewGeometry = null
+        rawSketchPoints = emptyList()
+        currentSnap = null // EXPLICIT CLEAR
+        startSnap = null   // EXPLICIT CLEAR
+        interactionState = InteractionState.IDLE
+        triggerUpdate()
     }
 
     fun pick3DEntity(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): IGeometry? {
