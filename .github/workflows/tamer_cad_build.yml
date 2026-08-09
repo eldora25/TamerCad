@@ -42,14 +42,18 @@ jobs:
           BACKUP_DIR="source_backup_${BUILD_NO}_${COMMIT_NO}"
           mkdir -p $BACKUP_DIR
           
-          # Find all source files and copy them with the requested naming convention
-          # Target only app/src/main and core to avoid bloat
-          find app/src core -type f \( -name "*.kt" -o -name "*.java" -o -name "*.xml" -o -name "*.cpp" -o -name "*.h" -o -name "*.kts" \) | while read file; do
-            # Get path relative to project root
+          # Find all relevant source files
+          # Including build scripts and properties
+          find . -maxdepth 3 -name "*.properties" -o -name "*.kts" -o -name "*.pro" | grep -v ".gradle" | while read file; do
             rel_path=$(echo "$file" | sed 's|^./||')
-            # Create subdirectories in backup dir
             mkdir -p "$BACKUP_DIR/$(dirname "$rel_path")"
-            # Filename.extension-buildno_commitno
+            new_name="$(basename "$file")-${BUILD_NO}_${COMMIT_NO}"
+            cp "$file" "$BACKUP_DIR/$(dirname "$rel_path")/$new_name"
+          done
+
+          find app/src core -type f \( -name "*.kt" -o -name "*.java" -o -name "*.xml" -o -name "*.cpp" -o -name "*.h" -o -name "*.kts" \) | while read file; do
+            rel_path=$(echo "$file" | sed 's|^./||')
+            mkdir -p "$BACKUP_DIR/$(dirname "$rel_path")"
             new_name="$(basename "$file")-${BUILD_NO}_${COMMIT_NO}"
             cp "$file" "$BACKUP_DIR/$(dirname "$rel_path")/$new_name"
           done
