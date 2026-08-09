@@ -114,13 +114,12 @@ android {
     }
 
     kotlinOptions {
-
         jvmTarget = "21"
+        freeCompilerArgs += listOf("-Xjvm-default=all")
+    }
 
-        freeCompilerArgs += listOf(
-
-            "-Xjvm-default=all"
-        )
+    kotlin {
+        jvmToolchain(21)
     }
 
     packaging {

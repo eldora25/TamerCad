@@ -1,52 +1,37 @@
-# TAMERCAD SKETCH DEVELOPMENT — STEP 10 & 11
+# TamerCAD: Local & Remote Armored Build System
 
-This plan implements full Snap/Inference integration across all sketch tools and provides a rich live feedback system during drawing, mirroring professional CAD workstations.
+This plan establishes a robust CI/CD pipeline and local build environment to ensure consistent APK production and source code backups.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Unified Snapping**: All sketch modes (Line, Circle, Rectangle, etc.) now use a centralized snap pipeline. This means "Midpoint" or "Parallel" snap works regardless of which tool is selected.
-> **Transient Preview**: Preview geometry is drawn on a separate overlay and only converted to real CAD entities when the stylus is released.
-> **Visual Language**: Dashed inference lines will show geometric relations (H/V alignment, Parallelism) while drawing.
+> **Source Backup Strategy**: The custom backup format (`dosyaadi.uzantisi-buildno_commitno`) will be applied during the GitHub Actions run to create a specialized zip artifact.
+> **JDK Alignment**: Local build requires JDK 21/22. I will attempt to configure the project to use a local JDK path if available, or rely on the GitHub Actions for the definitive "clean" build.
 
 ## Proposed Changes
 
-### 1. Unified Sketch Snapping (Step 10)
-- **[MODIFY] ui/CADViewModel.kt**:
-    - Refactor `onSketchDragStart` and `onSketchDrag` to apply `SnapEngine.snapPoint` to all `SKETCH_*` modes.
-    - Route snapped coordinates to `rawStroke` and `previewGeometry`.
-    - Ensure `interactionState` is set to `SKETCHING` during any sketch tool operation.
+### 1. GitHub Actions Workflow
+- **[NEW] .github/workflows/tamer_cad_build.yml**:
+    - Build APK using JDK 21.
+    - Custom Shell Script to rename all source files and zip them.
+    - Upload APK and Zip as artifacts.
 
-### 2. Live Visual Feedback (Step 11)
-- **[MODIFY] ui/components/CADCanvas.kt**:
-    - **Inference Lines**: Render dashed lines connecting the cursor to snap reference points.
-    - **Live Dimensions**: Render a floating label near the cursor showing the current length (Line) or radius (Circle).
-    - **State Indicators**: Explicitly show the active tool icon near the cursor if needed.
-    - **Profile Highlight**: Use a subtle fill for closed loops detected by `ProfileValidator`.
+### 2. Local Environment Fix
+- **[MODIFY] root/build.gradle.kts**: Ensure project-wide Java version compatibility.
+- **[RESTORE] gradle/wrapper/gradle-wrapper.jar**: Ensure the wrapper is complete for isolated execution.
 
-### 3. Sketch Tool Preview Logic
-- **[MODIFY] ui/CADViewModel.kt**:
-    - Update `previewGeometry` to match the specific tool:
-        - `SKETCH_LINE_MANUAL` -> Line
-        - `SKETCH_RECT_DIAG` -> Rect (4 lines)
-        - `SKETCH_POLYGON` -> Circle + Polygon proxy
-        - `CIRCLE` -> Circle3D
+### 3. Versioning System
+- Ensure `incrementVersion` task runs on every successful build to keep local and remote build numbers synchronized via `version.properties`.
 
-## Roadmap
-
-1.  **ViewModel Refactor**: Unify sketch input processing with snap support.
-2.  **Canvas Rendering**: Add dashed lines and live dimension labels.
-3.  **Tool-Specific Previews**: Implement correct preview geometry for Rectangle and Circle tools.
-4.  **Verification**: Test snapping with existing 3D body edges while sketching on a plane.
+## Custom Backup Logic (Actions)
+The workflow will:
+1. Fetch `build.number` from `version.properties`.
+2. Fetch current `git rev-parse --short HEAD`.
+3. Iterate over `app/src/main` files.
+4. Copy and rename: `MainActivity.kt` -> `MainActivity.kt-70_a1b2c3d`.
+5. Zip and upload as `sourcecodes_70_a1b2c3d.zip`.
 
 ## Verification Plan
-
-### Automated Tests
-- Test `SnapEngine` against mixed geometry types (Line vs Circle).
-- Verify `CADViewModel` state transitions for all sketch tools.
-
-### Manual Verification
-- **Inference**: Draw a line; start another line and verify "Parallel" inference lines appear when aligned with the first.
-- **Dimensions**: While dragging a circle, verify the radius value updates in real-time on the screen.
-- **Closed Loop**: Draw a rectangle; verify it turns light blue (filled) when the last corner snaps to the start point.
-- **Undo/Redo**: Commit a rectangle, undo it, and verify the 3D viewport is cleared correctly.
+1. Trigger a local build and check if `version.properties` increments.
+2. Push to GitHub and verify the "TamerCAD Build" action succeeds.
+3. Download the artifacts from GitHub Actions and verify file naming.

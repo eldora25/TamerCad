@@ -1,0 +1,69 @@
+name: TamerCAD Hybrid Build & Backup
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew :app:assembleDebug
+
+      - name: Get Build Info
+        id: build_info
+        run: |
+          BUILD_NO=$(grep "build.number" version.properties | cut -d'=' -f2)
+          COMMIT_NO=$(git rev-parse --short HEAD)
+          echo "build_no=$BUILD_NO" >> $GITHUB_OUTPUT
+          echo "commit_no=$COMMIT_NO" >> $GITHUB_OUTPUT
+          echo "TIMESTAMP=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_ENV
+
+      - name: Custom Source Code Backup
+        run: |
+          BUILD_NO=${{ steps.build_info.outputs.build_no }}
+          COMMIT_NO=${{ steps.build_info.outputs.commit_no }}
+          BACKUP_DIR="source_backup_${BUILD_NO}_${COMMIT_NO}"
+          mkdir -p $BACKUP_DIR
+          
+          # Find all source files and copy them with the requested naming convention
+          # Target only app/src/main and core to avoid bloat
+          find app/src core -type f \( -name "*.kt" -o -name "*.java" -o -name "*.xml" -o -name "*.cpp" -o -name "*.h" -o -name "*.kts" \) | while read file; do
+            # Get path relative to project root
+            rel_path=$(echo "$file" | sed 's|^./||')
+            # Create subdirectories in backup dir
+            mkdir -p "$BACKUP_DIR/$(dirname "$rel_path")"
+            # Filename.extension-buildno_commitno
+            new_name="$(basename "$file")-${BUILD_NO}_${COMMIT_NO}"
+            cp "$file" "$BACKUP_DIR/$(dirname "$rel_path")/$new_name"
+          done
+          
+          zip -r "sourcecodes_${BUILD_NO}_${COMMIT_NO}.zip" $BACKUP_DIR
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TamerCad_Build_${{ steps.build_info.outputs.build_no }}
+          path: app/build/outputs/apk/debug/*.apk
+
+      - name: Upload Custom Source Backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: sourcecodes_${{ steps.build_info.outputs.build_no }}_${{ steps.build_info.outputs.commit_no }}
+          path: "sourcecodes_*.zip"
