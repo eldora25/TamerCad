@@ -40,14 +40,20 @@ class StylusInputManager {
             timestamp = event.eventTime,
             buttonState = event.buttonState,
             toolType = toolType,
-            eventType = event.actionMasked
+            eventType = event.actionMasked,
+            pointerCount = event.pointerCount
         )
     }
 
     /**
      * Palm Rejection: Kalem kilitliyken veya aktifken gelen FINGER olaylarını durdurur.
+     * Ancak navigasyon için birden fazla parmağa izin verir.
      */
     fun isTouchForbidden(event: StylusEvent): Boolean {
+        // Eğer 1'den fazla pointer varsa (Multi-touch navigation), engelleme.
+        if (event.pointerCount > 1) return false
+        
+        // Sadece tek parmak dokunuşu (Palm veya kaza eseri dokunuş) kalem aktifken engellenir.
         return (isStylusActive || event.toolType == MotionEvent.TOOL_TYPE_STYLUS) && 
                event.toolType == MotionEvent.TOOL_TYPE_FINGER
     }

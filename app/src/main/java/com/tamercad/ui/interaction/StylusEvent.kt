@@ -18,7 +18,8 @@ data class StylusEvent(
     val timestamp: Long,
     val buttonState: Int,
     val toolType: Int,
-    val eventType: Int
+    val eventType: Int,
+    val pointerCount: Int = 1
 ) {
     val position: Offset get() = Offset(positionX, positionY)
     
