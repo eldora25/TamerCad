@@ -51,7 +51,7 @@ class Phase201Test {
     fun testLineCommitDoesNotMutateOnNextDown() {
         val viewModel = CADViewModel()
         viewModel.isSketchMode = true
-        viewModel.currentMode = CadMode.SMART_SKETCH
+        viewModel.activeSketchTool = com.tamercad.ui.sketch.SketchTool.LINE
         val w = 1000f
         val h = 1000f
         

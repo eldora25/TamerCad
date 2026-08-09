@@ -13,6 +13,7 @@ import com.tamercad.core.math.Vec2
 import com.tamercad.core.math.Vec3
 import com.tamercad.core.math.Ray3
 import com.tamercad.core.math.SketchPlane
+import com.tamercad.ui.sketch.SketchTool
 import com.tamercad.core.sketch.*
 import com.tamercad.core.commands.*
 import com.tamercad.core.constraints.*
@@ -55,6 +56,11 @@ class CADViewModel : ViewModel() {
     var panY by mutableFloatStateOf(0f)
     var zoom by mutableFloatStateOf(1.5f)
     
+    // Authoritative Sketch Session (PHASE 2.0.2)
+    var activeSketchTool by mutableStateOf(SketchTool.NONE)
+    var isSketchMode by mutableStateOf(false)
+    var activeSketchPlane by mutableStateOf(SketchPlane.XY)
+
     // Diagnostic / Hardening State
     var stylusPressure by mutableFloatStateOf(0f)
     var isStylusDown by mutableStateOf(false)
@@ -87,8 +93,6 @@ class CADViewModel : ViewModel() {
     }
 
     var currentMode by mutableStateOf(CadMode.NAVIGATE)
-    var isSketchMode by mutableStateOf(false)
-    var activeSketchPlane by mutableStateOf(SketchPlane.XY)
     var selectedSketchPlane by mutableStateOf<String?>(null)
     var showPlaneSelector by mutableStateOf(false)
     var isPerspective by mutableStateOf(false)
@@ -194,22 +198,29 @@ class CADViewModel : ViewModel() {
     // --- INTERACTION HANDLERS ---
 
     fun onSketchDragStart(offset: Offset, screenWidth: Float, screenHeight: Float, context: Context?) {
+        if (activeSketchTool == SketchTool.NONE || activeSketchTool == SketchTool.SELECT) {
+            interactionState = InteractionState.IDLE
+            return
+        }
+
         val sketchPt = screenToSketchPoint(offset.x, offset.y, screenWidth, screenHeight) ?: return
-        
-        // Stabilize snap search on plane
         val worldPt = activeSketchPlane.localToWorld(sketchPt).toPoint3()
+        
+        // Snap logic in world space
         val snapResult = SnapEngine.snapPoint(worldPt, null, activeSketch.getGeometries(), mainAssembly.components, zoom)
         
-        // Store canonical local points
+        // Convert snap back to plane local Vec2 (Immutable)
         val localSnapPt = activeSketchPlane.worldToLocal(Vec3.fromPoint3(snapResult.point))
         
         startSnap = snapResult
-        currentSnap = snapResult // Initialize currentSnap on start!
+        currentSnap = snapResult
         rawSketchPoints = listOf(localSnapPt)
-        interactionState = if (isSketchMode) InteractionState.STYLUS_DRAWING else InteractionState.STYLUS_MANIPULATING
+        interactionState = InteractionState.STYLUS_DRAWING
     }
 
     fun onSketchDrag(position: Offset, dragAmount: Offset, screenWidth: Float, screenHeight: Float, context: Context?) {
+        if (interactionState != InteractionState.STYLUS_DRAWING) return
+        
         val sketchPt = screenToSketchPoint(position.x, position.y, screenWidth, screenHeight) ?: return
         val worldPt = activeSketchPlane.localToWorld(sketchPt).toPoint3()
         
@@ -218,19 +229,19 @@ class CADViewModel : ViewModel() {
         
         val localPt = activeSketchPlane.worldToLocal(Vec3.fromPoint3(snap.point))
         
-        if (interactionState == InteractionState.STYLUS_DRAWING && rawSketchPoints.isNotEmpty()) {
+        if (rawSketchPoints.isNotEmpty()) {
             val p1 = rawSketchPoints.first()
-            when (currentMode) {
-                CadMode.SKETCH_LINE_MANUAL, CadMode.SMART_SKETCH -> {
+            when (activeSketchTool) {
+                SketchTool.LINE -> {
                     previewGeometry = SketchLine(p1, localPt)
                 }
-                CadMode.SKETCH_CIRCLE -> {
+                SketchTool.CIRCLE -> {
                     previewGeometry = SketchCircle(p1, p1.distanceTo(localPt))
                 }
-                CadMode.SKETCH_RECT_DIAG -> {
+                SketchTool.RECTANGLE -> {
                     previewGeometry = SketchRect(p1, localPt)
                 }
-                CadMode.SKETCH_ARC -> {
+                SketchTool.ARC -> {
                     previewGeometry = SketchArc(p1, p1.distanceTo(localPt), 0.0, PI) 
                 }
                 else -> {
@@ -242,35 +253,43 @@ class CADViewModel : ViewModel() {
     }
 
     fun onSketchDragEnd(context: Context?) {
-        val sketchPt = currentSnap?.let { activeSketchPlane.worldToLocal(Vec3.fromPoint3(it.point)) } ?: return
+        if (interactionState != InteractionState.STYLUS_DRAWING) {
+            resetInteraction()
+            return
+        }
+
+        val snapEnd = currentSnap ?: return
+        val p2 = activeSketchPlane.worldToLocal(Vec3.fromPoint3(snapEnd.point))
         
-        if (interactionState == InteractionState.STYLUS_DRAWING && rawSketchPoints.isNotEmpty()) {
+        if (rawSketchPoints.isNotEmpty()) {
             val p1 = rawSketchPoints.first()
-            val p2 = sketchPt
             
-            when (currentMode) {
-                CadMode.SKETCH_LINE_MANUAL, CadMode.SMART_SKETCH -> {
+            android.util.Log.d("TAMERCAD_MODEL", "COMMIT_TOOL: $activeSketchTool P1: $p1 P2: $p2")
+
+            when (activeSketchTool) {
+                SketchTool.LINE -> {
                     if (p1.distanceTo(p2) > CadTolerance.MIN_LENGTH) {
-                        commandManager.execute(AddGeometryCommand(activeSketch, SketchLine(p1, p2)))
+                        val committed = SketchLine(p1, p2)
+                        commandManager.execute(AddGeometryCommand(activeSketch, committed))
                     }
                 }
-                CadMode.SKETCH_CIRCLE -> {
+                SketchTool.CIRCLE -> {
                     val radius = p1.distanceTo(p2)
                     if (radius > CadTolerance.MIN_LENGTH) {
                         commandManager.execute(AddGeometryCommand(activeSketch, SketchCircle(p1, radius)))
                     }
                 }
-                CadMode.SKETCH_RECT_DIAG -> {
+                SketchTool.RECTANGLE -> {
                     if (abs(p1.x - p2.x) > CadTolerance.MIN_LENGTH && abs(p1.y - p2.y) > CadTolerance.MIN_LENGTH) {
-                        val corner2 = Vec2(p2.x, p1.y)
-                        val corner4 = Vec2(p1.x, p2.y)
-                        commandManager.execute(AddGeometryCommand(activeSketch, SketchLine(p1, corner2)))
-                        commandManager.execute(AddGeometryCommand(activeSketch, SketchLine(corner2, p2)))
-                        commandManager.execute(AddGeometryCommand(activeSketch, SketchLine(p2, corner4)))
-                        commandManager.execute(AddGeometryCommand(activeSketch, SketchLine(corner4, p1)))
+                        val c2 = Vec2(p2.x, p1.y)
+                        val c4 = Vec2(p1.x, p2.y)
+                        commandManager.execute(AddGeometryCommand(activeSketch, SketchLine(p1, c2)))
+                        commandManager.execute(AddGeometryCommand(activeSketch, SketchLine(c2, p2)))
+                        commandManager.execute(AddGeometryCommand(activeSketch, SketchLine(p2, c4)))
+                        commandManager.execute(AddGeometryCommand(activeSketch, SketchLine(c4, p1)))
                     }
                 }
-                CadMode.SKETCH_ARC -> {
+                SketchTool.ARC -> {
                     val radius = p1.distanceTo(p2)
                     if (radius > CadTolerance.MIN_LENGTH) {
                         commandManager.execute(AddGeometryCommand(activeSketch, SketchArc(p1, radius, 0.0, PI)))
@@ -279,10 +298,14 @@ class CADViewModel : ViewModel() {
                 else -> {}
             }
         }
+        resetInteraction()
+    }
+
+    private fun resetInteraction() {
         previewGeometry = null
         rawSketchPoints = emptyList()
-        currentSnap = null // EXPLICIT CLEAR
-        startSnap = null   // EXPLICIT CLEAR
+        currentSnap = null
+        startSnap = null
         interactionState = InteractionState.IDLE
         triggerUpdate()
     }
@@ -314,7 +337,10 @@ class CADViewModel : ViewModel() {
     fun setLeftView() { cameraPitch = 0f; cameraYaw = -PI.toFloat()/2f; triggerUpdate() }
     fun setRightView() { cameraPitch = 0f; cameraYaw = PI.toFloat()/2f; triggerUpdate() }
     fun setIsometricView() { cameraPitch = 0.6f; cameraYaw = -0.6f; triggerUpdate() }
-    fun startSketchFlow() { showPlaneSelector = true }
+    fun startSketchFlow() { 
+        showPlaneSelector = true 
+    }
+
     fun enterSketchMode(plane: String) {
         selectedSketchPlane = plane
         activeSketchPlane = when(plane) {
@@ -323,12 +349,43 @@ class CADViewModel : ViewModel() {
             "YZ" -> SketchPlane.YZ
             else -> SketchPlane.XY
         }
-        isSketchMode = true; showPlaneSelector = false; currentMode = CadMode.SMART_SKETCH
-        val newSketch = SketchFeature("Sketch ${document.sketches.size + 1}"); document.sketches.add(newSketch); activeSketch = newSketch
+        isSketchMode = true
+        showPlaneSelector = false
+        activeSketchTool = SketchTool.SELECT
+        currentMode = CadMode.SMART_SKETCH
+        
+        val newSketch = SketchFeature("Sketch ${document.sketches.size + 1}")
+        document.sketches.add(newSketch)
+        activeSketch = newSketch
         triggerUpdate()
     }
-    fun exitSketchMode(commit: Boolean) { isSketchMode = false; currentMode = CadMode.NAVIGATE; triggerUpdate() }
+
+    fun exitSketchMode(commit: Boolean) { 
+        isSketchMode = false
+        activeSketchTool = SketchTool.NONE
+        currentMode = CadMode.NAVIGATE
+        triggerUpdate() 
+    }
+
     fun renameComponent() { showRenameDialog?.let { it.name = renameInput; showRenameDialog = null; triggerUpdate() } }
-    fun runCommand(id: String, ctx: Context) {}
+
+    fun runCommand(id: String, ctx: Context) {
+        android.util.Log.d("TAMERCAD_UI", "TOOL_BUTTON_CLICK: $id")
+        when(id) {
+            "line" -> activeSketchTool = SketchTool.LINE
+            "circle" -> activeSketchTool = SketchTool.CIRCLE
+            "rect" -> activeSketchTool = SketchTool.RECTANGLE
+            "arc" -> activeSketchTool = SketchTool.ARC
+            "spline" -> activeSketchTool = SketchTool.SPLINE
+            "trim" -> activeSketchTool = SketchTool.TRIM
+            "select" -> activeSketchTool = SketchTool.SELECT
+            "sketch" -> startSketchFlow()
+            else -> {
+                // Creation tools
+                if (id == "extrude") { /* Handle creation */ }
+            }
+        }
+        triggerUpdate()
+    }
     fun applyDimension(v: Double) {}
 }

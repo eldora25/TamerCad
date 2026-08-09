@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.tamercad.ui.CameraHardeningTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-08-09T19:14:01" hostname="DESKTOP-OUQLP2N" time="0.004">
+<testsuite name="com.tamercad.ui.CameraHardeningTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-08-09T19:43:28" hostname="DESKTOP-OUQLP2N" time="0.007">
   <properties/>
-  <testcase name="testCameraPitchClamping" classname="com.tamercad.ui.CameraHardeningTest" time="0.003"/>
-  <testcase name="testCameraStateFiniteness" classname="com.tamercad.ui.CameraHardeningTest" time="0.0"/>
+  <testcase name="testCameraPitchClamping" classname="com.tamercad.ui.CameraHardeningTest" time="0.005"/>
+  <testcase name="testCameraStateFiniteness" classname="com.tamercad.ui.CameraHardeningTest" time="0.001"/>
   <testcase name="testCameraZoomBounds" classname="com.tamercad.ui.CameraHardeningTest" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>

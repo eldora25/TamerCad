@@ -55,6 +55,10 @@ android {
             useSupportLibrary = true
         }
 
+        testOptions {
+            unitTests.isReturnDefaultValues = true
+        }
+
         // YENİ EKLENEN: C++ (Native) Derleme Bayrakları
         externalNativeBuild {
             cmake {

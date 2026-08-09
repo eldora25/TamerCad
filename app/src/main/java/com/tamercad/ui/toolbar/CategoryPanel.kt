@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tamercad.ui.CadMode
+import com.tamercad.ui.sketch.SketchTool
 import com.tamercad.ui.components.LabeledSidebarIconButton
 import com.tamercad.ui.theme.IconRegistry
 import com.tamercad.ui.theme.TamerCadColors
@@ -66,12 +67,27 @@ fun CategoryPanel(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             tools.forEach { tool ->
+                val isSelected = when (tool.id) {
+                    "line" -> viewModel.activeSketchTool == SketchTool.LINE
+                    "circle" -> viewModel.activeSketchTool == SketchTool.CIRCLE
+                    "rect" -> viewModel.activeSketchTool == SketchTool.RECTANGLE
+                    "arc" -> viewModel.activeSketchTool == SketchTool.ARC
+                    "spline" -> viewModel.activeSketchTool == SketchTool.SPLINE
+                    "trim" -> viewModel.activeSketchTool == SketchTool.TRIM
+                    "select" -> viewModel.activeSketchTool == SketchTool.SELECT
+                    else -> false
+                }
+                
                 LabeledSidebarIconButton(
                     icon = tool.icon,
                     label = tool.label,
-                    isSelected = false,
+                    isSelected = isSelected,
                     enabled = tool.enabled,
-                    onClick = { onToolClick(tool) }
+                    onClick = { 
+                        onToolClick(tool)
+                        // Auto-close panel on tool selection for tablet efficiency
+                        viewModel.activeCategory = ToolbarCategory.NONE
+                    }
                 )
             }
         }

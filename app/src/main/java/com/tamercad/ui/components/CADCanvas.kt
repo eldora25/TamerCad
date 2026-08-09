@@ -208,6 +208,13 @@ fun CADCanvas(viewModel: CADViewModel) {
             DebugText("POINTERS: RAW=${viewModel.rawPointerCount} ACTIVE=${viewModel.activeFingerCount}")
             DebugText("MODE: ${viewModel.gestureMode}")
             DebugText("STYLUS DOWN: ${viewModel.isStylusDown}")
+
+            DebugText("--- SKETCH SESSION ---")
+            DebugText("MODE: ${if (viewModel.isSketchMode) "SKETCHING" else "NAVIGATE"}")
+            DebugText("PLANE: ${viewModel.selectedSketchPlane ?: "XY"}")
+            DebugText("TOOL: ${viewModel.activeSketchTool}")
+            DebugText("STATE: ${viewModel.interactionState}")
+            DebugText("ENTITIES: ${viewModel.activeSketch.getGeometries().size}")
             
             DebugText("--- CAMERA ---")
             DebugText("YAW: ${String.format(Locale.US, "%.2f", viewModel.cameraYaw)}")
