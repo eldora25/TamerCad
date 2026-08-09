@@ -34,6 +34,11 @@ import com.tamercad.core.math.*
 import com.tamercad.core.rendering.VisualEngine
 import com.tamercad.core.sketch.SnapType
 import com.tamercad.core.sketch.SnapResult
+import com.tamercad.core.sketch.SketchEntity
+import com.tamercad.core.sketch.SketchLine
+import com.tamercad.core.sketch.SketchCircle
+import com.tamercad.core.sketch.SketchArc
+import com.tamercad.core.sketch.SketchRect
 import com.tamercad.ui.CADViewModel
 import com.tamercad.ui.CadMode
 import com.tamercad.ui.theme.TamerCadColors
@@ -162,16 +167,14 @@ fun CADCanvas(viewModel: CADViewModel) {
             drawWorldGrid(this, viewModel)
             drawWorldAxes(this, viewModel)
 
+            // Preview Geometry (Consolidated SketchEntity Rendering)
             viewModel.previewGeometry?.let { geom ->
-                if (geom is Line) {
-                    drawLine(TamerCadColors.Primary, viewModel.worldToScreen(geom.startPoint, size.width, size.height), viewModel.worldToScreen(geom.endPoint, size.width, size.height), 4f)
-                }
+                drawGeometry(this, viewModel, geom, TamerCadColors.Primary, 4f)
             }
 
+            // Committed Geometries
             viewModel.activeSketch.getGeometries().forEach { geom ->
-                if (geom is Line) {
-                    drawLine(Color.Blue, viewModel.worldToScreen(geom.startPoint, size.width, size.height), viewModel.worldToScreen(geom.endPoint, size.width, size.height), 2f)
-                }
+                drawGeometry(this, viewModel, geom, Color.Blue, 2f)
             }
             
             viewModel.currentSnap?.let { snap ->
@@ -321,6 +324,61 @@ fun drawSnapMarker(drawScope: DrawScope, viewModel: CADViewModel, snap: SnapResu
         }
         else -> {
             drawScope.drawCircle(color, 8f, screenPos, style = Stroke(2f))
+        }
+    }
+}
+
+/**
+ * AUTHORITATIVE GEOMETRY RENDERER
+ * Supports legacy IGeometry and new SketchEntity.
+ */
+fun drawGeometry(drawScope: DrawScope, viewModel: CADViewModel, geom: IGeometry, color: Color, strokeWidth: Float) {
+    val screenWidth = drawScope.size.width
+    val screenHeight = drawScope.size.height
+    
+    when (geom) {
+        is SketchLine -> {
+            drawScope.drawLine(
+                color, 
+                viewModel.sketchToScreen(geom.start, screenWidth, screenHeight), 
+                viewModel.sketchToScreen(geom.end, screenWidth, screenHeight), 
+                strokeWidth
+            )
+        }
+        is SketchCircle -> {
+            val centerScreen = viewModel.sketchToScreen(geom.center, screenWidth, screenHeight)
+            val edgeScreen = viewModel.sketchToScreen(geom.center + Vec2(geom.radius, 0.0), screenWidth, screenHeight)
+            val radiusPx = (edgeScreen - centerScreen).getDistance()
+            drawScope.drawCircle(color, radiusPx, centerScreen, style = Stroke(strokeWidth))
+        }
+        is SketchArc -> {
+            val centerScreen = viewModel.sketchToScreen(geom.center, screenWidth, screenHeight)
+            val edgeScreen = viewModel.sketchToScreen(geom.center + Vec2(geom.radius, 0.0), screenWidth, screenHeight)
+            val radiusPx = (edgeScreen - centerScreen).getDistance()
+            
+            // Simple visual circle for preview if arc logic is complex
+            drawScope.drawCircle(color, radiusPx, centerScreen, style = Stroke(strokeWidth, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)))
+        }
+        is SketchRect -> {
+            val p1 = geom.p1
+            val p2 = geom.p2
+            val p1s = viewModel.sketchToScreen(p1, screenWidth, screenHeight)
+            val p2s = viewModel.sketchToScreen(Vec2(p2.x, p1.y), screenWidth, screenHeight)
+            val p3s = viewModel.sketchToScreen(p2, screenWidth, screenHeight)
+            val p4s = viewModel.sketchToScreen(Vec2(p1.x, p2.y), screenWidth, screenHeight)
+            
+            drawScope.drawLine(color, p1s, p2s, strokeWidth)
+            drawScope.drawLine(color, p2s, p3s, strokeWidth)
+            drawScope.drawLine(color, p3s, p4s, strokeWidth)
+            drawScope.drawLine(color, p4s, p1s, strokeWidth)
+        }
+        is Line -> { // Legacy Line
+            drawScope.drawLine(
+                color, 
+                viewModel.worldToScreen(geom.startPoint, screenWidth, screenHeight), 
+                viewModel.worldToScreen(geom.endPoint, screenWidth, screenHeight), 
+                strokeWidth
+            )
         }
     }
 }

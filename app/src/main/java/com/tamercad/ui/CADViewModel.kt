@@ -28,8 +28,7 @@ import java.util.*
 import kotlin.math.*
 
 /**
- * TAMERCAD CAD DEVELOPMENT — GLOBAL RULES
- * Zırhlı ViewModel Mimarisi - Build 71 - Phase 1.1 Recovery.
+ * TAMERCAD — PHASE 2.1 — STABILIZED SKETCH TOOL PIPELINE
  */
 class CADViewModel : ViewModel() {
     
@@ -81,7 +80,6 @@ class CADViewModel : ViewModel() {
         cameraPitch = (cameraPitch + deltaPitch).coerceIn(-PITCH_LIMIT, PITCH_LIMIT)
         zoom = (zoom * deltaZoom).coerceIn(MIN_ZOOM, MAX_ZOOM)
         
-        // Pan scale is adjusted by zoom to feel stable
         panX += deltaPanX
         panY += deltaPanY
         
@@ -98,7 +96,7 @@ class CADViewModel : ViewModel() {
     // Modelleme State'leri
     var previewGeometry by mutableStateOf<IGeometry?>(null)
     var activeInference by mutableStateOf<String?>(null)
-    var rawStroke by mutableStateOf<List<Point3>>(emptyList())
+    var rawSketchPoints by mutableStateOf<List<Vec2>>(emptyList())
     var currentSnap by mutableStateOf<SnapResult?>(null)
     var startSnap by mutableStateOf<SnapResult?>(null)
     var activeManipulatorAxis by mutableStateOf<String?>(null)
@@ -140,12 +138,6 @@ class CADViewModel : ViewModel() {
         val cosP = cos(cameraPitch.toDouble())
         val sinP = sin(cameraPitch.toDouble())
         
-        // Orthographic Pick Ray (Origin moves, direction is constant)
-        // R = Rx * Ry
-        // R11 = cosY, R12 = 0, R13 = sinY
-        // R21 = sinP*sinY, R22 = cosP, R23 = -sinP*cosY
-        // R31 = -cosP*sinY, R32 = sinP, R33 = cosP*cosY
-        
         val rayOrigin = Vec3(
             vx * cosY + vy * (sinP * sinY),
             vy * cosP,
@@ -174,7 +166,6 @@ class CADViewModel : ViewModel() {
         val centerX = screenWidth / 2f
         val centerY = screenHeight / 2f
         
-        // Pan and Zoom are authoritative here
         return Offset(
             (proj.x * zoom).toFloat() + panX + centerX,
             (centerY + panY) - (proj.y * zoom).toFloat()
@@ -185,14 +176,6 @@ class CADViewModel : ViewModel() {
         val centerX = screenWidth / 2f; val centerY = screenHeight / 2f
         val worldX = (x - centerX - panX) / zoom; val worldY = (centerY + panY - y) / zoom
         return Point3(worldX.toDouble(), worldY.toDouble(), 0.0)
-    }
-
-    fun getRayFromScreen(offset: Offset, screenWidth: Float, screenHeight: Float): Ray {
-        val cosY = cos(cameraYaw.toDouble()); val sinY = sin(cameraYaw.toDouble())
-        val cosP = cos(cameraPitch.toDouble()); val sinP = sin(cameraPitch.toDouble())
-        val dir = Vector3(sinY * cosP, sinP, cosY * cosP).normalize()
-        val worldPt = screenToWorld(offset.x, offset.y, screenWidth, screenHeight)
-        return Ray(worldPt.add(dir.multiply(-1000.0)), dir)
     }
 
     fun project3DTo2D(p: Point3): Point3 {
@@ -207,11 +190,16 @@ class CADViewModel : ViewModel() {
 
     fun onSketchDragStart(offset: Offset, screenWidth: Float, screenHeight: Float, context: Context) {
         val sketchPt = screenToSketchPoint(offset.x, offset.y, screenWidth, screenHeight) ?: return
-        val worldPt = activeSketchPlane.localToWorld(sketchPt).toPoint3()
         
+        // Stabilize snap search on plane
+        val worldPt = activeSketchPlane.localToWorld(sketchPt).toPoint3()
         val snapResult = SnapEngine.snapPoint(worldPt, null, activeSketch.getGeometries(), mainAssembly.components, zoom)
+        
+        // Store canonical local points
+        val localSnapPt = activeSketchPlane.worldToLocal(Vec3.fromPoint3(snapResult.point))
+        
         startSnap = snapResult
-        rawStroke = listOf(snapResult.point)
+        rawSketchPoints = listOf(localSnapPt)
         interactionState = if (isSketchMode) InteractionState.STYLUS_DRAWING else InteractionState.STYLUS_MANIPULATING
     }
 
@@ -219,67 +207,73 @@ class CADViewModel : ViewModel() {
         val sketchPt = screenToSketchPoint(position.x, position.y, screenWidth, screenHeight) ?: return
         val worldPt = activeSketchPlane.localToWorld(sketchPt).toPoint3()
         
-        val snap = SnapEngine.snapPoint(worldPt, rawStroke.firstOrNull(), activeSketch.getGeometries(), mainAssembly.components, zoom)
+        val snap = SnapEngine.snapPoint(worldPt, null, activeSketch.getGeometries(), mainAssembly.components, zoom)
         currentSnap = snap
         
-        if (interactionState == InteractionState.STYLUS_DRAWING) {
+        val localPt = activeSketchPlane.worldToLocal(Vec3.fromPoint3(snap.point))
+        
+        if (interactionState == InteractionState.STYLUS_DRAWING && rawSketchPoints.isNotEmpty()) {
+            val p1 = rawSketchPoints.first()
             when (currentMode) {
                 CadMode.SKETCH_LINE_MANUAL, CadMode.SMART_SKETCH -> {
-                    if (rawStroke.isNotEmpty()) previewGeometry = Line(rawStroke.first(), snap.point)
+                    previewGeometry = SketchLine(p1, localPt)
                 }
                 CadMode.SKETCH_CIRCLE -> {
-                    if (rawStroke.isNotEmpty()) previewGeometry = Circle3D(rawStroke.first(), rawStroke.first().distanceTo(snap.point))
+                    previewGeometry = SketchCircle(p1, p1.distanceTo(localPt))
                 }
-                else -> {}
+                CadMode.SKETCH_RECT_DIAG -> {
+                    previewGeometry = SketchRect(p1, localPt)
+                }
+                CadMode.SKETCH_ARC -> {
+                    previewGeometry = SketchArc(p1, p1.distanceTo(localPt), 0.0, PI) 
+                }
+                else -> {
+                    previewGeometry = null
+                }
             }
         }
         triggerUpdate()
     }
 
     fun onSketchDragEnd(context: Context) {
-        val snapEnd = currentSnap ?: return
-        if (interactionState == InteractionState.STYLUS_DRAWING && rawStroke.isNotEmpty()) {
-            val startPoint = rawStroke.first()
-            val endPoint = snapEnd.point
+        val sketchPt = currentSnap?.let { activeSketchPlane.worldToLocal(Vec3.fromPoint3(it.point)) } ?: return
+        
+        if (interactionState == InteractionState.STYLUS_DRAWING && rawSketchPoints.isNotEmpty()) {
+            val p1 = rawSketchPoints.first()
+            val p2 = sketchPt
             
             when (currentMode) {
                 CadMode.SKETCH_LINE_MANUAL, CadMode.SMART_SKETCH -> {
-                    val line = Line(startPoint, endPoint)
-                    commandManager.execute(AddGeometryCommand(activeSketch, line))
-                    applyAdvancedConstraints(line, snapEnd)
+                    if (p1.distanceTo(p2) > CadTolerance.MIN_LENGTH) {
+                        commandManager.execute(AddGeometryCommand(activeSketch, SketchLine(p1, p2)))
+                    }
                 }
                 CadMode.SKETCH_CIRCLE -> {
-                    val circle = Circle3D(startPoint, startPoint.distanceTo(endPoint))
-                    commandManager.execute(AddGeometryCommand(activeSketch, circle))
+                    val radius = p1.distanceTo(p2)
+                    if (radius > CadTolerance.MIN_LENGTH) {
+                        commandManager.execute(AddGeometryCommand(activeSketch, SketchCircle(p1, radius)))
+                    }
+                }
+                CadMode.SKETCH_RECT_DIAG -> {
+                    if (abs(p1.x - p2.x) > CadTolerance.MIN_LENGTH && abs(p1.y - p2.y) > CadTolerance.MIN_LENGTH) {
+                        val corner2 = Vec2(p2.x, p1.y)
+                        val corner4 = Vec2(p1.x, p2.y)
+                        commandManager.execute(AddGeometryCommand(activeSketch, SketchLine(p1, corner2)))
+                        commandManager.execute(AddGeometryCommand(activeSketch, SketchLine(corner2, p2)))
+                        commandManager.execute(AddGeometryCommand(activeSketch, SketchLine(p2, corner4)))
+                        commandManager.execute(AddGeometryCommand(activeSketch, SketchLine(corner4, p1)))
+                    }
+                }
+                CadMode.SKETCH_ARC -> {
+                    val radius = p1.distanceTo(p2)
+                    if (radius > CadTolerance.MIN_LENGTH) {
+                        commandManager.execute(AddGeometryCommand(activeSketch, SketchArc(p1, radius, 0.0, PI)))
+                    }
                 }
                 else -> {}
             }
         }
-        previewGeometry = null; rawStroke = emptyList(); interactionState = InteractionState.IDLE; triggerUpdate()
-    }
-
-    private fun applyAdvancedConstraints(line: Line, snapEnd: SnapResult?) {
-        // 1. Horizontal / Vertical Inferences
-        if (snapEnd?.type == SnapType.HORIZONTAL) {
-            commandManager.execute(AddConstraintCommand(activeSketch, gcsManager, HorizontalConstraint(line)))
-        } else if (snapEnd?.type == SnapType.VERTICAL) {
-            commandManager.execute(AddConstraintCommand(activeSketch, gcsManager, VerticalConstraint(line)))
-        }
-
-        // 2. Parallel / Perpendicular Inferences
-        if (snapEnd?.type == SnapType.PARALLEL && snapEnd.refGeometry is Line) {
-            commandManager.execute(AddConstraintCommand(activeSketch, gcsManager, ParallelConstraint(line, snapEnd.refGeometry)))
-        } else if (snapEnd?.type == SnapType.PERPENDICULAR && snapEnd.refGeometry is Line) {
-            commandManager.execute(AddConstraintCommand(activeSketch, gcsManager, PerpendicularConstraint(line, snapEnd.refGeometry)))
-        }
-        
-        // 3. Basic H/V check for non-inference snaps
-        if (snapEnd?.type == SnapType.NONE || snapEnd?.type == SnapType.GRID || snapEnd?.type == SnapType.ENDPOINT) {
-            val dx = abs(line.endPoint.x - line.startPoint.x)
-            val dy = abs(line.endPoint.y - line.startPoint.y)
-            if (dy < 5.0 / zoom) commandManager.execute(AddConstraintCommand(activeSketch, gcsManager, HorizontalConstraint(line)))
-            else if (dx < 5.0 / zoom) commandManager.execute(AddConstraintCommand(activeSketch, gcsManager, VerticalConstraint(line)))
-        }
+        previewGeometry = null; rawSketchPoints = emptyList(); interactionState = InteractionState.IDLE; triggerUpdate()
     }
 
     fun pick3DEntity(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): IGeometry? {

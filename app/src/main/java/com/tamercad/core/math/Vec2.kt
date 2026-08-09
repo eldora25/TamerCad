@@ -27,6 +27,8 @@ data class Vec2(val x: Double = 0.0, val y: Double = 0.0) {
     fun approximatelyEquals(v: Vec2): Boolean = 
         CadTolerance.areEqual(x, v.x) && CadTolerance.areEqual(y, v.y)
 
+    fun toPoint3() = Point3(x, y, 0.0)
+
     companion object {
         val Zero = Vec2(0.0, 0.0)
         val UnitX = Vec2(1.0, 0.0)

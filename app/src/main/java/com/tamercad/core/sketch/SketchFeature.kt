@@ -5,7 +5,7 @@ import com.tamercad.core.geometry.IGeometry
 import com.tamercad.core.geometry.Line
 import com.tamercad.core.constraints.IConstraint
 import com.tamercad.core.serialization.ISerializable
-import com.tamercad.core.math.Point3
+import com.tamercad.core.math.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -47,6 +47,19 @@ class SketchFeature(
 
         for (geom in geometries) {
             val dist = when (geom) {
+                is SketchLine -> {
+                    // Convert point to local for distance check if possible, or just use world logic
+                    // SketchFeature knows its plane? Not yet explicitly stored in the feature itself.
+                    // Assuming for now the pick is passed as a world point.
+                    Line(geom.start.toPoint3(), geom.end.toPoint3()).distanceToPoint(point)
+                }
+                is SketchCircle -> {
+                    // Distance to circle perimeter
+                    val localPt = Vec3.fromPoint3(point) // Simplified: assuming pick point is on plane
+                    // In reality, pick point is a world point.
+                    val distToCenter = Vec2(geom.center.x, geom.center.y).distanceTo(Vec2(localPt.x, localPt.y))
+                    kotlin.math.abs(distToCenter - geom.radius)
+                }
                 is Line -> geom.distanceToPoint(point)
                 is Circle3D -> geom.distanceToPoint(point)
                 is Arc3D -> geom.distanceToPoint(point)
