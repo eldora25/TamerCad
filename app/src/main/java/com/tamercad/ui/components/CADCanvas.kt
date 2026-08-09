@@ -71,6 +71,13 @@ fun CADCanvas(viewModel: CADViewModel) {
                         viewModel.isStylusDown = motionEvent.actionMasked != android.view.MotionEvent.ACTION_UP && 
                                                motionEvent.actionMasked != android.view.MotionEvent.ACTION_CANCEL
                         viewModel.stylusPressure = stylusEvent.pressure
+                        
+                        // Diagnostic hover update
+                        val sketchPt = viewModel.screenToSketchPoint(motionEvent.x, motionEvent.y, screenWidth, screenHeight)
+                        if (sketchPt != null) {
+                            viewModel.hoverPointLocal = sketchPt
+                            viewModel.hoverPointWorld = viewModel.activeSketchPlane.localToWorld(sketchPt)
+                        }
                     } else {
                         // Reset stylus down if any finger event comes up/cancel and no other pointers exist
                         if (motionEvent.actionMasked == android.view.MotionEvent.ACTION_UP || 
@@ -194,6 +201,17 @@ fun CADCanvas(viewModel: CADViewModel) {
             DebugText("ZOOM: ${String.format(Locale.US, "%.2f", viewModel.zoom)}")
             DebugText("PAN Δ X/Y: ${String.format(Locale.US, "%.1f", viewModel.diagnosticPanDelta.x)} / ${String.format(Locale.US, "%.1f", viewModel.diagnosticPanDelta.y)}")
             DebugText("ZOOM SCALE: ${String.format(Locale.US, "%.3f", viewModel.diagnosticZoomScale)}")
+            
+            // COORDINATE DIAGNOSTICS (PHASE 2.0)
+            DebugText("--- COORDINATES ---")
+            DebugText("PLANE: ${viewModel.selectedSketchPlane ?: "XY"}")
+            DebugText("GRID SPACING: ${viewModel.currentGridSpacing} mm")
+            viewModel.hoverPointLocal?.let {
+                DebugText("SKETCH X/Y: ${String.format(Locale.US, "%.2f / %.2f", it.x, it.y)}")
+            }
+            viewModel.hoverPointWorld?.let {
+                DebugText("WORLD X/Y/Z: ${String.format(Locale.US, "%.1f/%.1f/%.1f", it.x, it.y, it.z)}")
+            }
         }
     }
 }
@@ -206,17 +224,45 @@ fun DebugText(text: String) {
 fun drawWorldGrid(drawScope: DrawScope, viewModel: CADViewModel) {
     val screenWidth = drawScope.size.width
     val screenHeight = drawScope.size.height
+    val plane = viewModel.activeSketchPlane
+    
+    // Draw XY Plane Grid
+    val targetPixelSpacing = 80f
+    val approxWorldSpacing = targetPixelSpacing / viewModel.zoom
+    
+    val levels = doubleArrayOf(0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0, 500.0, 1000.0)
+    var worldSpacing = 100.0
+    for (level in levels) {
+        if (level >= approxWorldSpacing) {
+            worldSpacing = level
+            break
+        }
+    }
+    viewModel.currentGridSpacing = worldSpacing
+
     val gridCount = 20
-    val gridSpacing = 100.0
+    val alpha = 0.15f
 
     for (i in -gridCount..gridCount) {
-        val startX = viewModel.worldToScreen(Point3(i * gridSpacing, -gridCount * gridSpacing, 0.0), screenWidth, screenHeight)
-        val endX = viewModel.worldToScreen(Point3(i * gridSpacing, gridCount * gridSpacing, 0.0), screenWidth, screenHeight)
-        drawScope.drawLine(Color.Gray.copy(alpha = 0.15f), startX, endX, 1f)
+        // Local sketch lines
+        val startX = Vec2(i * worldSpacing, -gridCount * worldSpacing)
+        val endX = Vec2(i * worldSpacing, gridCount * worldSpacing)
+        
+        val startY = Vec2(-gridCount * worldSpacing, i * worldSpacing)
+        val endY = Vec2(gridCount * worldSpacing, i * worldSpacing)
 
-        val startY = viewModel.worldToScreen(Point3(-gridCount * gridSpacing, i * gridSpacing, 0.0), screenWidth, screenHeight)
-        val endY = viewModel.worldToScreen(Point3(gridCount * gridSpacing, i * gridSpacing, 0.0), screenWidth, screenHeight)
-        drawScope.drawLine(Color.Gray.copy(alpha = 0.15f), startY, endY, 1f)
+        drawScope.drawLine(
+            Color.Gray.copy(alpha = alpha), 
+            viewModel.sketchToScreen(startX, screenWidth, screenHeight), 
+            viewModel.sketchToScreen(endX, screenWidth, screenHeight), 
+            1f
+        )
+        drawScope.drawLine(
+            Color.Gray.copy(alpha = alpha), 
+            viewModel.sketchToScreen(startY, screenWidth, screenHeight), 
+            viewModel.sketchToScreen(endY, screenWidth, screenHeight), 
+            1f
+        )
     }
 }
 

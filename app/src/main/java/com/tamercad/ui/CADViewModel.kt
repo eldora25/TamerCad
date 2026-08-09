@@ -9,6 +9,10 @@ import com.tamercad.core.assembly.*
 import com.tamercad.core.features.*
 import com.tamercad.core.geometry.*
 import com.tamercad.core.math.*
+import com.tamercad.core.math.Vec2
+import com.tamercad.core.math.Vec3
+import com.tamercad.core.math.Ray3
+import com.tamercad.core.math.SketchPlane
 import com.tamercad.core.sketch.*
 import com.tamercad.core.commands.*
 import com.tamercad.core.constraints.*
@@ -60,6 +64,9 @@ class CADViewModel : ViewModel() {
     var diagnosticZoomScale by mutableFloatStateOf(1f)
     var rawPointerCount by mutableIntStateOf(0)
     var activeFingerCount by mutableIntStateOf(0)
+    var hoverPointWorld by mutableStateOf<Vec3?>(null)
+    var hoverPointLocal by mutableStateOf<Vec2?>(null)
+    var currentGridSpacing by mutableDoubleStateOf(100.0)
 
     // Constraints
     private val MIN_ZOOM = 0.1f
@@ -83,6 +90,7 @@ class CADViewModel : ViewModel() {
 
     var currentMode by mutableStateOf(CadMode.NAVIGATE)
     var isSketchMode by mutableStateOf(false)
+    var activeSketchPlane by mutableStateOf(SketchPlane.XY)
     var selectedSketchPlane by mutableStateOf<String?>(null)
     var showPlaneSelector by mutableStateOf(false)
     var isPerspective by mutableStateOf(false)
@@ -118,6 +126,47 @@ class CADViewModel : ViewModel() {
 
     // Materials
     val componentMaterials = mutableStateMapOf<Component3D, RenderMaterial>()
+
+    // Authoritative Coordinate Pipeline (PHASE 2.0)
+    fun getPickRay(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): Ray3 {
+        val centerX = screenWidth / 2f
+        val centerY = screenHeight / 2f
+        
+        val vx = (screenX - panX - centerX) / zoom.toDouble()
+        val vy = (centerY + panY - screenY) / zoom.toDouble()
+        
+        val cosY = cos(cameraYaw.toDouble())
+        val sinY = sin(cameraYaw.toDouble())
+        val cosP = cos(cameraPitch.toDouble())
+        val sinP = sin(cameraPitch.toDouble())
+        
+        // Orthographic Pick Ray (Origin moves, direction is constant)
+        // R = Rx * Ry
+        // R11 = cosY, R12 = 0, R13 = sinY
+        // R21 = sinP*sinY, R22 = cosP, R23 = -sinP*cosY
+        // R31 = -cosP*sinY, R32 = sinP, R33 = cosP*cosY
+        
+        val rayOrigin = Vec3(
+            vx * cosY + vy * (sinP * sinY),
+            vy * cosP,
+            vx * (-sinY) + vy * (-sinP * cosY)
+        )
+        
+        val rayDir = Vec3(-cosP * sinY, sinP, cosP * cosY)
+        
+        return Ray3(rayOrigin, rayDir)
+    }
+
+    fun screenToSketchPoint(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): Vec2? {
+        val ray = getPickRay(screenX, screenY, screenWidth, screenHeight)
+        val hitWorld = activeSketchPlane.intersectRay(ray) ?: return null
+        return activeSketchPlane.worldToLocal(hitWorld)
+    }
+
+    fun sketchToScreen(point: Vec2, screenWidth: Float, screenHeight: Float): Offset {
+        val world = activeSketchPlane.localToWorld(point)
+        return worldToScreen(world.toPoint3(), screenWidth, screenHeight)
+    }
 
     // Math Helpers
     fun worldToScreen(point: Point3, screenWidth: Float, screenHeight: Float): Offset {
@@ -157,16 +206,20 @@ class CADViewModel : ViewModel() {
     // --- INTERACTION HANDLERS ---
 
     fun onSketchDragStart(offset: Offset, screenWidth: Float, screenHeight: Float, context: Context) {
-        val rawPoint = screenToWorld(offset.x, offset.y, screenWidth, screenHeight)
-        val snapResult = SnapEngine.snapPoint(rawPoint, null, activeSketch.getGeometries(), mainAssembly.components, zoom)
+        val sketchPt = screenToSketchPoint(offset.x, offset.y, screenWidth, screenHeight) ?: return
+        val worldPt = activeSketchPlane.localToWorld(sketchPt).toPoint3()
+        
+        val snapResult = SnapEngine.snapPoint(worldPt, null, activeSketch.getGeometries(), mainAssembly.components, zoom)
         startSnap = snapResult
         rawStroke = listOf(snapResult.point)
         interactionState = if (isSketchMode) InteractionState.STYLUS_DRAWING else InteractionState.STYLUS_MANIPULATING
     }
 
     fun onSketchDrag(position: Offset, dragAmount: Offset, screenWidth: Float, screenHeight: Float, context: Context) {
-        val rawPt = screenToWorld(position.x, position.y, screenWidth, screenHeight)
-        val snap = SnapEngine.snapPoint(rawPt, rawStroke.firstOrNull(), activeSketch.getGeometries(), mainAssembly.components, zoom)
+        val sketchPt = screenToSketchPoint(position.x, position.y, screenWidth, screenHeight) ?: return
+        val worldPt = activeSketchPlane.localToWorld(sketchPt).toPoint3()
+        
+        val snap = SnapEngine.snapPoint(worldPt, rawStroke.firstOrNull(), activeSketch.getGeometries(), mainAssembly.components, zoom)
         currentSnap = snap
         
         if (interactionState == InteractionState.STYLUS_DRAWING) {
@@ -230,11 +283,12 @@ class CADViewModel : ViewModel() {
     }
 
     fun pick3DEntity(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): IGeometry? {
-        val tapPos = Offset(screenX, screenY)
         if (selectionManager.showSketches) {
-            val worldTap = screenToWorld(screenX, screenY, screenWidth, screenHeight)
+            val sketchPt = screenToSketchPoint(screenX, screenY, screenWidth, screenHeight) ?: return null
+            val worldPt = activeSketchPlane.localToWorld(sketchPt).toPoint3()
+            
             document.sketches.forEach { sketch ->
-                val hit = sketch.pickGeometry(worldTap, 20.0 / zoom)
+                val hit = sketch.pickGeometry(worldPt, 20.0 / zoom)
                 if (hit != null) return hit
             }
         }
@@ -257,7 +311,14 @@ class CADViewModel : ViewModel() {
     fun setIsometricView() { cameraPitch = 0.6f; cameraYaw = -0.6f; triggerUpdate() }
     fun startSketchFlow() { showPlaneSelector = true }
     fun enterSketchMode(plane: String) {
-        selectedSketchPlane = plane; isSketchMode = true; showPlaneSelector = false; currentMode = CadMode.SMART_SKETCH
+        selectedSketchPlane = plane
+        activeSketchPlane = when(plane) {
+            "XY" -> SketchPlane.XY
+            "XZ" -> SketchPlane.XZ
+            "YZ" -> SketchPlane.YZ
+            else -> SketchPlane.XY
+        }
+        isSketchMode = true; showPlaneSelector = false; currentMode = CadMode.SMART_SKETCH
         val newSketch = SketchFeature("Sketch ${document.sketches.size + 1}"); document.sketches.add(newSketch); activeSketch = newSketch
         triggerUpdate()
     }
