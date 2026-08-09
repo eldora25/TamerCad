@@ -1,56 +1,52 @@
-# TamerCAD: Phase 8 - Professional Camera, Sketch Engine, and AR Integration
+# TAMERCAD SKETCH DEVELOPMENT — STEP 10 & 11
 
-This comprehensive plan covers the transition of TamerCAD into a professional workstation by refining the camera navigation, improving the parametric sketch engine for production use, and implementing Articulated 1:1 Augmented Reality (AR) visualization.
+This plan implements full Snap/Inference integration across all sketch tools and provides a rich live feedback system during drawing, mirroring professional CAD workstations.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> **Branding Update**: The header will be strictly set to `TamerCadv01.[BUILD_NO] Tamer YAMAK©` as per the visual requirement.
-> **Input Priority**: Stylus now has absolute priority for modeling. Camera navigation (Orbit/Pan/Zoom) is restricted to Finger touch to prevent accidental camera movement while drawing.
-> **ARCore Requirements**: 1:1 AR mode requires an ARCore-supported device. The app will check for compatibility before launching the AR bridge.
+> **Unified Snapping**: All sketch modes (Line, Circle, Rectangle, etc.) now use a centralized snap pipeline. This means "Midpoint" or "Parallel" snap works regardless of which tool is selected.
+> **Transient Preview**: Preview geometry is drawn on a separate overlay and only converted to real CAD entities when the stylus is released.
+> **Visual Language**: Dashed inference lines will show geometric relations (H/V alignment, Parallelism) while drawing.
 
 ## Proposed Changes
 
-### 1. Professional Camera Navigation (Step 10)
+### 1. Unified Sketch Snapping (Step 10)
 - **[MODIFY] ui/CADViewModel.kt**:
-    - Add explicit view methods: `setFrontView()`, `setBackView()`, `setTopView()`, `setBottomView()`, `setLeftView()`, `setRightView()`, `setIsometricView()`.
-    - Implement smooth transitions (Interpolation) between camera states.
+    - Refactor `onSketchDragStart` and `onSketchDrag` to apply `SnapEngine.snapPoint` to all `SKETCH_*` modes.
+    - Route snapped coordinates to `rawStroke` and `previewGeometry`.
+    - Ensure `interactionState` is set to `SKETCHING` during any sketch tool operation.
+
+### 2. Live Visual Feedback (Step 11)
 - **[MODIFY] ui/components/CADCanvas.kt**:
-    - Refine gesture routing: 1-finger (Orbit), 2-finger (Pan), Pinch (Zoom).
-    - Ensure `isStylusInUse` block effectively prevents camera movement during sketching.
+    - **Inference Lines**: Render dashed lines connecting the cursor to snap reference points.
+    - **Live Dimensions**: Render a floating label near the cursor showing the current length (Line) or radius (Circle).
+    - **State Indicators**: Explicitly show the active tool icon near the cursor if needed.
+    - **Profile Highlight**: Use a subtle fill for closed loops detected by `ProfileValidator`.
 
-### 2. Professional Sketch Engine (Step 5 Improvement)
-- **[MODIFY] core/sketch/SketchFeature.kt**:
-    - Improve data persistence for sketches. Each entity now tracks its own set of constraints.
+### 3. Sketch Tool Preview Logic
 - **[MODIFY] ui/CADViewModel.kt**:
-    - Implement a structured "Enter/Exit Sketch" flow that validates profiles (checking for closed loops).
-    - Convert stylus strokes into real CAD entities (`Line`, `Circle3D`, etc.) via `AddGeometryCommand`.
-- **[NEW] core/sketch/ProfileValidator.kt**: Utility to detect closed loops in a sketch for Extrude/Revolve operations.
-
-### 3. ARCore Entegrasyonu (1:1 Scale)
-- **[MODIFY] core/rendering/ArCoreBridge.kt**:
-    - Implement actual AR session initialization.
-    - Map CAD world units (mm) to AR meters (1000mm = 1m) for 1:1 visualization.
-    - Provide a way to place the model on a detected horizontal surface.
-
-### 4. UI Branding & Header Fix
-- **[MODIFY] ui/topbar/CADTopBar.kt**:
-    - Implement the specific branding format requested in the image.
+    - Update `previewGeometry` to match the specific tool:
+        - `SKETCH_LINE_MANUAL` -> Line
+        - `SKETCH_RECT_DIAG` -> Rect (4 lines)
+        - `SKETCH_POLYGON` -> Circle + Polygon proxy
+        - `CIRCLE` -> Circle3D
 
 ## Roadmap
 
-1.  **Input & Camera**: Solidify the Finger/Stylus separation and ViewCube corners.
-2.  **Sketching Logic**: Profile validation and persistent sketch entity conversion.
-3.  **AR Foundation**: ARCore setup and unit scaling.
-4.  **Final Polish**: UI branding and transition animations.
+1.  **ViewModel Refactor**: Unify sketch input processing with snap support.
+2.  **Canvas Rendering**: Add dashed lines and live dimension labels.
+3.  **Tool-Specific Previews**: Implement correct preview geometry for Rectangle and Circle tools.
+4.  **Verification**: Test snapping with existing 3D body edges while sketching on a plane.
 
 ## Verification Plan
 
 ### Automated Tests
-- Unit tests for `ProfileValidator` (detecting a closed rectangle).
-- Test camera projection math for 90-degree orthographic views.
+- Test `SnapEngine` against mixed geometry types (Line vs Circle).
+- Verify `CADViewModel` state transitions for all sketch tools.
 
 ### Manual Verification
-- **Camera**: Tap ViewCube faces and corners; verify exact alignment. Perform pinch-zoom and 2-finger pan.
-- **Sketching**: Draw a closed shape; verify it highlights as a "Profile" ready for Extrude.
-- **AR**: Launch AR mode and verify the model appears on a table at its real physical size.
+- **Inference**: Draw a line; start another line and verify "Parallel" inference lines appear when aligned with the first.
+- **Dimensions**: While dragging a circle, verify the radius value updates in real-time on the screen.
+- **Closed Loop**: Draw a rectangle; verify it turns light blue (filled) when the last corner snaps to the start point.
+- **Undo/Redo**: Commit a rectangle, undo it, and verify the 3D viewport is cleared correctly.

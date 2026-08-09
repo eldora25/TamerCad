@@ -400,25 +400,36 @@ class CADViewModel : ViewModel() {
                 axis == "YZ" -> ray.intersectPlane(center, Vector3(1.0, 0.0, 0.0))
                 else -> ray.closestPointOnAxis(center, Vector3(0.0, 0.0, 1.0))
             }
+            interactionState = InteractionState.MANIPULATING
             return
         }
 
         val rawPoint = screenToWorld(offset.x, offset.y, screenWidth, screenHeight)
+        
+        // Unified Sketch Snap at Start
+        val snapResult = SnapEngine.snapPoint(rawPoint, null, activeSketch.getGeometries(), mainAssembly.components, zoom)
+        val startPt = snapResult.point
+
         if (currentMode == CadMode.SMART_SKETCH && isPointInsideActiveSketch(rawPoint, screenWidth, screenHeight)) {
             currentMode = CadMode.EXTRUDE; dynamicExtrudeHeight = 0f
-        } else if (currentMode == CadMode.TRIM || currentMode == CadMode.SKETCH_RECT_DIAG || currentMode == CadMode.SKETCH_POLYGON || currentMode == CadMode.SKETCH_SPLINE_FIT) {
-            rawStroke = listOf(rawPoint)
-        } else if (currentMode == CadMode.SMART_SKETCH) {
-            var handled = false
+            interactionState = InteractionState.COMMAND_ACTIVE
+        } else if (isSketchMode || currentMode.name.startsWith("SKETCH_")) {
+            rawStroke = listOf(startPt)
+            interactionState = InteractionState.SKETCHING
+            
+            // Handle specific handles if selecting existing geometry
             val geom = selectionManager.firstOrNull()
             if (geom is Line) {
-                val dStart = sqrt((rawPoint.x - geom.startPoint.x).pow(2) + (rawPoint.y - geom.startPoint.y).pow(2))
-                val dEnd = sqrt((rawPoint.x - geom.endPoint.x).pow(2) + (rawPoint.y - geom.endPoint.y).pow(2))
-                if (dStart < 30.0 / zoom) { dragHandle = 0; handled = true }
-                else if (dEnd < 30.0 / zoom) { dragHandle = 1; handled = true }
+                val dStart = sqrt((startPt.x - geom.startPoint.x).pow(2) + (startPt.y - geom.startPoint.y).pow(2))
+                val dEnd = sqrt((startPt.x - geom.endPoint.x).pow(2) + (startPt.y - geom.endPoint.y).pow(2))
+                if (dStart < 30.0 / zoom) { dragHandle = 0 }
+                else if (dEnd < 30.0 / zoom) { dragHandle = 1 }
+                else { dragHandle = -1 }
             }
-            if (!handled) { rawStroke = listOf(rawPoint); dragHandle = -1; selectionManager.clear(); activeSketch.clearSelection() }
-        } else if (currentMode == CadMode.EXTRUDE) { dynamicExtrudeHeight = 0f }
+        } else if (currentMode == CadMode.EXTRUDE) { 
+            dynamicExtrudeHeight = 0f 
+            interactionState = InteractionState.COMMAND_ACTIVE
+        }
     }
 
     fun onSketchDrag(position: Offset, dragAmount: Offset, screenWidth: Float, screenHeight: Float, context: Context) {
@@ -446,18 +457,14 @@ class CADViewModel : ViewModel() {
                     // ROTATION LOGIC
                     val vOld = manipulationAnchorPoint!!.subtract(center).normalize()
                     val vNew = currentPt.subtract(center).normalize()
-                    
-                    // Simple angle calculation on the plane
                     val dot = vOld.dot(vNew)
                     val angle = acos(max(-1.0, min(1.0, dot)))
                     val cross = vOld.cross(vNew)
-                    
                     val axisNormal = when(activeManipulatorAxis) {
                         "ROT_X" -> Vector3(1.0, 0.0, 0.0)
                         "ROT_Y" -> Vector3(0.0, 1.0, 0.0)
                         else -> Vector3(0.0, 0.0, 1.0)
                     }
-                    
                     val direction = if (cross.dot(axisNormal) > 0) 1.0 else -1.0
                     val finalAngle = angle * direction
                     
@@ -512,64 +519,59 @@ class CADViewModel : ViewModel() {
 
         if (currentMode == CadMode.NAVIGATE) {
             cameraYaw += dragAmount.x * 0.005f; cameraPitch -= dragAmount.y * 0.005f; triggerUpdate()
-        } else if (currentMode == CadMode.TRIM || currentMode == CadMode.SMART_SKETCH || currentMode == CadMode.SKETCH_RECT_DIAG || currentMode == CadMode.SKETCH_POLYGON || currentMode == CadMode.SKETCH_SPLINE_FIT) {
-            val pt = screenToWorld(position.x, position.y, screenWidth, screenHeight)
-            rawStroke = rawStroke + pt
-            if (currentMode == CadMode.SMART_SKETCH && rawStroke.size > 8) {
-                val lastPoints = rawStroke.takeLast(6)
-                var directionSwitches = 0
-                for (i in 0 until lastPoints.size - 2) {
-                    val v1 = lastPoints[i+1].x - lastPoints[i].x
-                    val v2 = lastPoints[i+2].x - lastPoints[i+1].x
-                    if (v1 * v2 < 0) directionSwitches++
-                }
-                if (directionSwitches >= 3) { currentMode = CadMode.TRIM; Toast.makeText(context, "Budama Modu Aktif", Toast.LENGTH_SHORT).show() }
-            }
-            if (currentMode == CadMode.TRIM) {
-                val geoms = activeSketch.getGeometries().filterIsInstance<Line>().toMutableList()
-                val toRemove = geoms.filter { line -> line.distanceToPoint(pt) < 15.0 / zoom }
-                if (toRemove.isNotEmpty()) {
-                    geoms.removeAll(toRemove); activeSketch.clearWorkspace()
-                    geoms.forEach { activeSketch.addGeometry(it) }
-                    if (toRemove.contains(selectionManager.firstOrNull())) { selectionManager.clear(); selectionPoint = null }
-                }
-            }
-            triggerUpdate()
-        } else if (currentMode == CadMode.SMART_SKETCH) {
-            val pt = screenToWorld(position.x, position.y, screenWidth, screenHeight)
+        } else if (isSketchMode || currentMode.name.startsWith("SKETCH_") || currentMode == CadMode.TRIM) {
+            val rawPt = screenToWorld(position.x, position.y, screenWidth, screenHeight)
+            val snap = SnapEngine.snapPoint(rawPt, rawStroke.firstOrNull(), activeSketch.getGeometries(), mainAssembly.components, zoom)
+            val pt = snap.point
+            currentSnap = snap
             
-            if (pencilDetector.checkDwellCondition()) {
+            interactionState = InteractionState.SKETCHING
+            
+            // --- SMART SKETCH & TOOLS ---
+            if (currentMode == CadMode.SMART_SKETCH && pencilDetector.checkDwellCondition()) {
                 val straightened = PredictiveSketchEngine.straighten(rawStroke.first(), pt)
-                rawStroke = listOf(rawStroke.first(), straightened.endPoint)
-                previewGeometry = Line(rawStroke.first(), straightened.endPoint)
+                previewGeometry = straightened
                 activeInference = if (abs(straightened.endPoint.y - rawStroke.first().y) < 0.1) "H" else "V"
             } else {
-                val geom = selectionManager.firstOrNull()
-                if (dragHandle in 0..1 && geom is Line) {
-                    val allGeoms = activeSketch.getGeometries().toMutableList()
-                    allGeoms.remove(geom)
-                    var newStart = geom.startPoint; var newEnd = geom.endPoint
-                    if (dragHandle == 0) newStart = pt
-                    if (dragHandle == 1) newEnd = pt
-                    val newLine = Line(newStart, newEnd); allGeoms.add(newLine); activeSketch.clearWorkspace()
-                    allGeoms.forEach { activeSketch.addGeometry(it) }; selectionManager.select(newLine)
-                } else {
-                    val snap = SnapEngine.snapPoint(pt, rawStroke.firstOrNull(), activeSketch.getGeometries(), mainAssembly.components, zoom)
-                    currentSnap = snap
-                    rawStroke = rawStroke + snap.point
-                    
-                    // Live Inference during drawing
-                    if (rawStroke.size > 2) {
-                        previewGeometry = Line(rawStroke.first(), snap.point)
-                        activeInference = when(snap.type) {
-                            SnapType.HORIZONTAL -> "H"
-                            SnapType.VERTICAL -> "V"
-                            SnapType.PARALLEL -> "//"
-                            SnapType.PERPENDICULAR -> "T"
-                            SnapType.TANGENT -> "O"
-                            else -> null
+                rawStroke = rawStroke + pt
+                when (currentMode) {
+                    CadMode.SKETCH_LINE_MANUAL, CadMode.SMART_SKETCH -> {
+                        if (rawStroke.size >= 2) previewGeometry = Line(rawStroke.first(), pt)
+                    }
+                    CadMode.SKETCH_CIRCLE -> {
+                        if (rawStroke.size >= 2) previewGeometry = Circle3D(rawStroke.first(), rawStroke.first().distanceTo(pt))
+                    }
+                    CadMode.SKETCH_RECT_CENTER -> {
+                        if (rawStroke.size >= 2) {
+                            val center = rawStroke.first(); val corner = pt
+                            val dx = abs(corner.x - center.x); val dy = abs(corner.y - center.y)
+                            previewGeometry = Line(center, corner) // Proxy
                         }
                     }
+                    CadMode.SKETCH_RECT_CENTER -> {
+                if (rawStroke.size >= 2) {
+                    val center = rawStroke.first(); val corner = rawStroke.last()
+                    val dx = abs(corner.x - center.x); val dy = abs(corner.y - center.y)
+                    val p1 = Point3(center.x - dx, center.y - dy, 0.0)
+                    val p2 = Point3(center.x + dx, center.y + dy, 0.0)
+                    PredictiveSketchEngine.generateRectangleDiagonal(p1, p2).forEach {
+                        commandManager.execute(AddGeometryCommand(activeSketch, it))
+                    }
+                }
+                rawStroke = emptyList(); triggerUpdate()
+            }
+            CadMode.SKETCH_POLYGON -> {
+                        if (rawStroke.size >= 2) previewGeometry = Circle3D(rawStroke.first(), rawStroke.first().distanceTo(pt)) // Proxy
+                    }
+                    CadMode.TRIM -> {
+                        val geoms = activeSketch.getGeometries().filterIsInstance<Line>().toMutableList()
+                        val toRemove = geoms.filter { it.distanceToPoint(pt) < 15.0 / zoom }
+                        if (toRemove.isNotEmpty()) {
+                            geoms.removeAll(toRemove); activeSketch.clearWorkspace()
+                            geoms.forEach { activeSketch.addGeometry(it) }
+                        }
+                    }
+                    else -> {}
                 }
             }
             triggerUpdate()
@@ -582,39 +584,63 @@ class CADViewModel : ViewModel() {
         activeManipulatorAxis = null
         previewGeometry = null
         activeInference = null
+        interactionState = InteractionState.IDLE
+        
         when (currentMode) {
             CadMode.TRIM -> { rawStroke = emptyList(); currentMode = CadMode.SMART_SKETCH; triggerUpdate() }
-            CadMode.SMART_SKETCH -> {
-                if (dragHandle == -1 && rawStroke.size > 2) {
-                    val finalizedStroke = if (pencilDetector.checkDwellCondition()) {
-                        val straightened = PredictiveSketchEngine.straighten(rawStroke.first(), rawStroke.last())
-                        listOf(straightened.startPoint, straightened.endPoint)
-                    } else rawStroke
-                    
-                    val predictedShapes = PredictiveSketchEngine.recognize(finalizedStroke, zoom)
-                    predictedShapes.forEach { shape -> 
-                        commandManager.execute(AddGeometryCommand(activeSketch, shape))
-                        
-                        // Otomatik Kısıtlama Ekleme (Smart Inference)
-                        if (shape is Line) {
-                            // H/V Inference
-                            val dx = abs(shape.endPoint.x - shape.startPoint.x)
-                            val dy = abs(shape.endPoint.y - shape.startPoint.y)
-                            if (dy < 5.0 / zoom) {
-                                commandManager.execute(com.tamercad.core.commands.AddConstraintCommand(activeSketch, gcsManager, com.tamercad.core.constraints.HorizontalConstraint(shape)))
-                            } else if (dx < 5.0 / zoom) {
-                                commandManager.execute(com.tamercad.core.commands.AddConstraintCommand(activeSketch, gcsManager, com.tamercad.core.constraints.VerticalConstraint(shape)))
-                            }
-                            
-                            // Coincident Inference (Snapping to endpoints)
-                            if (currentSnap?.type == SnapType.ENDPOINT) {
-                                // Bulunan en yakın noktayı kısıtla (Basitleştirilmiş: Sadece mantık iskeleti)
-                            }
-                        }
-                    }
-                    rawStroke = emptyList()
+            CadMode.SKETCH_LINE_MANUAL, CadMode.SMART_SKETCH -> {
+                if (dragHandle == -1 && rawStroke.size >= 2) {
+                    val line = Line(rawStroke.first(), rawStroke.last())
+                    commandManager.execute(AddGeometryCommand(activeSketch, line))
                 }
-                dragHandle = -1; triggerUpdate()
+                rawStroke = emptyList(); dragHandle = -1; triggerUpdate()
+            }
+            CadMode.SKETCH_RECT_DIAG -> {
+                if (rawStroke.size >= 2) {
+                    val p1 = rawStroke.first(); val p2 = rawStroke.last()
+                    PredictiveSketchEngine.generateRectangleDiagonal(p1, p2).forEach {
+                        commandManager.execute(AddGeometryCommand(activeSketch, it))
+                    }
+                }
+                rawStroke = emptyList(); triggerUpdate()
+            }
+            CadMode.SKETCH_RECT_CENTER -> {
+                if (rawStroke.size >= 2) {
+                    val center = rawStroke.first(); val corner = rawStroke.last()
+                    val dx = abs(corner.x - center.x); val dy = abs(corner.y - center.y)
+                    val p1 = Point3(center.x - dx, center.y - dy, 0.0)
+                    val p2 = Point3(center.x + dx, center.y + dy, 0.0)
+                    PredictiveSketchEngine.generateRectangleDiagonal(p1, p2).forEach {
+                        commandManager.execute(AddGeometryCommand(activeSketch, it))
+                    }
+                }
+                rawStroke = emptyList(); triggerUpdate()
+            }
+            CadMode.SKETCH_POLYGON -> {
+                if (rawStroke.size >= 2) {
+                    val center = rawStroke.first()
+                    val radius = center.distanceTo(rawStroke.last())
+                    PredictiveSketchEngine.generatePolygon(center, radius).forEach {
+                        commandManager.execute(AddGeometryCommand(activeSketch, it))
+                    }
+                }
+                rawStroke = emptyList(); triggerUpdate()
+            }
+            CadMode.SKETCH_ARC -> {
+                if (rawStroke.size >= 3) {
+                    // Logic to create arc from 3 points or start/mid/end
+                    val arc = PredictiveSketchEngine.recognize(rawStroke, zoom).firstOrNull() as? Arc3D
+                    if (arc != null) commandManager.execute(AddGeometryCommand(activeSketch, arc))
+                }
+                rawStroke = emptyList(); triggerUpdate()
+            }
+            CadMode.SKETCH_CIRCLE -> {
+                if (rawStroke.size >= 2) {
+                    val center = rawStroke.first()
+                    val radius = center.distanceTo(rawStroke.last())
+                    commandManager.execute(AddGeometryCommand(activeSketch, Circle3D(center, radius)))
+                }
+                rawStroke = emptyList(); triggerUpdate()
             }
             CadMode.EXTRUDE -> {
                 if (activeSketch.getGeometries().isNotEmpty() && abs(dynamicExtrudeHeight) > 5f) {

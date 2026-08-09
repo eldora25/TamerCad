@@ -13,6 +13,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.PointerType
@@ -42,6 +43,8 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 
 import com.tamercad.ui.interaction.InteractionState
+
+import com.tamercad.core.sketch.ProfileValidator
 
 /**
  * TamerCAD Akıllı Çizim Alanı.
@@ -110,12 +113,6 @@ fun CADCanvas(viewModel: CADViewModel) {
                     if (!viewModel.isStylusInUse && viewModel.interactionState == InteractionState.CAMERA_NAVIGATION) {
                         // Pinch Zoom
                         viewModel.zoom *= zoomDelta
-                        
-                        // Pan vs Orbit logic based on touch count?
-                        // Simplified: Horizontal/Vertical drag orbits, two fingers could pan.
-                        // Standard Compose detectTransformGestures doesn't expose touch count directly.
-                        // We will use pan for Orbit by default as in early TamerCAD version, 
-                        // but refined for professional feel.
                         
                         if (zoomDelta == 1f) { // Not zooming, so it's likely a drag
                              viewModel.cameraYaw += pan.x * 0.005f
@@ -269,6 +266,19 @@ fun CADCanvas(viewModel: CADViewModel) {
         // --- SKETCH RENDERING (Blueprints Logic) ---
         viewModel.document.sketches.forEach { sketch ->
             val sketchGeoms = sketch.getGeometries()
+            
+            // Highlight Closed Loops (Profiles)
+            val closedLoops = ProfileValidator.findClosedLoops(sketchGeoms)
+            closedLoops.forEach { loop ->
+                val path = Path()
+                loop.filterIsInstance<Line>().forEachIndexed { index, line ->
+                    val sp = viewModel.worldToScreen(line.startPoint, screenWidth, screenHeight)
+                    if (index == 0) path.moveTo(sp.x, sp.y) else path.lineTo(sp.x, sp.y)
+                }
+                path.close()
+                drawPath(path, color = TamerCadColors.AccentBlue.copy(alpha = 0.1f))
+            }
+
             sketchGeoms.forEach { geometry ->
                 val isSelected = viewModel.selectionManager.selectedEntities.contains(geometry)
                 val isHovered = viewModel.selectionManager.hoveredEntity == geometry
@@ -358,15 +368,77 @@ fun CADCanvas(viewModel: CADViewModel) {
                         strokeWidth = 3f * viewModel.zoom
                     )
                 }
+                is Circle3D -> {
+                    drawCircle(
+                        color = TamerCadColors.Primary.copy(alpha = 0.8f),
+                        radius = (geom.radius * viewModel.zoom).toFloat(),
+                        center = viewModel.worldToScreen(geom.center, screenWidth, screenHeight),
+                        style = Stroke(width = 3f * viewModel.zoom)
+                    )
+                }
             }
+        }
+        
+        // SPECIAL PREVIEWS (Rect, etc.)
+        if ((viewModel.currentMode == CadMode.SKETCH_RECT_DIAG || viewModel.currentMode == CadMode.SKETCH_RECT_CENTER) && viewModel.rawStroke.size >= 2) {
+             val p1 = viewModel.rawStroke.first(); val p2 = viewModel.rawStroke.last()
+             val sp1 = viewModel.worldToScreen(p1, screenWidth, screenHeight)
+             val sp2 = viewModel.worldToScreen(p2, screenWidth, screenHeight)
+             
+             if (viewModel.currentMode == CadMode.SKETCH_RECT_DIAG) {
+                 drawRect(
+                     color = TamerCadColors.Primary.copy(alpha = 0.4f),
+                     topLeft = Offset(min(sp1.x, sp2.x), min(sp1.y, sp2.y)),
+                     size = Size(abs(sp1.x - sp2.x), abs(sp1.y - sp2.y)),
+                     style = Stroke(width = 2f * viewModel.zoom, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f))
+                 )
+             } else {
+                 val dx = abs(sp2.x - sp1.x); val dy = abs(sp2.y - sp1.y)
+                 drawRect(
+                     color = TamerCadColors.Primary.copy(alpha = 0.4f),
+                     topLeft = Offset(sp1.x - dx, sp1.y - dy),
+                     size = Size(dx * 2f, dy * 2f),
+                     style = Stroke(width = 2f * viewModel.zoom, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f))
+                 )
+             }
         }
 
             if (viewModel.interactionState == InteractionState.SKETCHING) {
                 val snap = viewModel.currentSnap
-                if (snap != null && snap.type != SnapType.NONE) {
-                    val lastPt = viewModel.worldToScreen(snap.point, screenWidth, screenHeight)
+                if (snap != null) {
+                    val currentScreenPt = viewModel.worldToScreen(snap.point, screenWidth, screenHeight)
                     
-                    // Draw Snap Icon (Badge)
+                    // 1. INFERENCE LINES (Dashed)
+                    val dash = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                    when (snap.type) {
+                        SnapType.HORIZONTAL, SnapType.VERTICAL -> {
+                            val startPt = viewModel.rawStroke.firstOrNull() ?: snap.point
+                            drawLine(
+                                color = TamerCadColors.Primary.copy(alpha = 0.4f),
+                                start = viewModel.worldToScreen(startPt, screenWidth, screenHeight),
+                                end = currentScreenPt,
+                                strokeWidth = 2f,
+                                pathEffect = dash
+                            )
+                        }
+                        SnapType.PARALLEL, SnapType.PERPENDICULAR -> {
+                            val ref = snap.refGeometry as? Line
+                            if (ref != null) {
+                                // Draw dashed line matching reference direction
+                                val startPt = viewModel.rawStroke.firstOrNull() ?: snap.point
+                                drawLine(
+                                    color = Color.Magenta.copy(alpha = 0.4f),
+                                    start = viewModel.worldToScreen(startPt, screenWidth, screenHeight),
+                                    end = currentScreenPt,
+                                    strokeWidth = 2f,
+                                    pathEffect = dash
+                                )
+                            }
+                        }
+                        else -> {}
+                    }
+
+                    // 2. SNAP BADGE
                     val symbol = when (snap.type) {
                         SnapType.HORIZONTAL -> "H"
                         SnapType.VERTICAL -> "V"
@@ -383,14 +455,23 @@ fun CADCanvas(viewModel: CADViewModel) {
                     }
                     
                     if (symbol.isNotEmpty()) {
-                        drawBadge(this, symbol, Offset(lastPt.x + 30f, lastPt.y - 30f), viewModel.zoom)
+                        drawBadge(this, symbol, Offset(currentScreenPt.x + 40f, currentScreenPt.y - 40f), viewModel.zoom)
                     }
                     
-                    // Specific highlight for snapping point
+                    // 3. LIVE DIMENSION LABEL
+                    if (viewModel.rawStroke.size >= 2) {
+                        val startPt = viewModel.rawStroke.first()
+                        val dist = snap.point.distanceTo(startPt)
+                        val midPt = Offset((currentScreenPt.x + viewModel.worldToScreen(startPt, screenWidth, screenHeight).x)/2, (currentScreenPt.y + viewModel.worldToScreen(startPt, screenWidth, screenHeight).y)/2)
+                        
+                        drawLiveDimension(this, "${String.format(Locale.US, "%.1f", dist)} mm", midPt, viewModel.zoom)
+                    }
+
+                    // 4. POINT HIGHLIGHT
                     drawCircle(
-                        color = TamerCadColors.Snap,
-                        radius = 8f * viewModel.zoom,
-                        center = lastPt,
+                        color = if (snap.type != SnapType.NONE) TamerCadColors.Primary else Color.Gray,
+                        radius = 6f * viewModel.zoom,
+                        center = currentScreenPt,
                         style = Stroke(width = 2f)
                     )
                 }
@@ -493,31 +574,50 @@ private fun drawMeasurementLabel(
     }
 }
 
+private fun drawLiveDimension(
+    drawScope: androidx.compose.ui.graphics.drawscope.DrawScope,
+    text: String,
+    position: Offset,
+    zoom: Float
+) {
+    val paint = android.graphics.Paint().apply {
+        color = 0xFFFFFFFF.toInt()
+        textSize = 12f * zoom
+        textAlign = android.graphics.Paint.Align.CENTER
+        isAntiAlias = true
+    }
+    val textWidth = paint.measureText(text)
+    
+    drawScope.apply {
+        drawRoundRect(
+            color = Color.Black.copy(alpha = 0.6f),
+            topLeft = Offset(position.x - (textWidth / 2) - 8f, position.y - 12f),
+            size = Size(textWidth + 16f, 24f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f * zoom)
+        )
+        drawContext.canvas.nativeCanvas.drawText(text, position.x, position.y + 6f, paint)
+    }
+}
+
 private fun drawBadge(
     drawScope: androidx.compose.ui.graphics.drawscope.DrawScope,
     symbol: String,
     position: Offset,
     zoom: Float
 ) {
-    val size = 18f * zoom
+    val size = 20f * zoom
     val paint = android.graphics.Paint().apply {
-        color = 0xFF4A90E2.toInt()
-        textSize = 12f * zoom
+        color = 0xFFFFFFFF.toInt()
+        textSize = 14f * zoom
         textAlign = android.graphics.Paint.Align.CENTER
         isAntiAlias = true
         typeface = android.graphics.Typeface.DEFAULT_BOLD
     }
     
     drawScope.drawCircle(
-        color = Color.White,
-        radius = size / 2,
-        center = position
-    )
-    drawScope.drawCircle(
         color = TamerCadColors.Primary,
         radius = size / 2,
-        center = position,
-        style = Stroke(width = 1f * zoom)
+        center = position
     )
     drawScope.drawContext.canvas.nativeCanvas.drawText(
         symbol,
