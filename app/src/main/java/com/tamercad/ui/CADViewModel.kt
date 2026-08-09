@@ -150,14 +150,16 @@ class CADViewModel : ViewModel() {
     }
 
     fun onSketchDragEnd(context: Context) {
-        val endPoint = currentSnap?.point ?: return
+        val snapEnd = currentSnap ?: return
         if (interactionState == InteractionState.STYLUS_DRAWING && rawStroke.isNotEmpty()) {
             val startPoint = rawStroke.first()
+            val endPoint = snapEnd.point
+            
             when (currentMode) {
                 CadMode.SKETCH_LINE_MANUAL, CadMode.SMART_SKETCH -> {
                     val line = Line(startPoint, endPoint)
                     commandManager.execute(AddGeometryCommand(activeSketch, line))
-                    applyAutoConstraints(line)
+                    applyAdvancedConstraints(line, snapEnd)
                 }
                 CadMode.SKETCH_CIRCLE -> {
                     val circle = Circle3D(startPoint, startPoint.distanceTo(endPoint))
@@ -169,11 +171,28 @@ class CADViewModel : ViewModel() {
         previewGeometry = null; rawStroke = emptyList(); interactionState = InteractionState.IDLE; triggerUpdate()
     }
 
-    private fun applyAutoConstraints(line: Line) {
-        val dx = abs(line.endPoint.x - line.startPoint.x)
-        val dy = abs(line.endPoint.y - line.startPoint.y)
-        if (dy < 5.0 / zoom) commandManager.execute(AddConstraintCommand(activeSketch, gcsManager, HorizontalConstraint(line)))
-        else if (dx < 5.0 / zoom) commandManager.execute(AddConstraintCommand(activeSketch, gcsManager, VerticalConstraint(line)))
+    private fun applyAdvancedConstraints(line: Line, snapEnd: SnapResult?) {
+        // 1. Horizontal / Vertical Inferences
+        if (snapEnd?.type == SnapType.HORIZONTAL) {
+            commandManager.execute(AddConstraintCommand(activeSketch, gcsManager, HorizontalConstraint(line)))
+        } else if (snapEnd?.type == SnapType.VERTICAL) {
+            commandManager.execute(AddConstraintCommand(activeSketch, gcsManager, VerticalConstraint(line)))
+        }
+
+        // 2. Parallel / Perpendicular Inferences
+        if (snapEnd?.type == SnapType.PARALLEL && snapEnd.refGeometry is Line) {
+            commandManager.execute(AddConstraintCommand(activeSketch, gcsManager, ParallelConstraint(line, snapEnd.refGeometry)))
+        } else if (snapEnd?.type == SnapType.PERPENDICULAR && snapEnd.refGeometry is Line) {
+            commandManager.execute(AddConstraintCommand(activeSketch, gcsManager, PerpendicularConstraint(line, snapEnd.refGeometry)))
+        }
+        
+        // 3. Basic H/V check for non-inference snaps
+        if (snapEnd?.type == SnapType.NONE || snapEnd?.type == SnapType.GRID || snapEnd?.type == SnapType.ENDPOINT) {
+            val dx = abs(line.endPoint.x - line.startPoint.x)
+            val dy = abs(line.endPoint.y - line.startPoint.y)
+            if (dy < 5.0 / zoom) commandManager.execute(AddConstraintCommand(activeSketch, gcsManager, HorizontalConstraint(line)))
+            else if (dx < 5.0 / zoom) commandManager.execute(AddConstraintCommand(activeSketch, gcsManager, VerticalConstraint(line)))
+        }
     }
 
     fun pick3DEntity(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): IGeometry? {

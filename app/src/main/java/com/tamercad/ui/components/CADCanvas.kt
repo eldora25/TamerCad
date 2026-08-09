@@ -33,6 +33,7 @@ import com.tamercad.core.geometry.*
 import com.tamercad.core.math.*
 import com.tamercad.core.rendering.VisualEngine
 import com.tamercad.core.sketch.SnapType
+import com.tamercad.core.sketch.SnapResult
 import com.tamercad.ui.CADViewModel
 import com.tamercad.ui.CadMode
 import com.tamercad.ui.theme.TamerCadColors
@@ -133,7 +134,7 @@ fun CADCanvas(viewModel: CADViewModel) {
             
             viewModel.currentSnap?.let { snap ->
                 if (snap.type != SnapType.NONE) {
-                    drawCircle(TamerCadColors.Primary, 8f, viewModel.worldToScreen(snap.point, size.width, size.height), style = Stroke(2f))
+                    drawSnapMarker(this, viewModel, snap)
                 }
             }
         }
@@ -188,4 +189,55 @@ fun drawWorldAxes(drawScope: DrawScope, viewModel: CADViewModel) {
     drawScope.drawLine(TamerCadColors.AxisX, originScreen, viewModel.worldToScreen(Point3(axisLength, 0.0, 0.0), screenWidth, screenHeight), 3f)
     drawScope.drawLine(TamerCadColors.AxisY, originScreen, viewModel.worldToScreen(Point3(0.0, axisLength, 0.0), screenWidth, screenHeight), 3f)
     drawScope.drawLine(TamerCadColors.AxisZ, originScreen, viewModel.worldToScreen(Point3(0.0, 0.0, axisLength), screenWidth, screenHeight), 3f)
+}
+
+/**
+ * Advanced Snap Marker Rendering.
+ */
+fun drawSnapMarker(drawScope: DrawScope, viewModel: CADViewModel, snap: SnapResult) {
+    val screenPos = viewModel.worldToScreen(snap.point, drawScope.size.width, drawScope.size.height)
+    val color = TamerCadColors.SnapColor
+    val size = 12f
+    
+    when (snap.type) {
+        SnapType.ENDPOINT -> {
+            drawScope.drawRect(color, Offset(screenPos.x - size/2, screenPos.y - size/2), Size(size, size), style = Stroke(2f))
+        }
+        SnapType.MIDPOINT -> {
+            val path = Path().apply {
+                moveTo(screenPos.x, screenPos.y - size/2)
+                lineTo(screenPos.x - size/2, screenPos.y + size/2)
+                lineTo(screenPos.x + size/2, screenPos.y + size/2)
+                close()
+            }
+            drawScope.drawPath(path, color, style = Stroke(2f))
+        }
+        SnapType.CENTER -> {
+            drawScope.drawCircle(color, size/2, screenPos, style = Stroke(2f))
+        }
+        SnapType.INTERSECTION -> {
+            drawScope.drawLine(color, Offset(screenPos.x - size/2, screenPos.y - size/2), Offset(screenPos.x + size/2, screenPos.y + size/2), 2f)
+            drawScope.drawLine(color, Offset(screenPos.x + size/2, screenPos.y - size/2), Offset(screenPos.x - size/2, screenPos.y + size/2), 2f)
+        }
+        SnapType.GRID -> {
+            drawScope.drawCircle(color.copy(alpha = 0.5f), 4f, screenPos)
+        }
+        SnapType.HORIZONTAL, SnapType.VERTICAL -> {
+            // Draw Inference Line
+            viewModel.startSnap?.let { start ->
+                val startScreen = viewModel.worldToScreen(start.point, drawScope.size.width, drawScope.size.height)
+                drawScope.drawLine(
+                    color = color,
+                    start = startScreen,
+                    end = screenPos,
+                    strokeWidth = 2f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                )
+            }
+            drawScope.drawCircle(color, 6f, screenPos, style = Stroke(2f))
+        }
+        else -> {
+            drawScope.drawCircle(color, 8f, screenPos, style = Stroke(2f))
+        }
+    }
 }

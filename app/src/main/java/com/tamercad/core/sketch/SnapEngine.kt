@@ -1,7 +1,7 @@
 package com.tamercad.core.sketch
 
 import com.tamercad.core.geometry.*
-import com.tamercad.core.math.Point3
+import com.tamercad.core.math.*
 import kotlin.math.*
 
 enum class SnapType { 
@@ -92,6 +92,14 @@ object SnapEngine {
                 is Circle3D -> {
                     // Center Snap
                     if (distance(current, geom.center) < threshold) return SnapResult(geom.center.copy(), SnapType.CENTER, geom)
+                    
+                    // Coincident (On Circle)
+                    val distToCenter = distance(current, geom.center)
+                    if (abs(distToCenter - geom.radius) < threshold) {
+                        val dir = Vector3(current.x - geom.center.x, current.y - geom.center.y, 0.0).normalize()
+                        val onCircle = Point3(geom.center.x + dir.x * geom.radius, geom.center.y + dir.y * geom.radius, 0.0)
+                        return SnapResult(onCircle, SnapType.COINCIDENT, geom)
+                    }
                 }
                 is Arc3D -> {
                     // Center Snap
