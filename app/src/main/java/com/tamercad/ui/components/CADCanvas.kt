@@ -78,34 +78,46 @@ fun CADCanvas(viewModel: CADViewModel) {
                 
                 // --- HARD STYLUS LOCK (InputClassifier) ---
                 if (viewModel.stylusInputManager.isTouchForbidden(stylusEvent)) {
-                    return@pointerInteropFilter true // IGNORE Finger during Stylus Lock
+                    return@pointerInteropFilter true // IGNORE Finger / Palm during Stylus production
                 }
 
-                viewModel.isStylusInUse = stylusEvent.type == PointerType.Stylus
+                viewModel.isStylusInUse = stylusEvent.isStylus
                 viewModel.pencilDetector.processMotionEvent(motionEvent)
                 
-                // Interaction State Machine Routing (InteractionRouter)
+                // --- Interaction Router (Centralized State Routing) ---
                 if (viewModel.isStylusInUse) {
-                    when (motionEvent.action) {
-                        android.view.MotionEvent.ACTION_DOWN -> {
-                            val hit = viewModel.pick3DEntity(motionEvent.x, motionEvent.y, screenWidth, screenHeight)
-                            // If we hit a gizmo handle, we are manipulating, else sketching/selecting
-                            if (hit != null && viewModel.activeManipulatorAxis != null) {
-                                viewModel.interactionState = InteractionState.MANIPULATING
-                            } else {
-                                viewModel.interactionState = if (viewModel.isSketchMode) InteractionState.SKETCHING else InteractionState.SELECTING
+                    when (motionEvent.actionMasked) {
+                        android.view.MotionEvent.ACTION_DOWN, 
+                        android.view.MotionEvent.ACTION_POINTER_DOWN -> {
+                            viewModel.interactionState = InteractionState.STYLUS_PRESSED
+                        }
+                        android.view.MotionEvent.ACTION_MOVE -> {
+                            if (viewModel.interactionState == InteractionState.STYLUS_PRESSED) {
+                                viewModel.interactionState = if (viewModel.isSketchMode) 
+                                    InteractionState.STYLUS_DRAWING else InteractionState.STYLUS_MANIPULATING
                             }
                         }
-                        android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                        android.view.MotionEvent.ACTION_UP, 
+                        android.view.MotionEvent.ACTION_CANCEL -> {
+                            viewModel.onSketchDragEnd(context)
                             viewModel.interactionState = InteractionState.IDLE
                         }
                     }
                 } else {
-                    // Finger interaction defaults to camera navigation
-                    if (motionEvent.action == android.view.MotionEvent.ACTION_DOWN) {
-                        viewModel.interactionState = InteractionState.CAMERA_NAVIGATION
-                    } else if (motionEvent.action == android.view.MotionEvent.ACTION_UP) {
-                        viewModel.interactionState = InteractionState.IDLE
+                    // Finger interaction defaults to navigation
+                    when (motionEvent.actionMasked) {
+                        android.view.MotionEvent.ACTION_DOWN -> {
+                            viewModel.interactionState = InteractionState.FINGER_NAVIGATING
+                        }
+                        android.view.MotionEvent.ACTION_MOVE -> {
+                            if (motionEvent.pointerCount > 1) {
+                                viewModel.interactionState = InteractionState.MULTI_TOUCH_NAVIGATING
+                            }
+                        }
+                        android.view.MotionEvent.ACTION_UP, 
+                        android.view.MotionEvent.ACTION_CANCEL -> {
+                            viewModel.interactionState = InteractionState.IDLE
+                        }
                     }
                 }
                 
@@ -114,8 +126,8 @@ fun CADCanvas(viewModel: CADViewModel) {
             // 1. NAVİGASYON (Sadece Parmak / Touch)
             .pointerInput(Unit) {
                 detectTransformGestures { centroid, pan, zoomDelta, rotation ->
-                    // --- HARD-LOCK: Stylus is active, block ALL touch navigation ---
-                    if (!viewModel.isStylusInUse && viewModel.interactionState == InteractionState.CAMERA_NAVIGATION) {
+                    // Hard-Lock: Only navigate if NO stylus is in use and state is Navigating
+                    if (!viewModel.isStylusInUse && (viewModel.interactionState == InteractionState.FINGER_NAVIGATING || viewModel.interactionState == InteractionState.MULTI_TOUCH_NAVIGATING)) {
                         viewModel.zoom *= zoomDelta
                         
                         if (zoomDelta == 1f) { // Orbit
@@ -157,9 +169,7 @@ fun CADCanvas(viewModel: CADViewModel) {
                             viewModel.onSketchDrag(change.position, dragAmount, screenWidth, screenHeight, context) 
                         }
                     },
-                    onDragEnd = { 
-                        viewModel.onSketchDragEnd(context) 
-                    }
+                    onDragEnd = { /* Handled by InteropFilter UP for safety */ }
                 )
             }
     ) {
@@ -407,7 +417,7 @@ fun CADCanvas(viewModel: CADViewModel) {
              }
         }
 
-            if (viewModel.interactionState == InteractionState.SKETCHING) {
+            if (viewModel.interactionState == InteractionState.STYLUS_DRAWING) {
                 val snap = viewModel.currentSnap
                 if (snap != null) {
                     val currentScreenPt = viewModel.worldToScreen(snap.point, screenWidth, screenHeight)

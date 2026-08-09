@@ -302,17 +302,17 @@ class CADViewModel : ViewModel() {
                 axis == "ROT_Z" -> ray.intersectPlane(center, Vector3(0.0, 0.0, 1.0))
                 else -> null
             }
-            interactionState = InteractionState.MANIPULATING; return
+            interactionState = InteractionState.STYLUS_MANIPULATING; return
         }
         val rawPoint = screenToWorld(offset.x, offset.y, screenWidth, screenHeight); val snapResult = SnapEngine.snapPoint(rawPoint, null, activeSketch.getGeometries(), mainAssembly.components, zoom); val startPt = snapResult.point; startSnap = snapResult
-        if (currentMode == CadMode.SMART_SKETCH && isPointInsideActiveSketch(rawPoint, screenWidth, screenHeight)) { currentMode = CadMode.EXTRUDE; dynamicExtrudeHeight = 0f; interactionState = InteractionState.COMMAND_ACTIVE }
+        if (currentMode == CadMode.SMART_SKETCH && isPointInsideActiveSketch(rawPoint, screenWidth, screenHeight)) { currentMode = CadMode.EXTRUDE; dynamicExtrudeHeight = 0f; interactionState = InteractionState.STYLUS_MANIPULATING }
         else if (isSketchMode || currentMode.name.startsWith("SKETCH_") || currentMode == CadMode.TRIM) {
-            rawStroke = listOf(startPt); interactionState = InteractionState.SKETCHING; val geom = selectionManager.firstOrNull()
+            rawStroke = listOf(startPt); interactionState = InteractionState.STYLUS_DRAWING; val geom = selectionManager.firstOrNull()
             if (geom is Line) {
                 val dStart = sqrt((startPt.x - geom.startPoint.x).pow(2) + (startPt.y - geom.startPoint.y).pow(2)); val dEnd = sqrt((startPt.x - geom.endPoint.x).pow(2) + (startPt.y - geom.endPoint.y).pow(2))
                 if (dStart < 30.0 / zoom) { dragHandle = 0 } else if (dEnd < 30.0 / zoom) { dragHandle = 1 } else { dragHandle = -1 }
             }
-        } else if (currentMode == CadMode.EXTRUDE) { dynamicExtrudeHeight = 0f; interactionState = InteractionState.COMMAND_ACTIVE }
+        } else if (currentMode == CadMode.EXTRUDE) { dynamicExtrudeHeight = 0f; interactionState = InteractionState.STYLUS_MANIPULATING }
     }
 
     fun onSketchDrag(position: Offset, dragAmount: Offset, screenWidth: Float, screenHeight: Float, context: Context) {
@@ -349,7 +349,7 @@ class CADViewModel : ViewModel() {
         }
         if (currentMode == CadMode.NAVIGATE) { cameraYaw += dragAmount.x * 0.005f; cameraPitch -= dragAmount.y * 0.005f; triggerUpdate() }
         else if (isSketchMode || currentMode.name.startsWith("SKETCH_") || currentMode == CadMode.TRIM) {
-            val rawPt = screenToWorld(position.x, position.y, screenWidth, screenHeight); val snap = SnapEngine.snapPoint(rawPt, rawStroke.firstOrNull(), activeSketch.getGeometries(), mainAssembly.components, zoom); val pt = snap.point; currentSnap = snap; interactionState = InteractionState.SKETCHING
+            val rawPt = screenToWorld(position.x, position.y, screenWidth, screenHeight); val snap = SnapEngine.snapPoint(rawPt, rawStroke.firstOrNull(), activeSketch.getGeometries(), mainAssembly.components, zoom); val pt = snap.point; currentSnap = snap; interactionState = InteractionState.STYLUS_DRAWING
             if (currentMode == CadMode.SMART_SKETCH && pencilDetector.checkDwellCondition()) { val straightened = PredictiveSketchEngine.straighten(rawStroke.first(), pt); previewGeometry = straightened; activeInference = if (abs(straightened.endPoint.y - rawStroke.first().y) < 0.1) "H" else "V" }
             else {
                 rawStroke = rawStroke + pt

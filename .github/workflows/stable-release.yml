@@ -44,7 +44,7 @@ jobs:
         VERSION_TAG=${GITHUB_REF#refs/tags/}
         
         # Artifact isimlendirmeleri
-        mv app/build/outputs/apk/release/app-release-unsigned.apk TamerCAD-${VERSION_TAG}-build${{ github.run_number }}.apk
+        mv app/build/outputs/apk/release/*.apk TamerCAD-${VERSION_TAG}-build${{ github.run_number }}.apk
         git archive --format=zip -o tamercad-source-${VERSION_TAG}.zip HEAD
         
         echo "APK_FILE=TamerCAD-${VERSION_TAG}-build${{ github.run_number }}.apk" >> $GITHUB_ENV
