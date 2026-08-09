@@ -51,6 +51,31 @@ class CADViewModel : ViewModel() {
     var panX by mutableFloatStateOf(0f)
     var panY by mutableFloatStateOf(0f)
     var zoom by mutableFloatStateOf(1.5f)
+    
+    // Diagnostic / Hardening State
+    var stylusPressure by mutableFloatStateOf(0f)
+    var isStylusDown by mutableStateOf(false)
+    var gestureMode by mutableStateOf("IDLE")
+
+    // Constraints
+    private val MIN_ZOOM = 0.1f
+    private val MAX_ZOOM = 50.0f
+    private val PITCH_LIMIT = (PI / 2.0 - 0.01).toFloat()
+
+    fun updateCamera(deltaYaw: Float, deltaPitch: Float, deltaZoom: Float, deltaPanX: Float, deltaPanY: Float) {
+        if (!deltaYaw.isFinite() || !deltaPitch.isFinite() || !deltaZoom.isFinite() || 
+            !deltaPanX.isFinite() || !deltaPanY.isFinite()) return
+
+        cameraYaw += deltaYaw
+        cameraPitch = (cameraPitch + deltaPitch).coerceIn(-PITCH_LIMIT, PITCH_LIMIT)
+        zoom = (zoom * deltaZoom).coerceIn(MIN_ZOOM, MAX_ZOOM)
+        
+        // Pan scale is adjusted by zoom to feel stable
+        panX += deltaPanX
+        panY += deltaPanY
+        
+        triggerUpdate()
+    }
 
     var currentMode by mutableStateOf(CadMode.NAVIGATE)
     var isSketchMode by mutableStateOf(false)
@@ -95,7 +120,12 @@ class CADViewModel : ViewModel() {
         val proj = project3DTo2D(point)
         val centerX = screenWidth / 2f
         val centerY = screenHeight / 2f
-        return Offset((proj.x * zoom).toFloat() + panX + centerX, (centerY + panY) - (proj.y * zoom).toFloat())
+        
+        // Pan and Zoom are authoritative here
+        return Offset(
+            (proj.x * zoom).toFloat() + panX + centerX,
+            (centerY + panY) - (proj.y * zoom).toFloat()
+        )
     }
 
     fun screenToWorld(x: Float, y: Float, screenWidth: Float, screenHeight: Float): Point3 {

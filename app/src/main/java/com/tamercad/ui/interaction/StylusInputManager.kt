@@ -50,6 +50,9 @@ class StylusInputManager {
      * Ancak navigasyon için birden fazla parmağa izin verir.
      */
     fun isTouchForbidden(event: StylusEvent): Boolean {
+        // Explicit Palm Tool Type rejection (5 is MotionEvent.TOOL_TYPE_PALM since API 29)
+        if (event.toolType == 5) return true
+
         // Eğer 1'den fazla pointer varsa (Multi-touch navigation), engelleme.
         if (event.pointerCount > 1) return false
         

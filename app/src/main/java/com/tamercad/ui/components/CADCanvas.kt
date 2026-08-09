@@ -44,7 +44,7 @@ import java.util.Locale
 import kotlin.math.*
 
 /**
- * TAMERCAD — PHASE 1.3 — GESTURE PIPELINE RECOVERY
+ * TAMERCAD — PHASE 1.4 — REAL DEVICE INPUT VALIDATION AND NAVIGATION HARDENING
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -59,13 +59,19 @@ fun CADCanvas(viewModel: CADViewModel) {
             modifier = Modifier
                 .fillMaxSize()
                 .background(if (viewModel.isSketchMode) TamerCadColors.SketchBgColor else TamerCadColors.BgColor)
-                // 1. INPUT CLASSIFIER (Syncs pointerCount to ViewModel)
+                // 1. INPUT ARBITRATION (Syncs pointerCount and diagnostic data)
                 .pointerInteropFilter { motionEvent ->
                     val stylusEvent = viewModel.stylusInputManager.resolveEvent(motionEvent)
                     viewModel.pointerCount = motionEvent.pointerCount
-                    
-                    if (viewModel.stylusInputManager.isTouchForbidden(stylusEvent)) return@pointerInteropFilter true
                     viewModel.isStylusInUse = stylusEvent.isStylus
+                    viewModel.isStylusDown = motionEvent.actionMasked != android.view.MotionEvent.ACTION_UP && 
+                                           motionEvent.actionMasked != android.view.MotionEvent.ACTION_CANCEL
+                    
+                    if (stylusEvent.isStylus) {
+                        viewModel.stylusPressure = stylusEvent.pressure
+                    }
+
+                    if (viewModel.stylusInputManager.isTouchForbidden(stylusEvent)) return@pointerInteropFilter true
                     
                     if (viewModel.isStylusInUse) {
                         when (motionEvent.actionMasked) {
@@ -79,23 +85,22 @@ fun CADCanvas(viewModel: CADViewModel) {
                     }
                     false
                 }
-                // 2. NAVIGATION PIPELINE
+                // 2. NAVIGATION PIPELINE (Hardened for seamless transitions)
                 .pointerInput(Unit) {
-                    detectTransformGestures { _, pan, zoomDelta, _ ->
+                    detectTransformGestures(panZoomLock = false) { centroid, pan, zoomDelta, rotation ->
                         if (!viewModel.isStylusInUse) {
-                            if (viewModel.pointerCount > 1) {
+                            if (viewModel.pointerCount >= 2) {
                                 // TWO-FINGER: PAN & ZOOM
+                                viewModel.gestureMode = "PAN/ZOOM"
                                 viewModel.interactionState = InteractionState.MULTI_TOUCH_NAVIGATING
-                                viewModel.zoom *= zoomDelta
-                                viewModel.panX += pan.x
-                                viewModel.panY += pan.y
-                            } else {
+                                viewModel.updateCamera(0f, 0f, zoomDelta, pan.x, pan.y)
+                            } else if (viewModel.pointerCount == 1) {
                                 // SINGLE-FINGER: ORBIT
+                                viewModel.gestureMode = "ORBIT"
                                 viewModel.interactionState = InteractionState.FINGER_NAVIGATING
-                                viewModel.cameraYaw += pan.x * 0.005f
-                                viewModel.cameraPitch -= pan.y * 0.005f
+                                // Pitch/Yaw orbit
+                                viewModel.updateCamera(pan.x * 0.005f, -pan.y * 0.005f, 1f, 0f, 0f)
                             }
-                            viewModel.triggerUpdate()
                         }
                     }
                 }
@@ -104,6 +109,7 @@ fun CADCanvas(viewModel: CADViewModel) {
                     detectDragGestures(
                         onDragStart = { offset ->
                             if (viewModel.isStylusInUse) {
+                                viewModel.gestureMode = "STYLUS_DRAW"
                                 viewModel.interactionState = if (viewModel.isSketchMode) InteractionState.STYLUS_DRAWING else InteractionState.STYLUS_MANIPULATING
                                 viewModel.onSketchDragStart(offset, screenWidth, screenHeight, context)
                             }
@@ -113,7 +119,9 @@ fun CADCanvas(viewModel: CADViewModel) {
                                 viewModel.onSketchDrag(change.position, dragAmount, screenWidth, screenHeight, context)
                             }
                         },
-                        onDragEnd = { /* InteropFilter handles it */ }
+                        onDragEnd = { 
+                            viewModel.gestureMode = "IDLE"
+                        }
                     )
                 }
         ) {
@@ -139,19 +147,22 @@ fun CADCanvas(viewModel: CADViewModel) {
             }
         }
 
-        // --- ENHANCED DEBUG OVERLAY ---
+        // --- ENHANCED DIAGNOSTIC OVERLAY (PHASE 1.4) ---
         Column(
             modifier = Modifier
                 .align(androidx.compose.ui.Alignment.BottomEnd)
                 .padding(16.dp)
-                .background(Color.Black.copy(alpha = 0.5f))
-                .padding(8.dp)
+                .background(Color.Black.copy(alpha = 0.6f))
+                .padding(10.dp)
         ) {
-            DebugText("INPUT: ${if (viewModel.isStylusInUse) "STYLUS" else "FINGER"}")
-            DebugText("POINTERS: ${viewModel.pointerCount}")
-            DebugText("STATE: ${viewModel.interactionState}")
-            DebugText("YAW/PITCH: ${String.format("%.2f", viewModel.cameraYaw)}/${String.format("%.2f", viewModel.cameraPitch)}")
-            DebugText("PAN: X=${String.format("%.1f", viewModel.panX)} Y=${String.format("%.1f", viewModel.panY)}")
+            DebugText("INPUT DEVICE: ${if (viewModel.isStylusInUse) "STYLUS" else "FINGER"}")
+            DebugText("POINTER COUNT: ${viewModel.pointerCount}")
+            DebugText("GESTURE MODE: ${viewModel.gestureMode}")
+            DebugText("STYLUS DOWN: ${viewModel.isStylusDown}")
+            DebugText("PRESSURE: ${String.format("%.3f", viewModel.stylusPressure)}")
+            DebugText("YAW: ${String.format("%.2f", viewModel.cameraYaw)}")
+            DebugText("PITCH: ${String.format("%.2f", viewModel.cameraPitch)}")
+            DebugText("PAN X/Y: ${String.format("%.1f", viewModel.panX)} / ${String.format("%.1f", viewModel.panY)}")
             DebugText("ZOOM: ${String.format("%.2f", viewModel.zoom)}")
         }
     }
@@ -159,7 +170,7 @@ fun CADCanvas(viewModel: CADViewModel) {
 
 @Composable
 fun DebugText(text: String) {
-    Text(text, color = Color.Green, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+    Text(text, color = Color.Green, fontSize = 11.sp, fontWeight = FontWeight.Bold, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
 }
 
 fun drawWorldGrid(drawScope: DrawScope, viewModel: CADViewModel) {
@@ -191,9 +202,6 @@ fun drawWorldAxes(drawScope: DrawScope, viewModel: CADViewModel) {
     drawScope.drawLine(TamerCadColors.AxisZ, originScreen, viewModel.worldToScreen(Point3(0.0, 0.0, axisLength), screenWidth, screenHeight), 3f)
 }
 
-/**
- * Advanced Snap Marker Rendering.
- */
 fun drawSnapMarker(drawScope: DrawScope, viewModel: CADViewModel, snap: SnapResult) {
     val screenPos = viewModel.worldToScreen(snap.point, drawScope.size.width, drawScope.size.height)
     val color = TamerCadColors.SnapColor
@@ -223,7 +231,6 @@ fun drawSnapMarker(drawScope: DrawScope, viewModel: CADViewModel, snap: SnapResu
             drawScope.drawCircle(color.copy(alpha = 0.5f), 4f, screenPos)
         }
         SnapType.HORIZONTAL, SnapType.VERTICAL -> {
-            // Draw Inference Line
             viewModel.startSnap?.let { start ->
                 val startScreen = viewModel.worldToScreen(start.point, drawScope.size.width, drawScope.size.height)
                 drawScope.drawLine(
