@@ -19,11 +19,8 @@ import com.tamercad.core.sketch.PredictiveSketchEngine
 import com.tamercad.core.sketch.SketchFeature
 import com.tamercad.core.sketch.SnapEngine
 import com.tamercad.core.sketch.SnapType
-import com.tamercad.core.commands.CommandManager
-import com.tamercad.core.commands.AddGeometryCommand
-import com.tamercad.core.commands.AddComponentCommand
-import com.tamercad.core.constraints.GCSManager
-import com.tamercad.core.constraints.LengthConstraint
+import com.tamercad.core.commands.*
+import com.tamercad.core.constraints.*
 import com.tamercad.ui.components.PencilGestureDetector
 import com.tamercad.ui.components.isPointInPolygon
 import java.util.*
@@ -102,6 +99,7 @@ class CADViewModel : ViewModel() {
     var dragHandle by mutableIntStateOf(-1)
     var rawStroke by mutableStateOf<List<Point3>>(emptyList())
     var currentSnap by mutableStateOf<com.tamercad.core.sketch.SnapResult?>(null)
+    var startSnap by mutableStateOf<com.tamercad.core.sketch.SnapResult?>(null)
     var dynamicExtrudeHeight by mutableFloatStateOf(0f)
     var isExtrudeSymmetric by mutableStateOf(false)
     var isExtrudeReversed by mutableStateOf(false)
@@ -409,6 +407,7 @@ class CADViewModel : ViewModel() {
         // Unified Sketch Snap at Start
         val snapResult = SnapEngine.snapPoint(rawPoint, null, activeSketch.getGeometries(), mainAssembly.components, zoom)
         val startPt = snapResult.point
+        startSnap = snapResult
 
         if (currentMode == CadMode.SMART_SKETCH && isPointInsideActiveSketch(rawPoint, screenWidth, screenHeight)) {
             currentMode = CadMode.EXTRUDE; dynamicExtrudeHeight = 0f
@@ -581,6 +580,7 @@ class CADViewModel : ViewModel() {
     }
 
     fun onSketchDragEnd(context: Context) {
+        val endSnap = currentSnap
         activeManipulatorAxis = null
         previewGeometry = null
         activeInference = null
@@ -592,52 +592,60 @@ class CADViewModel : ViewModel() {
                 if (dragHandle == -1 && rawStroke.size >= 2) {
                     val line = Line(rawStroke.first(), rawStroke.last())
                     commandManager.execute(AddGeometryCommand(activeSketch, line))
+                    
+                    // --- AUTOMATIC CONSTRAINTS ---
+                    
+                    // 1. Horizontal / Vertical
+                    if (endSnap?.type == SnapType.HORIZONTAL) {
+                        commandManager.execute(AddConstraintCommand(activeSketch, document.gcsManager, HorizontalConstraint(line)))
+                    } else if (endSnap?.type == SnapType.VERTICAL) {
+                        commandManager.execute(AddConstraintCommand(activeSketch, document.gcsManager, VerticalConstraint(line)))
+                    }
+                    
+                    // 2. Coincident Start
+                    startSnap?.let { s ->
+                        if (s.type == SnapType.ENDPOINT && s.refGeometry is Line) {
+                            val ref = s.refGeometry as Line
+                            val refPt = if (s.point.distanceTo(ref.startPoint) < 0.1) ref.startPoint else ref.endPoint
+                            commandManager.execute(AddConstraintCommand(activeSketch, document.gcsManager, CoincidentConstraint(line.startPoint, refPt)))
+                        }
+                    }
+                    
+                    //  Coincident End
+                    endSnap?.let { e ->
+                        if (e.type == SnapType.ENDPOINT && e.refGeometry is Line) {
+                            val ref = e.refGeometry as Line
+                            val refPt = if (e.point.distanceTo(ref.startPoint) < 0.1) ref.startPoint else ref.endPoint
+                            commandManager.execute(AddConstraintCommand(activeSketch, document.gcsManager, CoincidentConstraint(line.endPoint, refPt)))
+                        }
+                    }
+                    
+                    // Parallel / Perpendicular
+                    if (endSnap?.type == SnapType.PARALLEL && endSnap.refGeometry is Line) {
+                        commandManager.execute(AddConstraintCommand(activeSketch, document.gcsManager, ParallelConstraint(line, endSnap.refGeometry as Line)))
+                    } else if (endSnap?.type == SnapType.PERPENDICULAR && endSnap.refGeometry is Line) {
+                        commandManager.execute(AddConstraintCommand(activeSketch, document.gcsManager, PerpendicularConstraint(line, endSnap.refGeometry as Line)))
+                    } else if (endSnap?.type == SnapType.TANGENT && endSnap.refGeometry is Circle3D) {
+                        commandManager.execute(AddConstraintCommand(activeSketch, document.gcsManager, TangentConstraint(line, endSnap.refGeometry as Circle3D)))
+                    }
                 }
                 rawStroke = emptyList(); dragHandle = -1; triggerUpdate()
-            }
-            CadMode.SKETCH_RECT_DIAG -> {
-                if (rawStroke.size >= 2) {
-                    val p1 = rawStroke.first(); val p2 = rawStroke.last()
-                    PredictiveSketchEngine.generateRectangleDiagonal(p1, p2).forEach {
-                        commandManager.execute(AddGeometryCommand(activeSketch, it))
-                    }
-                }
-                rawStroke = emptyList(); triggerUpdate()
-            }
-            CadMode.SKETCH_RECT_CENTER -> {
-                if (rawStroke.size >= 2) {
-                    val center = rawStroke.first(); val corner = rawStroke.last()
-                    val dx = abs(corner.x - center.x); val dy = abs(corner.y - center.y)
-                    val p1 = Point3(center.x - dx, center.y - dy, 0.0)
-                    val p2 = Point3(center.x + dx, center.y + dy, 0.0)
-                    PredictiveSketchEngine.generateRectangleDiagonal(p1, p2).forEach {
-                        commandManager.execute(AddGeometryCommand(activeSketch, it))
-                    }
-                }
-                rawStroke = emptyList(); triggerUpdate()
-            }
-            CadMode.SKETCH_POLYGON -> {
-                if (rawStroke.size >= 2) {
-                    val center = rawStroke.first()
-                    val radius = center.distanceTo(rawStroke.last())
-                    PredictiveSketchEngine.generatePolygon(center, radius).forEach {
-                        commandManager.execute(AddGeometryCommand(activeSketch, it))
-                    }
-                }
-                rawStroke = emptyList(); triggerUpdate()
-            }
-            CadMode.SKETCH_ARC -> {
-                if (rawStroke.size >= 3) {
-                    // Logic to create arc from 3 points or start/mid/end
-                    val arc = PredictiveSketchEngine.recognize(rawStroke, zoom).firstOrNull() as? Arc3D
-                    if (arc != null) commandManager.execute(AddGeometryCommand(activeSketch, arc))
-                }
-                rawStroke = emptyList(); triggerUpdate()
             }
             CadMode.SKETCH_CIRCLE -> {
                 if (rawStroke.size >= 2) {
                     val center = rawStroke.first()
                     val radius = center.distanceTo(rawStroke.last())
+                    val circle = Circle3D(center, radius)
+                    commandManager.execute(AddGeometryCommand(activeSketch, circle))
+                    
+                    // Concentric Constraint
+                    if (startSnap?.type == SnapType.CENTER && startSnap.refGeometry is Circle3D) {
+                        commandManager.execute(AddConstraintCommand(activeSketch, document.gcsManager, ConcentricConstraint(circle, startSnap.refGeometry as Circle3D)))
+                    }
+                }
+                rawStroke = emptyList(); triggerUpdate()
+            }
+            CadMode.SKETCH_RECT_DIAG -> {
                     commandManager.execute(AddGeometryCommand(activeSketch, Circle3D(center, radius)))
                 }
                 rawStroke = emptyList(); triggerUpdate()
@@ -658,7 +666,7 @@ class CADViewModel : ViewModel() {
             }
             else -> { rawStroke = emptyList(); dragHandle = -1; triggerUpdate() }
         }
-        pencilDetector.clearHistory(); currentSnap = null
+        pencilDetector.clearHistory(); currentSnap = null; startSnap = null
     }
 
     fun applyDimension(newVal: Double) {

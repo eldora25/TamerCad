@@ -426,10 +426,16 @@ fun CADCanvas(viewModel: CADViewModel) {
                             if (ref != null) {
                                 // Draw dashed line matching reference direction
                                 val startPt = viewModel.rawStroke.firstOrNull() ?: snap.point
+                                val refDir = Vector3(ref.endPoint.x - ref.startPoint.x, ref.endPoint.y - ref.startPoint.y, 0.0).normalize()
+                                val infDir = if (snap.type == SnapType.PARALLEL) refDir else Vector3(-refDir.y, refDir.x, 0.0)
+                                
+                                val pEndInf = snap.point.add(infDir.multiply(50.0))
+                                val pStartInf = snap.point.add(infDir.multiply(-50.0))
+                                
                                 drawLine(
                                     color = Color.Magenta.copy(alpha = 0.4f),
-                                    start = viewModel.worldToScreen(startPt, screenWidth, screenHeight),
-                                    end = currentScreenPt,
+                                    start = viewModel.worldToScreen(pStartInf, screenWidth, screenHeight),
+                                    end = viewModel.worldToScreen(pEndInf, screenWidth, screenHeight),
                                     strokeWidth = 2f,
                                     pathEffect = dash
                                 )

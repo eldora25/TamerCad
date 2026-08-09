@@ -10,22 +10,10 @@
       <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/lib/persistence_service.dart" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/scripts/increment_build.dart" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/task.artifact.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.artifacts/0eabed10-c525-4964-b195-cc2e5eba9e03/implementation_plan.artifact.md" beforeDir="false" afterPath="$PROJECT_DIR$/.artifacts/0eabed10-c525-4964-b195-cc2e5eba9e03/implementation_plan.artifact.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/8.9/executionHistory/executionHistory.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/8.9/executionHistory/executionHistory.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/8.9/fileHashes/fileHashes.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/8.9/fileHashes/fileHashes.bin" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/8.9/fileHashes/fileHashes.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/8.9/fileHashes/fileHashes.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/config.properties" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/config.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/file-system.probe" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/file-system.probe" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/caches/deviceStreaming.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/deploymentTargetSelector.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deploymentTargetSelector.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/gradle.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/gradle.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.kotlin/sessions/kotlin-compiler-15617916079135294343.salive" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/x86/configure_fingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/x86/configure_fingerprint.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/x86/build_model.json" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/x86/build_model.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/CADViewModel.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/CADViewModel.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/CadMode.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/CadMode.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/components/CADCanvas.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/components/CADCanvas.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/.metadata" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/.metadata" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/app/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/app/build.gradle.kts" afterDir="false" />
