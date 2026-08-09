@@ -7,33 +7,45 @@ import com.tamercad.core.input.InputPeripheralsManager
 
 /**
  * TamerCAD Stylus Giriş Yöneticisi.
- * Android MotionEvent'lerini alır ve bunları TamerCad StylusEvent'lerine dönüştürür.
- * Shapr3D Prensibi: Kalemle üretim, parmakla navigasyon.
+ * Shapr3D Prensibi: Kalemle üretim (Hard-Lock), parmakla navigasyon.
  */
 class StylusInputManager {
     
     private val peripheralManager = InputPeripheralsManager()
+    
+    // Aktif bir kalem işlemi olup olmadığını takip eder
+    private var isStylusLocked = false
 
-    /**
-     * Ham bir MotionEvent'i analiz eder ve bir StylusEvent döner.
-     */
     fun resolveEvent(event: MotionEvent): StylusEvent {
         val data = peripheralManager.parseStylusEvent(event)
+        val type = if (data.isStylus) PointerType.Stylus else PointerType.Touch
         
+        // Hard-Lock Mantığı: Kalem DOWN olduğunda kilitle, UP olduğunda bırak
+        if (type == PointerType.Stylus) {
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> isStylusLocked = true
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> isStylusLocked = false
+            }
+        }
+
         return StylusEvent(
             position = Offset(event.x, event.y),
             pressure = data.pressure,
-            tiltX = 0f, // TODO: Get tilt from MotionEvent if available
+            tiltX = 0f,
             tiltY = 0f,
-            type = if (data.isStylus) PointerType.Stylus else PointerType.Touch,
+            type = type,
             isPrimaryButtonDown = (event.buttonState and MotionEvent.BUTTON_PRIMARY) != 0
         )
     }
 
     /**
-     * Palm Rejection Mantığı: Stylus etkinken parmak dokunuşlarını filtreler.
+     * Eğer kalem aktifse veya kilitliyse parmak girişlerini reddeder (Palm Rejection + Tool Safety).
      */
-    fun shouldIgnoreTouch(event: StylusEvent, isStylusActive: Boolean): Boolean {
-        return isStylusActive && event.type == PointerType.Touch
+    fun isTouchForbidden(event: StylusEvent): Boolean {
+        return (isStylusLocked || event.type == PointerType.Stylus) && event.type == PointerType.Touch
+    }
+    
+    fun resetLock() {
+        isStylusLocked = false
     }
 }

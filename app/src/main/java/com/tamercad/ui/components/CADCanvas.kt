@@ -75,29 +75,33 @@ fun CADCanvas(viewModel: CADViewModel) {
             }
             .pointerInteropFilter { motionEvent ->
                 val stylusEvent = viewModel.stylusInputManager.resolveEvent(motionEvent)
+                
+                // --- HARD STYLUS LOCK (InputClassifier) ---
+                if (viewModel.stylusInputManager.isTouchForbidden(stylusEvent)) {
+                    return@pointerInteropFilter true // IGNORE Finger during Stylus Lock
+                }
+
                 viewModel.isStylusInUse = stylusEvent.type == PointerType.Stylus
                 viewModel.pencilDetector.processMotionEvent(motionEvent)
                 
-                // --- Interaction State Machine Routing ---
+                // Interaction State Machine Routing (InteractionRouter)
                 if (viewModel.isStylusInUse) {
                     when (motionEvent.action) {
                         android.view.MotionEvent.ACTION_DOWN -> {
                             val hit = viewModel.pick3DEntity(motionEvent.x, motionEvent.y, screenWidth, screenHeight)
+                            // If we hit a gizmo handle, we are manipulating, else sketching/selecting
                             if (hit != null && viewModel.activeManipulatorAxis != null) {
                                 viewModel.interactionState = InteractionState.MANIPULATING
                             } else {
                                 viewModel.interactionState = if (viewModel.isSketchMode) InteractionState.SKETCHING else InteractionState.SELECTING
                             }
                         }
-                        android.view.MotionEvent.ACTION_MOVE -> {
-                            // Sketching state persists until UP
-                        }
-                        android.view.MotionEvent.ACTION_UP -> {
+                        android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
                             viewModel.interactionState = InteractionState.IDLE
                         }
                     }
                 } else {
-                    // Finger interaction defaults to navigation if not interacting with UI
+                    // Finger interaction defaults to camera navigation
                     if (motionEvent.action == android.view.MotionEvent.ACTION_DOWN) {
                         viewModel.interactionState = InteractionState.CAMERA_NAVIGATION
                     } else if (motionEvent.action == android.view.MotionEvent.ACTION_UP) {
@@ -110,14 +114,14 @@ fun CADCanvas(viewModel: CADViewModel) {
             // 1. NAVİGASYON (Sadece Parmak / Touch)
             .pointerInput(Unit) {
                 detectTransformGestures { centroid, pan, zoomDelta, rotation ->
+                    // --- HARD-LOCK: Stylus is active, block ALL touch navigation ---
                     if (!viewModel.isStylusInUse && viewModel.interactionState == InteractionState.CAMERA_NAVIGATION) {
-                        // Pinch Zoom
                         viewModel.zoom *= zoomDelta
                         
-                        if (zoomDelta == 1f) { // Not zooming, so it's likely a drag
+                        if (zoomDelta == 1f) { // Orbit
                              viewModel.cameraYaw += pan.x * 0.005f
                              viewModel.cameraPitch -= pan.y * 0.005f
-                        } else {
+                        } else { // Pan
                             viewModel.panX += pan.x
                             viewModel.panY += pan.y
                         }

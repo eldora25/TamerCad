@@ -5,24 +5,91 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="86bf953a-6114-4ac9-aefb-735364799590" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.artifacts/0eabed10-c525-4964-b195-cc2e5eba9e03/configuration_report.artifact.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.artifacts/0eabed10-c525-4964-b195-cc2e5eba9e03/repository_analysis.artifact.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/app/build.gradle" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/build.gradle" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/settings.gradle" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/build_eldora.bat" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/build_eldora.ps1" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/lib/persistence_service.dart" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/scripts/increment_build.dart" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/task.artifact.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/8.9/executionHistory/executionHistory.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/8.9/executionHistory/executionHistory.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gradle/8.9/fileHashes/fileHashes.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/8.9/fileHashes/fileHashes.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/8.10.2/executionHistory/executionHistory.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/8.10.2/executionHistory/executionHistory.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/8.10.2/executionHistory/executionHistory.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/8.10.2/executionHistory/executionHistory.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/8.10.2/fileHashes/fileHashes.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/8.10.2/fileHashes/fileHashes.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/8.10.2/fileHashes/fileHashes.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/8.10.2/fileHashes/fileHashes.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/8.10.2/fileHashes/resourceHashesCache.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/8.10.2/fileHashes/resourceHashesCache.bin" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/buildOutputCleanup/outputFiles.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/buildOutputCleanup/outputFiles.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gradle/file-system.probe" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/file-system.probe" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/gradle.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/gradle.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.kotlin/sessions/kotlin-compiler-13608698727551284893.salive" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/arm64-v8a/.ninja_deps" beforeDir="false" afterPath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/arm64-v8a/.ninja_deps" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/arm64-v8a/.ninja_log" beforeDir="false" afterPath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/arm64-v8a/.ninja_log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/arm64-v8a/configure_fingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/arm64-v8a/configure_fingerprint.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/armeabi-v7a/.ninja_deps" beforeDir="false" afterPath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/armeabi-v7a/.ninja_deps" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/armeabi-v7a/.ninja_log" beforeDir="false" afterPath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/armeabi-v7a/.ninja_log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/armeabi-v7a/configure_fingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/armeabi-v7a/configure_fingerprint.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/x86/.ninja_deps" beforeDir="false" afterPath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/x86/.ninja_deps" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/x86/.ninja_log" beforeDir="false" afterPath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/x86/.ninja_log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/x86/configure_fingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/x86/configure_fingerprint.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/x86_64/.ninja_deps" beforeDir="false" afterPath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/x86_64/.ninja_deps" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/x86_64/.ninja_log" beforeDir="false" afterPath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/x86_64/.ninja_log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/x86_64/configure_fingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/app/.cxx/Debug/3w5j3t6g/x86_64/configure_fingerprint.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/generated/source/buildConfig/debug/com/tamercad/BuildConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/generated/source/buildConfig/debug/com/tamercad/BuildConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/arm64-v8a/build_stdout_tamercad_kernel.txt" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/arm64-v8a/build_stdout_tamercad_kernel.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/arm64-v8a/generate_cxx_metadata_455_timing.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/arm64-v8a/generate_cxx_metadata_505_timing.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/arm64-v8a/generate_cxx_metadata_68_timing.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/armeabi-v7a/build_stdout_tamercad_kernel.txt" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/armeabi-v7a/build_stdout_tamercad_kernel.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/armeabi-v7a/generate_cxx_metadata_452_timing.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/armeabi-v7a/generate_cxx_metadata_507_timing.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/armeabi-v7a/generate_cxx_metadata_65_timing.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/x86/build_model.json" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/x86/build_model.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/x86/build_stdout_tamercad_kernel.txt" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/x86/build_stdout_tamercad_kernel.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/x86/generate_cxx_metadata_254_timing.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/x86/generate_cxx_metadata_462_timing.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/x86/generate_cxx_metadata_504_timing.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/x86/generate_cxx_metadata_70_timing.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/x86_64/build_stdout_tamercad_kernel.txt" beforeDir="false" afterPath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/x86_64/build_stdout_tamercad_kernel.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/x86_64/generate_cxx_metadata_453_timing.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/x86_64/generate_cxx_metadata_499_timing.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/cxx/Debug/3w5j3t6g/logs/x86_64/generate_cxx_metadata_60_timing.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/desugar_graph/debug/dexBuilderDebug/out/currentProject/dirs_bucket_0/graph.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/desugar_graph/debug/dexBuilderDebug/out/currentProject/dirs_bucket_1/graph.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/desugar_graph/debug/dexBuilderDebug/out/currentProject/dirs_bucket_2/graph.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/desugar_graph/debug/dexBuilderDebug/out/currentProject/dirs_bucket_3/graph.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/desugar_graph/debug/dexBuilderDebug/out/currentProject/dirs_bucket_4/graph.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/desugar_graph/debug/dexBuilderDebug/out/currentProject/dirs_bucket_5/graph.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/desugar_graph/debug/dexBuilderDebug/out/currentProject/jar_d265bb6cd1292c7c063baf2b9f1994dcd32541c2e69ae571433d4d7ce6a6c0b9_bucket_0/graph.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/desugar_graph/debug/dexBuilderDebug/out/currentProject/jar_d265bb6cd1292c7c063baf2b9f1994dcd32541c2e69ae571433d4d7ce6a6c0b9_bucket_1/graph.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/desugar_graph/debug/dexBuilderDebug/out/currentProject/jar_d265bb6cd1292c7c063baf2b9f1994dcd32541c2e69ae571433d4d7ce6a6c0b9_bucket_2/graph.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/desugar_graph/debug/dexBuilderDebug/out/currentProject/jar_d265bb6cd1292c7c063baf2b9f1994dcd32541c2e69ae571433d4d7ce6a6c0b9_bucket_3/graph.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/desugar_graph/debug/dexBuilderDebug/out/currentProject/jar_d265bb6cd1292c7c063baf2b9f1994dcd32541c2e69ae571433d4d7ce6a6c0b9_bucket_4/graph.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/desugar_graph/debug/dexBuilderDebug/out/currentProject/jar_d265bb6cd1292c7c063baf2b9f1994dcd32541c2e69ae571433d4d7ce6a6c0b9_bucket_5/graph.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/dex_archive_input_jar_hashes/debug/dexBuilderDebug/out" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/intermediates/dex_number_of_buckets_file/debug/dexBuilderDebug/out" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build/kotlin/compileDebugKotlin/local-state/build-history.bin" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/components/CADCanvas.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/components/CADCanvas.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/interaction/StylusInputManager.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/tamercad/ui/interaction/StylusInputManager.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/version.properties" beforeDir="false" afterPath="$PROJECT_DIR$/version.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/.github/workflows/main.yml" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/.github/workflows/main.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/.metadata" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/.metadata" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/app/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/app/build.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/Upcoming features.md" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/Upcoming features.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/Update- İnfo.md" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/Update- İnfo.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/app/build.gradle.kts" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/app/src/main/AndroidManifest.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/app/src/main/kotlin/com/example/tayf_sozluk_pro/MainActivity.kt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/build/reports/problems/problems-report.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/build.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/build/reports/problems/problems-report.html" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/build/reports/problems/problems-report.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/gradle.properties" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/gradle.properties" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/gradle/wrapper/gradle-wrapper.properties" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/gradle/wrapper/gradle-wrapper.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/settings.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/settings.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/android/settings.gradle.kts" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/assets/1" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/assets/1" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/assets/test_paket.json" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/assets/test_paket.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/assets/wordnet/w" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/assets/wordnet/w" afterDir="false" />
@@ -53,8 +120,13 @@
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/pubspec.lock" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/pubspec.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/pubspec.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/test/widget_test.dart" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/test/widget_test.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/web/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/web/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/web/manifest.json" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/web/manifest.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/windows/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/windows/CMakeLists.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/windows/flutter/generated_plugin_registrant.cc" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/windows/flutter/generated_plugin_registrant.cc" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/windows/flutter/generated_plugins.cmake" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/windows/flutter/generated_plugins.cmake" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/windows/runner/Runner.rc" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/windows/runner/Runner.rc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/windows/runner/main.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../Tayf-Sozluk-Pro-main/windows/runner/main.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -85,27 +157,26 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "Gradle.Configure Daemon JVM Criteria.executor": "Run",
-    "GradleDaemonJvmCriteriaMigrationNotification.isNotificationDisabled": "true",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.readMode.enableVisualFormatting": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "android.gradle.sync.needed": "true",
-    "cf.first.check.clang-format": "false",
-    "cidr.known.project.marker": "true",
-    "dart.analysis.tool.window.visible": "false",
-    "git-widget-placeholder": "main",
-    "gradle.sync.parallel.migration.suppressed": "true",
-    "kotlin-language-version-configured": "true",
-    "show.migrate.to.gradle.popup": "false"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;Gradle.Configure Daemon JVM Criteria.executor&quot;: &quot;Run&quot;,
+    &quot;GradleDaemonJvmCriteriaMigrationNotification.isNotificationDisabled&quot;: &quot;true&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;gradle.sync.parallel.migration.suppressed&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected="Android App.main">
     <configuration name="androidTest" type="AndroidRunConfigurationType" factoryName="Android App" activateToolWindowBeforeRun="false">
       <module name="TamerCAD.app.androidTest" />
