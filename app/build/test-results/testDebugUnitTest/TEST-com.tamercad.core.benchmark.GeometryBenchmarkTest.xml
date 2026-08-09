@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.tamercad.core.benchmark.GeometryBenchmarkTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-08-09T18:04:25" hostname="DESKTOP-OUQLP2N" time="0.428">
+<testsuite name="com.tamercad.core.benchmark.GeometryBenchmarkTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-08-09T18:20:48" hostname="DESKTOP-OUQLP2N" time="0.433">
   <properties/>
-  <testcase name="testFeatureRegenerationPerformance" classname="com.tamercad.core.benchmark.GeometryBenchmarkTest" time="0.228"/>
-  <testcase name="testTopologyValidationPerformance" classname="com.tamercad.core.benchmark.GeometryBenchmarkTest" time="0.047"/>
-  <testcase name="testSimpleBooleanPerformance" classname="com.tamercad.core.benchmark.GeometryBenchmarkTest" time="0.152"/>
-  <system-out><![CDATA[Unsur Yeniden Oluşturma Süresi: 223ms
-Topoloji Doğrulama Süresi: 47ms
-Boolean İşlemi Süresi: 151ms
+  <testcase name="testFeatureRegenerationPerformance" classname="com.tamercad.core.benchmark.GeometryBenchmarkTest" time="0.231"/>
+  <testcase name="testTopologyValidationPerformance" classname="com.tamercad.core.benchmark.GeometryBenchmarkTest" time="0.046"/>
+  <testcase name="testSimpleBooleanPerformance" classname="com.tamercad.core.benchmark.GeometryBenchmarkTest" time="0.154"/>
+  <system-out><![CDATA[Unsur Yeniden Oluşturma Süresi: 221ms
+Topoloji Doğrulama Süresi: 46ms
+Boolean İşlemi Süresi: 153ms
 ]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

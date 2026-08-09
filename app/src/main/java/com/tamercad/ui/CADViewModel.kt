@@ -56,6 +56,10 @@ class CADViewModel : ViewModel() {
     var stylusPressure by mutableFloatStateOf(0f)
     var isStylusDown by mutableStateOf(false)
     var gestureMode by mutableStateOf("IDLE")
+    var diagnosticPanDelta by mutableStateOf(Offset.Zero)
+    var diagnosticZoomScale by mutableFloatStateOf(1f)
+    var rawPointerCount by mutableIntStateOf(0)
+    var activeFingerCount by mutableIntStateOf(0)
 
     // Constraints
     private val MIN_ZOOM = 0.1f
