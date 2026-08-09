@@ -1,11 +1,11 @@
 package com.tamercad.ui.interaction
 
+import android.view.MotionEvent
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.PointerType
 
 /**
  * TAMERCAD CAD DEVELOPMENT — GLOBAL RULES
- * Zenginleştirilmiş Stylus ve Dokunmatik Olay Modeli.
+ * Gerçek Donanım Verilerini Taşıyan Stylus Modeli.
  */
 data class StylusEvent(
     val positionX: Float,
@@ -17,9 +17,12 @@ data class StylusEvent(
     val pointerId: Int,
     val timestamp: Long,
     val buttonState: Int,
-    val toolType: Int, // Android MotionEvent.getToolType()
-    val eventType: Int // MotionEvent.ACTION_*
+    val toolType: Int,
+    val eventType: Int
 ) {
     val position: Offset get() = Offset(positionX, positionY)
-    val isStylus: Boolean get() = toolType == 2 // TOOL_TYPE_STYLUS
+    
+    // Donanımsal toolType 2 = STYLUS
+    val isStylus: Boolean get() = toolType == MotionEvent.TOOL_TYPE_STYLUS
+    val isFinger: Boolean get() = toolType == MotionEvent.TOOL_TYPE_FINGER
 }

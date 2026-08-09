@@ -1,32 +1,31 @@
 package com.tamercad.ui.interaction
 
 import android.view.MotionEvent
-import androidx.compose.ui.geometry.Offset
+import android.util.Log
 
 /**
  * TAMERCAD CAD DEVELOPMENT — GLOBAL RULES
- * Merkezi Girdi Sınıflandırıcı (InputClassifier).
- * Shapr3D Prensibi: Kalemle üretim (Hard-Lock), parmakla navigasyon.
+ * Donanım Odaklı Girdi Sınıflandırıcı (InputClassifier).
+ * Shapr3D Prensibi: Kalemle üretim, parmakla navigasyon.
  */
 class StylusInputManager {
 
-    // Aktif bir kalem işlemi olup olmadığını takip eder (Hard-Lock)
-    private var isStylusLocked = false
+    private var isStylusActive = false
 
-    /**
-     * Ham bir MotionEvent'i analiz eder ve zengin bir StylusEvent döner.
-     */
     fun resolveEvent(event: MotionEvent): StylusEvent {
         val pointerIndex = event.actionIndex
         val toolType = event.getToolType(pointerIndex)
         
-        // Hard-Lock Mantığı: Kalem DOWN olduğunda kilitle, UP/CANCEL olduğunda bırak
+        // --- REAL DEVICE LOGGING ---
+        if (toolType == MotionEvent.TOOL_TYPE_STYLUS) {
+            Log.d("TAMERCAD_INPUT", "STYLUS: Action=${event.actionMasked} x=${event.x} y=${event.y} pressure=${event.pressure}")
+        }
+
+        // Hard-Lock: Kalem ekrana değdiği an parmak girişleri fiziksel olarak bloklanır.
         if (toolType == MotionEvent.TOOL_TYPE_STYLUS) {
             when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> isStylusLocked = true
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_POINTER_UP -> {
-                    if (event.pointerCount <= 1) isStylusLocked = false
-                }
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> isStylusActive = true
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> isStylusActive = false
             }
         }
 
@@ -35,7 +34,7 @@ class StylusInputManager {
             positionY = event.y,
             pressure = event.pressure,
             tiltX = event.getAxisValue(MotionEvent.AXIS_TILT, pointerIndex),
-            tiltY = event.getAxisValue(MotionEvent.AXIS_ORIENTATION, pointerIndex), // Orientation alignment
+            tiltY = event.getAxisValue(MotionEvent.AXIS_ORIENTATION, pointerIndex),
             orientation = event.orientation,
             pointerId = event.getPointerId(pointerIndex),
             timestamp = event.eventTime,
@@ -46,17 +45,12 @@ class StylusInputManager {
     }
 
     /**
-     * Palm Rejection & Lock: Kalem kilitliyse parmak girişlerini CAD dünyasına sokmaz.
+     * Palm Rejection: Kalem kilitliyken veya aktifken gelen FINGER olaylarını durdurur.
      */
     fun isTouchForbidden(event: StylusEvent): Boolean {
-        // Kural: Kalem Down ise veya kalem kilitliyse parmak (Touch) yasaktır.
-        return (isStylusLocked || event.toolType == MotionEvent.TOOL_TYPE_STYLUS) && 
+        return (isStylusActive || event.toolType == MotionEvent.TOOL_TYPE_STYLUS) && 
                event.toolType == MotionEvent.TOOL_TYPE_FINGER
     }
 
-    fun isStylusActive(): Boolean = isStylusLocked
-    
-    fun resetLock() {
-        isStylusLocked = false
-    }
+    fun isStylusLocked(): Boolean = isStylusActive
 }

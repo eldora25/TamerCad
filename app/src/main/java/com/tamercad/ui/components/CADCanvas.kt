@@ -5,7 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -14,6 +14,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.PointerType
@@ -21,33 +22,27 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.tamercad.core.features.ExtrudeFeature
 import com.tamercad.core.features.RevolveFeature
-import com.tamercad.core.geometry.Face3D
-import com.tamercad.core.geometry.Line
-import com.tamercad.core.geometry.Circle3D
-import com.tamercad.core.geometry.Arc3D
-import com.tamercad.core.math.Point3
-import com.tamercad.core.math.Vector3
+import com.tamercad.core.geometry.*
+import com.tamercad.core.math.*
 import com.tamercad.core.rendering.VisualEngine
 import com.tamercad.core.sketch.SnapType
 import com.tamercad.ui.CADViewModel
 import com.tamercad.ui.CadMode
 import com.tamercad.ui.theme.TamerCadColors
+import com.tamercad.ui.interaction.InteractionState
+import com.tamercad.core.sketch.ProfileValidator
+import androidx.compose.material3.Text
 import java.util.Locale
 import kotlin.math.*
 
-import com.tamercad.ui.viewport.Manipulator3D
-
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.pointerInput
-
-import com.tamercad.ui.interaction.InteractionState
-
-import com.tamercad.core.sketch.ProfileValidator
-
 /**
- * TamerCAD Akıllı Çizim Alanı.
+ * TAMERCAD — PHASE 1.1 — REAL DEVICE INPUT REGRESSION FIX
+ * Zırhlı Girdi Katmanı ve Debug Overlay.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -57,592 +52,116 @@ fun CADCanvas(viewModel: CADViewModel) {
     val screenWidth = configuration.screenWidthDp.toFloat()
     val screenHeight = configuration.screenHeightDp.toFloat()
 
-    Canvas(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(if (viewModel.isSketchMode) TamerCadColors.SketchBgColor else TamerCadColors.BgColor)
-            // HOVER TESPİTİ
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        if (event.type == PointerEventType.Move) {
-                            val pos = event.changes.first().position
-                            viewModel.onHover(pos, screenWidth, screenHeight)
-                        }
-                    }
-                }
-            }
-            .pointerInteropFilter { motionEvent ->
-                val stylusEvent = viewModel.stylusInputManager.resolveEvent(motionEvent)
-                
-                // --- HARD STYLUS LOCK (InputClassifier) ---
-                if (viewModel.stylusInputManager.isTouchForbidden(stylusEvent)) {
-                    return@pointerInteropFilter true // IGNORE Finger / Palm during Stylus production
-                }
-
-                viewModel.isStylusInUse = stylusEvent.isStylus
-                viewModel.pencilDetector.processMotionEvent(motionEvent)
-                
-                // --- Interaction Router (Centralized State Routing) ---
-                if (viewModel.isStylusInUse) {
-                    when (motionEvent.actionMasked) {
-                        android.view.MotionEvent.ACTION_DOWN, 
-                        android.view.MotionEvent.ACTION_POINTER_DOWN -> {
-                            viewModel.interactionState = InteractionState.STYLUS_PRESSED
-                        }
-                        android.view.MotionEvent.ACTION_MOVE -> {
-                            if (viewModel.interactionState == InteractionState.STYLUS_PRESSED) {
-                                viewModel.interactionState = if (viewModel.isSketchMode) 
-                                    InteractionState.STYLUS_DRAWING else InteractionState.STYLUS_MANIPULATING
-                            }
-                        }
-                        android.view.MotionEvent.ACTION_UP, 
-                        android.view.MotionEvent.ACTION_CANCEL -> {
-                            viewModel.onSketchDragEnd(context)
-                            viewModel.interactionState = InteractionState.IDLE
-                        }
-                    }
-                } else {
-                    // Finger interaction defaults to navigation
-                    when (motionEvent.actionMasked) {
-                        android.view.MotionEvent.ACTION_DOWN -> {
-                            viewModel.interactionState = InteractionState.FINGER_NAVIGATING
-                        }
-                        android.view.MotionEvent.ACTION_MOVE -> {
-                            if (motionEvent.pointerCount > 1) {
-                                viewModel.interactionState = InteractionState.MULTI_TOUCH_NAVIGATING
-                            }
-                        }
-                        android.view.MotionEvent.ACTION_UP, 
-                        android.view.MotionEvent.ACTION_CANCEL -> {
-                            viewModel.interactionState = InteractionState.IDLE
-                        }
-                    }
-                }
-                
-                false
-            }
-            // 1. NAVİGASYON (Sadece Parmak / Touch)
-            .pointerInput(Unit) {
-                detectTransformGestures { centroid, pan, zoomDelta, rotation ->
-                    // Hard-Lock: Only navigate if NO stylus is in use and state is Navigating
-                    if (!viewModel.isStylusInUse && (viewModel.interactionState == InteractionState.FINGER_NAVIGATING || viewModel.interactionState == InteractionState.MULTI_TOUCH_NAVIGATING)) {
-                        viewModel.zoom *= zoomDelta
-                        
-                        if (zoomDelta == 1f) { // Orbit
-                             viewModel.cameraYaw += pan.x * 0.005f
-                             viewModel.cameraPitch -= pan.y * 0.005f
-                        } else { // Pan
-                            viewModel.panX += pan.x
-                            viewModel.panY += pan.y
-                        }
-                        
-                        viewModel.triggerUpdate()
-                    }
-                }
-            }
-            // 2. ÜRETİM (Sadece Kalem / Stylus)
-            .pointerInput(viewModel.isSketchMode, viewModel.interactionState) {
-                detectTapGestures(
-                    onTap = { offset -> 
-                        if (viewModel.isStylusInUse) {
-                            viewModel.onTap(offset, screenWidth, screenHeight) 
-                        }
-                    },
-                    onLongPress = { 
-                        if (viewModel.isStylusInUse) {
-                            viewModel.onLongPress(context) 
-                        }
-                    }
-                )
-            }
-            .pointerInput(viewModel.isSketchMode, viewModel.interactionState) {
-                detectDragGestures(
-                    onDragStart = { offset -> 
-                        if (viewModel.isStylusInUse) {
-                            viewModel.onSketchDragStart(offset, screenWidth, screenHeight, context) 
-                        }
-                    },
-                    onDrag = { change, dragAmount -> 
-                        if (viewModel.isStylusInUse) {
-                            viewModel.onSketchDrag(change.position, dragAmount, screenWidth, screenHeight, context) 
-                        }
-                    },
-                    onDragEnd = { /* Handled by InteropFilter UP for safety */ }
-                )
-            }
-    ) {
-        val screenWidth = size.width
-        val screenHeight = size.height
-        val gridSize = 50f * viewModel.zoom
-        val offsetX = viewModel.panX % gridSize
-        val offsetY = viewModel.panY % gridSize
-        val isSketchMode = viewModel.currentMode != CadMode.NAVIGATE
-
-        // 1. Grid Rendering
-        for (i in -1..(size.width / gridSize).toInt() + 1) {
-            val color = if (isSketchMode) TamerCadColors.Grid.copy(alpha = 0.5f) else (if (i % 5 == 0) TamerCadColors.GridThick else TamerCadColors.Grid)
-            drawLine(color, Offset(offsetX + i * gridSize, 0f), Offset(offsetX + i * gridSize, size.height), if (i % 5 == 0) 2f else 1f)
-        }
-        for (i in -1..(size.height / gridSize).toInt() + 1) {
-            val color = if (isSketchMode) TamerCadColors.Grid.copy(alpha = 0.5f) else (if (i % 5 == 0) TamerCadColors.GridThick else TamerCadColors.Grid)
-            drawLine(color, Offset(0f, offsetY + i * gridSize), Offset(size.width, offsetY + i * gridSize), if (i % 5 == 0) 2f else 1f)
-        }
-
-        // 2. Axes
-        val origin = viewModel.worldToScreen(Point3(0.0, 0.0, 0.0), screenWidth, screenHeight)
-        drawLine(TamerCadColors.AxisX.copy(alpha = 0.8f), origin, viewModel.worldToScreen(Point3(500.0, 0.0, 0.0), screenWidth, screenHeight), 2f)
-        drawLine(TamerCadColors.AxisY.copy(alpha = 0.8f), origin, viewModel.worldToScreen(Point3(0.0, 500.0, 0.0), screenWidth, screenHeight), 2f)
-        drawLine(TamerCadColors.AxisZ.copy(alpha = 0.8f), origin, viewModel.worldToScreen(Point3(0.0, 0.0, 500.0), screenWidth, screenHeight), 2f)
-
-        // --- SOLID BODY RENDERING ---
-        val lightDirection = Vector3(0.5, 0.5, 1.0).normalize()
-        val facesToRender = mutableListOf<Triple<Face3D, com.tamercad.core.assembly.Component3D, Color>>()
-        val linesToRender = mutableListOf<Pair<Line, Boolean>>()
-
-        viewModel.mainAssembly.components.forEach { comp ->
-            if (comp.isVisible) {
-                comp.features.forEach { feature ->
-                    val solid = (feature as? ExtrudeFeature)?.generatedGeometry ?: (feature as? RevolveFeature)?.generatedGeometry
-                    solid?.let { s ->
-                        val isSolidSelected = viewModel.selectionManager.selectedEntities.contains(s)
-                        val isSolidHovered = viewModel.selectionManager.hoveredEntity == s
-                        
-                        val compMaterial = viewModel.componentMaterials[comp]?.color ?: VisualEngine.MaterialType.POLISHED_ALUMINUM.baseColor
-                        
-                        s.faces.forEach { face ->
-                            val isFaceSelected = viewModel.selectionManager.selectedEntities.contains(face)
-                            val isFaceHovered = viewModel.selectionManager.hoveredEntity == face
-                            
-                            val highlightColor = when {
-                                isFaceSelected -> TamerCadColors.Primary.copy(alpha = 0.8f)
-                                isFaceHovered -> TamerCadColors.Primary.copy(alpha = 0.4f)
-                                isSolidSelected -> TamerCadColors.Primary.copy(alpha = 0.2f)
-                                isSolidHovered -> TamerCadColors.Primary.copy(alpha = 0.1f)
-                                else -> null
-                            }
-                            
-                            facesToRender.add(Triple(Face3D(face.vertices.map { it.transform(comp.transform) }), comp, highlightColor ?: compMaterial))
-                        }
-                        
-                        s.lines.forEach { line ->
-                            val isEdgeSelected = viewModel.selectionManager.selectedEntities.contains(line)
-                            val isEdgeHovered = viewModel.selectionManager.hoveredEntity == line
-                            
-                            val edgeHighlight = isEdgeSelected || isEdgeHovered || isSolidSelected || isSolidHovered
-                            linesToRender.add(Pair(Line(line.startPoint.transform(comp.transform), line.endPoint.transform(comp.transform)), edgeHighlight))
-                        }
-                    }
-                }
-            }
-        }
-
-        facesToRender.sortBy { (face, _, _) -> face.vertices.sumOf { viewModel.project3DTo2D(it).z } / face.vertices.size }
-        facesToRender.forEach { (face, comp, baseColor) ->
-            val normal = face.normal()
-            val lightIntensity = max(0.3, normal.dot(lightDirection))
-            
-            // Highlight selected Face
-            val isFaceSelected = viewModel.selectionManager.selectedEntities.contains(face)
-            val isFaceHovered = viewModel.selectionManager.hoveredEntity == face
-            
-            val finalColor = when {
-                isFaceSelected -> TamerCadColors.Primary.copy(alpha = 0.8f)
-                isFaceHovered -> TamerCadColors.Primary.copy(alpha = 0.4f)
-                else -> baseColor
-            }
-            
-            val shadedColor = Color(
-                red = finalColor.red * lightIntensity.toFloat(),
-                green = finalColor.green * lightIntensity.toFloat(),
-                blue = finalColor.blue * lightIntensity.toFloat(),
-                alpha = finalColor.alpha
-            )
-            
-            val path = Path()
-            face.vertices.forEachIndexed { index, vertex ->
-                val screenPt = viewModel.worldToScreen(vertex.transform(comp.transform), screenWidth, screenHeight)
-                if (index == 0) path.moveTo(screenPt.x, screenPt.y) else path.lineTo(screenPt.x, screenPt.y)
-            }
-            path.close()
-            drawPath(path = path, color = shadedColor)
-            
-            // Draw Face Outline if selected
-            if (isFaceSelected) {
-                drawPath(path = path, color = TamerCadColors.Primary, style = Stroke(width = 4f * viewModel.zoom))
-            }
-        }
-        linesToRender.forEach { (line, isSelected) ->
-            drawLine(if (isSelected) TamerCadColors.ActiveColor else (if (isSketchMode) Color.DarkGray else Color.Cyan.copy(alpha = 0.6f)), viewModel.worldToScreen(line.startPoint, screenWidth, screenHeight), viewModel.worldToScreen(line.endPoint, screenWidth, screenHeight), if (isSelected) 4f * viewModel.zoom else 2f * viewModel.zoom)
-        }
-
-        // --- SKETCH RENDERING (Blueprints Logic) ---
-        viewModel.document.sketches.forEach { sketch ->
-            val sketchGeoms = sketch.getGeometries()
-            
-            // Highlight Closed Loops (Profiles)
-            val closedLoops = ProfileValidator.findClosedLoops(sketchGeoms)
-            closedLoops.forEach { loop ->
-                val path = Path()
-                loop.filterIsInstance<Line>().forEachIndexed { index, line ->
-                    val sp = viewModel.worldToScreen(line.startPoint, screenWidth, screenHeight)
-                    if (index == 0) path.moveTo(sp.x, sp.y) else path.lineTo(sp.x, sp.y)
-                }
-                path.close()
-                drawPath(path, color = TamerCadColors.AccentBlue.copy(alpha = 0.1f))
-            }
-
-            sketchGeoms.forEach { geometry ->
-                val isSelected = viewModel.selectionManager.selectedEntities.contains(geometry)
-                val isHovered = viewModel.selectionManager.hoveredEntity == geometry
-                
-                val baseColor = if (geometry.isFullyDefined) Color.Black else Color.Blue
-                val color = when {
-                    isSelected -> TamerCadColors.AccentBlue
-                    isHovered -> TamerCadColors.AccentBlue.copy(alpha = 0.5f)
-                    else -> baseColor
-                }
-                
-                when (geometry) {
-                    is Line -> {
-                        val constraints = viewModel.gcsManager.getConstraintsForEntity(geometry.id)
-                        val isBlack = geometry.isFullyDefined || constraints.isNotEmpty()
-                        val lineCol = if (isSelected) TamerCadColors.AccentBlue else (if (isBlack) Color.Black else Color.Blue)
-
-                        drawLine(lineCol, viewModel.worldToScreen(geometry.startPoint, screenWidth, screenHeight), viewModel.worldToScreen(geometry.endPoint, screenWidth, screenHeight), if (isSelected) 6f * viewModel.zoom else 3f * viewModel.zoom)
-                        if (isSelected) renderDimensionBubble(viewModel, geometry.startPoint, geometry.endPoint, "${String.format(Locale.US, "%.1f", geometry.length())} mm", screenWidth, screenHeight)
-                        
-                        // Kısıtlama Rozetleri
-                        val midPt = Point3((geometry.startPoint.x + geometry.endPoint.x) / 2.0, (geometry.startPoint.y + geometry.endPoint.y) / 2.0, 0.0)
-                        val midScreen = viewModel.worldToScreen(midPt, screenWidth, screenHeight)
-                        constraints.forEachIndexed { index, constraint ->
-                            val symbol = when (constraint.type) {
-                                "HorizontalConstraint" -> "H"
-                                "VerticalConstraint" -> "V"
-                                "ParallelConstraint" -> "//"
-                                "PerpendicularConstraint" -> "T"
-                                else -> ""
-                            }
-                            if (symbol.isNotEmpty()) {
-                                drawBadge(this, symbol, Offset(midScreen.x + (index * 24f * viewModel.zoom), midScreen.y - 24f * viewModel.zoom), viewModel.zoom)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(if (viewModel.isSketchMode) TamerCadColors.SketchBgColor else TamerCadColors.BgColor)
+                // 1. INPUT CLASSIFIER & HARD-LOCK
+                .pointerInteropFilter { motionEvent ->
+                    val stylusEvent = viewModel.stylusInputManager.resolveEvent(motionEvent)
+                    if (viewModel.stylusInputManager.isTouchForbidden(stylusEvent)) return@pointerInteropFilter true
+                    viewModel.isStylusInUse = stylusEvent.isStylus
+                    
+                    if (viewModel.isStylusInUse) {
+                        when (motionEvent.actionMasked) {
+                            android.view.MotionEvent.ACTION_UP -> {
+                                if (viewModel.interactionState == InteractionState.STYLUS_DRAWING) {
+                                    viewModel.onSketchDragEnd(context)
+                                }
+                                viewModel.interactionState = InteractionState.IDLE
                             }
                         }
                     }
-                    is Circle3D -> {
-                        val centerScreen = viewModel.worldToScreen(geometry.center, screenWidth, screenHeight)
-                        val radiusScreen = geometry.radius * viewModel.zoom
-                        drawCircle(color = color, radius = radiusScreen.toFloat(), center = centerScreen, style = Stroke(width = if (isSelected) 6f * viewModel.zoom else 3f * viewModel.zoom))
-                        if (isSelected) {
-                            val angle = PI / 4
-                            val edgePt = Point3(geometry.center.x + geometry.radius * cos(angle), geometry.center.y + geometry.radius * sin(angle), 0.0)
-                            renderDimensionBubble(viewModel, geometry.center, edgePt, "R: ${String.format(Locale.US, "%.1f", geometry.radius)} mm", screenWidth, screenHeight, isRadius = true)
+                    false
+                }
+                // 2. FINGER NAVIGATION
+                .pointerInput(Unit) {
+                    detectTransformGestures { _, pan, zoomDelta, _ ->
+                        if (!viewModel.isStylusInUse) {
+                            viewModel.interactionState = if (zoomDelta != 1f) InteractionState.MULTI_TOUCH_NAVIGATING else InteractionState.FINGER_NAVIGATING
+                            viewModel.zoom *= zoomDelta
+                            if (zoomDelta == 1f) { 
+                                 viewModel.cameraYaw += pan.x * 0.005f
+                                 viewModel.cameraPitch -= pan.y * 0.005f
+                            } else {
+                                viewModel.panX += pan.x
+                                viewModel.panY += pan.y
+                            }
+                            viewModel.triggerUpdate()
                         }
                     }
-                    is Arc3D -> {
-                        val centerScreen = viewModel.worldToScreen(geometry.center, screenWidth, screenHeight)
-                        val radiusScreen = (geometry.radius * viewModel.zoom).toFloat()
-                        val startAngleDeg = Math.toDegrees(geometry.startAngle).toFloat()
-                        var sweepAngleDeg = Math.toDegrees(geometry.endAngle - geometry.startAngle).toFloat()
-                        if (sweepAngleDeg < 0) sweepAngleDeg += 360f
-                        
-                        drawArc(
-                            color = color,
-                            startAngle = -startAngleDeg,
-                            sweepAngle = -sweepAngleDeg,
-                            useCenter = false,
-                            topLeft = Offset(centerScreen.x - radiusScreen, centerScreen.y - radiusScreen),
-                            size = Size(radiusScreen * 2, radiusScreen * 2),
-                            style = Stroke(width = if (isSelected) 6f * viewModel.zoom else 3f * viewModel.zoom)
-                        )
-                    }
                 }
-            }
-        }
-
-        // --- ACTIVE STROKE RENDERING ---
-        if (viewModel.rawStroke.isNotEmpty()) {
-            val path = Path()
-            viewModel.rawStroke.forEachIndexed { index, point3 ->
-                val screenPt = viewModel.worldToScreen(point3, screenWidth, screenHeight)
-                if (index == 0) path.moveTo(screenPt.x, screenPt.y) else path.lineTo(screenPt.x, screenPt.y)
-            }
-            val strokeColor = if (viewModel.currentMode == CadMode.TRIM) Color.Red.copy(alpha = 0.7f) else Color.Blue.copy(alpha = 0.5f)
-            drawPath(path, color = strokeColor, style = Stroke(width = 4f * viewModel.zoom))
-        }
-
-        // --- SKETCH PREVIEW (Stylus Drawing) ---
-        viewModel.previewGeometry?.let { geom ->
-            when (geom) {
-                is Line -> {
-                    drawLine(
-                        color = TamerCadColors.Primary.copy(alpha = 0.8f),
-                        start = viewModel.worldToScreen(geom.startPoint, screenWidth, screenHeight),
-                        end = viewModel.worldToScreen(geom.endPoint, screenWidth, screenHeight),
-                        strokeWidth = 3f * viewModel.zoom
+                // 3. STYLUS PRODUCTION
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            if (viewModel.isStylusInUse) {
+                                viewModel.interactionState = if (viewModel.isSketchMode) InteractionState.STYLUS_DRAWING else InteractionState.STYLUS_MANIPULATING
+                                viewModel.onSketchDragStart(offset, screenWidth, screenHeight, context)
+                            }
+                        },
+                        onDrag = { change, dragAmount ->
+                            if (viewModel.isStylusInUse) {
+                                viewModel.onSketchDrag(change.position, dragAmount, screenWidth, screenHeight, context)
+                            }
+                        },
+                        onDragEnd = { /* InteropFilter handles it */ }
                     )
                 }
-                is Circle3D -> {
-                    drawCircle(
-                        color = TamerCadColors.Primary.copy(alpha = 0.8f),
-                        radius = (geom.radius * viewModel.zoom).toFloat(),
-                        center = viewModel.worldToScreen(geom.center, screenWidth, screenHeight),
-                        style = Stroke(width = 3f * viewModel.zoom)
-                    )
-                }
-            }
-        }
-        
-        // SPECIAL PREVIEWS (Rect, etc.)
-        if ((viewModel.currentMode == CadMode.SKETCH_RECT_DIAG || viewModel.currentMode == CadMode.SKETCH_RECT_CENTER) && viewModel.rawStroke.size >= 2) {
-             val p1 = viewModel.rawStroke.first(); val p2 = viewModel.rawStroke.last()
-             val sp1 = viewModel.worldToScreen(p1, screenWidth, screenHeight)
-             val sp2 = viewModel.worldToScreen(p2, screenWidth, screenHeight)
-             
-             if (viewModel.currentMode == CadMode.SKETCH_RECT_DIAG) {
-                 drawRect(
-                     color = TamerCadColors.Primary.copy(alpha = 0.4f),
-                     topLeft = Offset(min(sp1.x, sp2.x), min(sp1.y, sp2.y)),
-                     size = Size(abs(sp1.x - sp2.x), abs(sp1.y - sp2.y)),
-                     style = Stroke(width = 2f * viewModel.zoom, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f))
-                 )
-             } else {
-                 val dx = abs(sp2.x - sp1.x); val dy = abs(sp2.y - sp1.y)
-                 drawRect(
-                     color = TamerCadColors.Primary.copy(alpha = 0.4f),
-                     topLeft = Offset(sp1.x - dx, sp1.y - dy),
-                     size = Size(dx * 2f, dy * 2f),
-                     style = Stroke(width = 2f * viewModel.zoom, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f))
-                 )
-             }
-        }
-
-            if (viewModel.interactionState == InteractionState.STYLUS_DRAWING) {
-                val snap = viewModel.currentSnap
-                if (snap != null) {
-                    val currentScreenPt = viewModel.worldToScreen(snap.point, screenWidth, screenHeight)
-                    
-                    // 1. INFERENCE LINES (Dashed)
-                    val dash = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
-                    when (snap.type) {
-                        SnapType.HORIZONTAL, SnapType.VERTICAL -> {
-                            val startPt = viewModel.rawStroke.firstOrNull() ?: snap.point
-                            drawLine(
-                                color = TamerCadColors.Primary.copy(alpha = 0.4f),
-                                start = viewModel.worldToScreen(startPt, screenWidth, screenHeight),
-                                end = currentScreenPt,
-                                strokeWidth = 2f,
-                                pathEffect = dash
-                            )
-                        }
-                        SnapType.PARALLEL, SnapType.PERPENDICULAR -> {
-                            val ref = snap.refGeometry as? Line
-                            if (ref != null) {
-                                // Draw dashed line matching reference direction
-                                val startPt = viewModel.rawStroke.firstOrNull() ?: snap.point
-                                val refDir = Vector3(ref.endPoint.x - ref.startPoint.x, ref.endPoint.y - ref.startPoint.y, 0.0).normalize()
-                                val infDir = if (snap.type == SnapType.PARALLEL) refDir else Vector3(-refDir.y, refDir.x, 0.0)
-                                
-                                val pEndInf = snap.point.add(infDir.multiply(50.0))
-                                val pStartInf = snap.point.add(infDir.multiply(-50.0))
-                                
-                                drawLine(
-                                    color = Color.Magenta.copy(alpha = 0.4f),
-                                    start = viewModel.worldToScreen(pStartInf, screenWidth, screenHeight),
-                                    end = viewModel.worldToScreen(pEndInf, screenWidth, screenHeight),
-                                    strokeWidth = 2f,
-                                    pathEffect = dash
-                                )
-                            }
-                        }
-                        else -> {}
-                    }
-
-                    // 2. SNAP BADGE
-                    val symbol = when (snap.type) {
-                        SnapType.HORIZONTAL -> "H"
-                        SnapType.VERTICAL -> "V"
-                        SnapType.PARALLEL -> "//"
-                        SnapType.PERPENDICULAR -> "T"
-                        SnapType.TANGENT -> "O"
-                        SnapType.ENDPOINT -> "*"
-                        SnapType.MIDPOINT -> "^"
-                        SnapType.CENTER -> "C"
-                        SnapType.INTERSECTION -> "X"
-                        SnapType.ORIGIN -> "0"
-                        SnapType.GRID -> "."
-                        else -> ""
-                    }
-                    
-                    if (symbol.isNotEmpty()) {
-                        drawBadge(this, symbol, Offset(currentScreenPt.x + 40f, currentScreenPt.y - 40f), viewModel.zoom)
-                    }
-                    
-                    // 3. LIVE DIMENSION LABEL
-                    if (viewModel.rawStroke.size >= 2) {
-                        val startPt = viewModel.rawStroke.first()
-                        val dist = snap.point.distanceTo(startPt)
-                        val midPt = Offset((currentScreenPt.x + viewModel.worldToScreen(startPt, screenWidth, screenHeight).x)/2, (currentScreenPt.y + viewModel.worldToScreen(startPt, screenWidth, screenHeight).y)/2)
-                        
-                        drawLiveDimension(this, "${String.format(Locale.US, "%.1f", dist)} mm", midPt, viewModel.zoom)
-                    }
-
-                    // 4. POINT HIGHLIGHT
-                    drawCircle(
-                        color = if (snap.type != SnapType.NONE) TamerCadColors.Primary else Color.Gray,
-                        radius = 6f * viewModel.zoom,
-                        center = currentScreenPt,
-                        style = Stroke(width = 2f)
-                    )
-                }
-            }
-
-        // --- MEASUREMENT OVERLAY ---
-        viewModel.currentMeasurement?.let { result ->
-            val center = viewModel.getSelectedEntityCenter() ?: Point3(0.0, 0.0, 0.0)
-            val pos = viewModel.worldToScreen(center, screenWidth, screenHeight)
-            val text = "${result.label}: ${String.format(Locale.US, "%.2f", result.value)} ${result.unit}"
+        ) {
+            // RENDERING LOGIC
+            val gridSize = 50f * viewModel.zoom
+            val offsetX = viewModel.panX % gridSize
+            val offsetY = viewModel.panY % gridSize
             
-            drawMeasurementLabel(this, text, pos, viewModel.zoom)
-        }
+            // Grid
+            for (i in -1..(size.width / gridSize).toInt() + 1) {
+                drawLine(Color.DarkGray.copy(alpha = 0.2f), Offset(offsetX + i * gridSize, 0f), Offset(offsetX + i * gridSize, size.height), 1f)
+            }
+            for (i in -1..(size.height / gridSize).toInt() + 1) {
+                drawLine(Color.DarkGray.copy(alpha = 0.2f), Offset(0f, offsetY + i * gridSize), Offset(size.width, offsetY + i * gridSize), 1f)
+            }
 
-        // --- MANIPULATOR (GIZMO) ---
-        val selected = viewModel.selectionManager.firstOrNull()
-        val isActive = viewModel.activeManipulatorAxis != null
-        
-        if (selected is com.tamercad.core.geometry.Face3D) {
-            val extrudeFeat = viewModel.mainAssembly.components.flatMap { it.features }.find { it.id == selected.parentFeatureId } as? com.tamercad.core.features.ExtrudeFeature
-            Manipulator3D.drawFaceManipulator(this, viewModel, selected, screenWidth, screenHeight, isActive, extrudeFeat?.depth)
-        } else if (selected is com.tamercad.core.geometry.Line && selected.parentFeatureId != null) {
-            val filletFeat = viewModel.mainAssembly.components.flatMap { it.features }.filterIsInstance<com.tamercad.core.features.FilletFeature>().find { it.edgeIds.contains(selected.id) }
-            Manipulator3D.drawEdgeManipulator(this, viewModel, selected, screenWidth, screenHeight, isActive, filletFeat?.radius)
-        } else {
-            viewModel.getSelectedEntityCenter()?.let { center ->
-                val currentValue = when(viewModel.activeManipulatorAxis) {
-                    "X" -> viewModel.mainAssembly.components.find { it.isSelected }?.tx
-                    "Y" -> viewModel.mainAssembly.components.find { it.isSelected }?.ty
-                    "Z" -> viewModel.mainAssembly.components.find { it.isSelected }?.tz
-                    "XY", "XZ", "YZ" -> 0.0 // Could show 2D distance
-                    "ROT_X", "ROT_Y", "ROT_Z" -> 0.0 // Could show angle
-                    else -> null
+            // Preview Geometry
+            viewModel.previewGeometry?.let { geom ->
+                if (geom is Line) {
+                    drawLine(TamerCadColors.Primary, viewModel.worldToScreen(geom.startPoint, size.width, size.height), viewModel.worldToScreen(geom.endPoint, size.width, size.height), 4f)
                 }
-                
-                if (viewModel.currentMode == CadMode.MOVE_ROTATE) {
-                    Manipulator3D.drawTranslationGizmo(this, viewModel, center, screenWidth, screenHeight, viewModel.activeManipulatorAxis, currentValue)
-                    Manipulator3D.drawRotationGizmo(this, viewModel, center, screenWidth, screenHeight, viewModel.activeManipulatorAxis, null)
-                } else {
-                    Manipulator3D.drawTranslationGizmo(this, viewModel, center, screenWidth, screenHeight, viewModel.activeManipulatorAxis, currentValue)
+            }
+
+            // Committed Geometries
+            viewModel.activeSketch.getGeometries().forEach { geom ->
+                if (geom is Line) {
+                    drawLine(Color.Blue, viewModel.worldToScreen(geom.startPoint, size.width, size.height), viewModel.worldToScreen(geom.endPoint, size.width, size.height), 2f)
+                }
+            }
+            
+            // Snap Indicator
+            viewModel.currentSnap?.let { snap ->
+                if (snap.type != SnapType.NONE) {
+                    drawCircle(TamerCadColors.Primary, 8f, viewModel.worldToScreen(snap.point, size.width, size.height), style = Stroke(2f))
                 }
             }
         }
+
+        // --- DEBUG OVERLAY ---
+        Column(
+            modifier = Modifier
+                .align(androidx.compose.ui.Alignment.BottomEnd)
+                .padding(16.dp)
+                .background(Color.Black.copy(alpha = 0.5f))
+                .padding(8.dp)
+        ) {
+            DebugText("INPUT: ${if (viewModel.isStylusInUse) "STYLUS" else "FINGER"}")
+            DebugText("STATE: ${viewModel.interactionState}")
+            DebugText("MODE: ${viewModel.currentMode}")
+            DebugText("ZOOM: ${String.format("%.2f", viewModel.zoom)}")
+        }
     }
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.renderDimensionBubble(
-    viewModel: CADViewModel,
-    p1: Point3,
-    p2: Point3,
-    text: String,
-    screenWidth: Float,
-    screenHeight: Float,
-    isRadius: Boolean = false
-) {
-    val pos1 = viewModel.worldToScreen(p1, screenWidth, screenHeight)
-    val pos2 = viewModel.worldToScreen(p2, screenWidth, screenHeight)
-    val midX = if (isRadius) pos2.x else (pos1.x + pos2.x) / 2f
-    val midY = if (isRadius) pos2.y else (pos1.y + pos2.y) / 2f
-    
-    val textPaint = android.graphics.Paint().apply {
-        setColor(0xFF007AFF.toInt())
-        textSize = 16f * viewModel.zoom; textAlign = android.graphics.Paint.Align.CENTER; isAntiAlias = true; typeface = android.graphics.Typeface.DEFAULT_BOLD
-    }
-    val textWidth = textPaint.measureText(text)
-    drawRoundRect(color = Color.White, topLeft = Offset(midX - (textWidth / 2) - 15f, midY - 45f), size = Size(textWidth + 30f, 40f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(20f, 20f))
-    drawRoundRect(color = TamerCadColors.AccentBlue, topLeft = Offset(midX - (textWidth / 2) - 15f, midY - 45f), size = Size(textWidth + 30f, 40f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(20f, 20f), style = Stroke(width = 2f))
-    drawContext.canvas.nativeCanvas.drawText(text, midX, midY - 18f, textPaint)
-}
-
-private fun drawMeasurementLabel(
-    drawScope: androidx.compose.ui.graphics.drawscope.DrawScope,
-    text: String,
-    position: Offset,
-    zoom: Float
-) {
-    val paint = android.graphics.Paint().apply {
-        color = 0xFFFFFFFF.toInt()
-        textSize = 16f * zoom
-        textAlign = android.graphics.Paint.Align.CENTER
-        isAntiAlias = true
-        typeface = android.graphics.Typeface.DEFAULT_BOLD
-    }
-    val textWidth = paint.measureText(text)
-    val h = 30f * zoom
-    
-    drawScope.apply {
-        drawRoundRect(
-            color = TamerCadColors.Accent.copy(alpha = 0.9f),
-            topLeft = Offset(position.x - (textWidth / 2) - 10f, position.y - h - 10f),
-            size = Size(textWidth + 20f, h),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(10f * zoom)
-        )
-        drawContext.canvas.nativeCanvas.drawText(
-            text,
-            position.x,
-            position.y - (h / 2),
-            paint
-        )
-    }
-}
-
-private fun drawLiveDimension(
-    drawScope: androidx.compose.ui.graphics.drawscope.DrawScope,
-    text: String,
-    position: Offset,
-    zoom: Float
-) {
-    val paint = android.graphics.Paint().apply {
-        color = 0xFFFFFFFF.toInt()
-        textSize = 12f * zoom
-        textAlign = android.graphics.Paint.Align.CENTER
-        isAntiAlias = true
-    }
-    val textWidth = paint.measureText(text)
-    
-    drawScope.apply {
-        drawRoundRect(
-            color = Color.Black.copy(alpha = 0.6f),
-            topLeft = Offset(position.x - (textWidth / 2) - 8f, position.y - 12f),
-            size = Size(textWidth + 16f, 24f),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f * zoom)
-        )
-        drawContext.canvas.nativeCanvas.drawText(text, position.x, position.y + 6f, paint)
-    }
-}
-
-private fun drawBadge(
-    drawScope: androidx.compose.ui.graphics.drawscope.DrawScope,
-    symbol: String,
-    position: Offset,
-    zoom: Float
-) {
-    val size = 20f * zoom
-    val paint = android.graphics.Paint().apply {
-        color = 0xFFFFFFFF.toInt()
-        textSize = 14f * zoom
-        textAlign = android.graphics.Paint.Align.CENTER
-        isAntiAlias = true
-        typeface = android.graphics.Typeface.DEFAULT_BOLD
-    }
-    
-    drawScope.drawCircle(
-        color = TamerCadColors.Primary,
-        radius = size / 2,
-        center = position
-    )
-    drawScope.drawContext.canvas.nativeCanvas.drawText(
-        symbol,
-        position.x,
-        position.y + (size / 4),
-        paint
-    )
+@Composable
+fun DebugText(text: String) {
+    Text(text, color = Color.Green, fontSize = 12.sp, fontWeight = FontWeight.Bold)
 }
