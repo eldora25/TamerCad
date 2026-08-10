@@ -210,10 +210,11 @@ fun CADCanvas(viewModel: CADViewModel) {
             DebugText("STYLUS DOWN: ${viewModel.isStylusDown}")
 
             DebugText("--- SKETCH SESSION ---")
-            DebugText("SKETCH ID: ${viewModel.activeSketch.id.take(8)}")
+            DebugText("SKETCH ID: ${viewModel.activeSketchId?.take(8) ?: "NONE"}")
             DebugText("PLANE: ${viewModel.selectedSketchPlane ?: "XY"}")
             DebugText("TOOL: ${viewModel.activeSketchTool}")
             DebugText("STATE: ${viewModel.interactionState}")
+            DebugText("POINTS: ${viewModel.rawSketchPoints.size}")
             DebugText("DOC SKETCHES: ${viewModel.document.sketches.size}")
             DebugText("TOTAL ENTITIES: ${viewModel.document.sketches.sumOf { it.getGeometries().size }}")
             
@@ -347,9 +348,17 @@ fun drawGeometry(drawScope: DrawScope, viewModel: CADViewModel, geom: IGeometry,
         is SketchArc -> {
             val segments = 32
             val path = Path()
-            val sweep = geom.endAngle - geom.startAngle
+            
+            fun norm(a: Double) = (a % (2 * PI) + (2 * PI)) % (2 * PI)
+            val s = norm(geom.startAngle)
+            val e = norm(geom.endAngle)
+            
+            var sweep = e - s
+            if (geom.isClockwise && sweep > 0) sweep -= 2 * PI
+            if (!geom.isClockwise && sweep < 0) sweep += 2 * PI
+            
             for (i in 0..segments) {
-                val t = geom.startAngle + sweep * i / segments
+                val t = s + sweep * i / segments
                 val pLocal = geom.center + Vec2(cos(t) * geom.radius, sin(t) * geom.radius)
                 val pScreen = viewModel.sketchToScreen(pLocal, plane, screenWidth, screenHeight)
                 if (i == 0) path.moveTo(pScreen.x, pScreen.y) else path.lineTo(pScreen.x, pScreen.y)

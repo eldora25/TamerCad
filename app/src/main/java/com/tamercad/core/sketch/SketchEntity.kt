@@ -39,6 +39,7 @@ data class SketchArc(
     val radius: Double,
     val startAngle: Double, // Radians
     val endAngle: Double,   // Radians
+    val isClockwise: Boolean = false,
     override val id: String = UUID.randomUUID().toString()
 ) : SketchEntity {
     override val type: String = "SketchArc"

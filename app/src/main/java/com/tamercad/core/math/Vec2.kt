@@ -33,5 +33,24 @@ data class Vec2(val x: Double = 0.0, val y: Double = 0.0) {
         val Zero = Vec2(0.0, 0.0)
         val UnitX = Vec2(1.0, 0.0)
         val UnitY = Vec2(0.0, 1.0)
+
+        /**
+         * Calculates the circumcenter of three points.
+         * Returns null if points are collinear.
+         */
+        fun calculateCircumcenter(p1: Vec2, p2: Vec2, p3: Vec2): Vec2? {
+            val x1 = p1.x; val y1 = p1.y
+            val x2 = p2.x; val y2 = p2.y
+            val x3 = p3.x; val y3 = p3.y
+
+            val d = 2 * (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
+            
+            if (kotlin.math.abs(d) < CadTolerance.EPSILON) return null
+
+            val ux = ((x1 * x1 + y1 * y1) * (y2 - y3) + (x2 * x2 + y2 * y2) * (y3 - y1) + (x3 * x3 + y3 * y3) * (y1 - y2)) / d
+            val uy = ((x1 * x1 + y1 * y1) * (x3 - x2) + (x2 * x2 + y2 * y2) * (x1 - x3) + (x3 * x3 + y3 * y3) * (x2 - x1)) / d
+            
+            return Vec2(ux, uy)
+        }
     }
 }

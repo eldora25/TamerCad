@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.tamercad.core.benchmark.GeometryBenchmarkTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-08-10T16:14:01" hostname="DESKTOP-OUQLP2N" time="0.427">
+<testsuite name="com.tamercad.core.benchmark.GeometryBenchmarkTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-08-10T17:49:00" hostname="DESKTOP-OUQLP2N" time="0.426">
   <properties/>
   <testcase name="testFeatureRegenerationPerformance" classname="com.tamercad.core.benchmark.GeometryBenchmarkTest" time="0.227"/>
   <testcase name="testTopologyValidationPerformance" classname="com.tamercad.core.benchmark.GeometryBenchmarkTest" time="0.047"/>
   <testcase name="testSimpleBooleanPerformance" classname="com.tamercad.core.benchmark.GeometryBenchmarkTest" time="0.151"/>
-  <system-out><![CDATA[Unsur Yeniden Oluşturma Süresi: 218ms
-Topoloji Doğrulama Süresi: 47ms
-Boolean İşlemi Süresi: 152ms
+  <system-out><![CDATA[Unsur Yeniden Oluşturma Süresi: 217ms
+Topoloji Doğrulama Süresi: 46ms
+Boolean İşlemi Süresi: 150ms
 ]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

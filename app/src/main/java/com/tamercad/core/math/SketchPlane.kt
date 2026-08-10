@@ -47,5 +47,23 @@ data class SketchPlane(
         val XY = SketchPlane(origin = Vec3.Zero, normal = Vec3.UnitZ, xAxis = Vec3.UnitX, yAxis = Vec3.UnitY)
         val XZ = SketchPlane(origin = Vec3.Zero, normal = Vec3.UnitY, xAxis = Vec3.UnitX, yAxis = Vec3.UnitZ)
         val YZ = SketchPlane(origin = Vec3.Zero, normal = Vec3.UnitX, xAxis = Vec3.UnitY, yAxis = Vec3.UnitZ)
+
+        /**
+         * Creates an orthonormal basis from an origin and a normal vector.
+         */
+        fun fromOriginNormal(origin: Vec3, normal: Vec3, preferredX: Vec3 = Vec3.UnitX): SketchPlane {
+            val n = normal.normalized()
+            var x = preferredX.normalized()
+            
+            // If normal and preferredX are parallel, choose another basis
+            if (kotlin.math.abs(n.dot(x)) > 0.99) {
+                x = if (kotlin.math.abs(n.dot(Vec3.UnitY)) < 0.99) Vec3.UnitY else Vec3.UnitZ
+            }
+            
+            val y = n.cross(x).normalized()
+            val finalX = y.cross(n).normalized()
+            
+            return SketchPlane(origin, n, finalX, y)
+        }
     }
 }

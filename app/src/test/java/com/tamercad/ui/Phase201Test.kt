@@ -50,18 +50,18 @@ class Phase201Test {
     @Test
     fun testLineCommitDoesNotMutateOnNextDown() {
         val viewModel = CADViewModel()
-        viewModel.isSketchMode = true
+        viewModel.enterSketchMode("XY")
         viewModel.activeSketchTool = com.tamercad.ui.sketch.SketchTool.LINE
         val w = 1000f
         val h = 1000f
         
         // Draw Line 1
         viewModel.onSketchDragStart(Offset(100f, 100f), w, h, null) 
-        // Moving updates currentSnap
         viewModel.onSketchDrag(Offset(200f, 200f), Offset(100f, 100f), w, h, null)
         viewModel.onSketchDragEnd(null)
         
-        val geometries = viewModel.activeSketch.getGeometries()
+        val sketch = viewModel.activeSketch!!
+        val geometries = sketch.getGeometries()
         assertEquals(1, geometries.size)
         val line1 = geometries[0] as com.tamercad.core.sketch.SketchLine
         val oldEnd = line1.end
