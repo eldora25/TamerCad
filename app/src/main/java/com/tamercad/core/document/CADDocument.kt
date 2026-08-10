@@ -4,6 +4,7 @@ import com.tamercad.core.assembly.Assembly3D
 import com.tamercad.core.sketch.SketchFeature
 import com.tamercad.core.constraints.GCSManager
 import com.tamercad.core.serialization.ISerializable
+import androidx.compose.runtime.mutableStateListOf
 import org.json.JSONObject
 import java.util.UUID
 
@@ -24,7 +25,7 @@ class CADDocument(
     val assembly = Assembly3D(name)
 
     // Eskizler (Hangi düzlemde oldukları bilgisiyle)
-    val sketches = mutableListOf<SketchFeature>()
+    val sketches = mutableStateListOf<SketchFeature>()
 
     // Global Kısıtlama Çözücü
     val gcsManager = GCSManager()

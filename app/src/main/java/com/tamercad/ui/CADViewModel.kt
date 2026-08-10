@@ -122,7 +122,7 @@ class CADViewModel : ViewModel() {
     var browserOffset by mutableStateOf(Offset(250f, 100f))
     var selectionPoint by mutableStateOf<Offset?>(null)
     var saveStatus by mutableStateOf("Saved")
-    var activeSketch by mutableStateOf(SketchFeature("Active Sketch"))
+    var activeSketch by mutableStateOf(SketchFeature("Active Sketch", SketchPlane.XY).also { document.sketches.add(it) })
     var updateTrigger by mutableIntStateOf(0)
     var currentMeasurement by mutableStateOf<MeasurementEngine.MeasurementResult?>(null)
 
@@ -155,7 +155,10 @@ class CADViewModel : ViewModel() {
         // (The third row of the R matrix)
         val rayDir = Vec3(sinY * cosP, sinP, cosY * cosP)
         
-        return Ray3(rayOrigin, rayDir)
+        // Offset ray origin back to ensure intersection t > 0
+        val offsetOrigin = rayOrigin - (rayDir * 10000.0)
+        
+        return Ray3(offsetOrigin, rayDir)
     }
 
     fun screenToSketchPoint(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): Vec2? {
@@ -164,9 +167,13 @@ class CADViewModel : ViewModel() {
         return activeSketchPlane.worldToLocal(hitWorld)
     }
 
-    fun sketchToScreen(point: Vec2, screenWidth: Float, screenHeight: Float): Offset {
-        val world = activeSketchPlane.localToWorld(point)
+    fun sketchToScreen(point: Vec2, plane: SketchPlane, screenWidth: Float, screenHeight: Float): Offset {
+        val world = plane.localToWorld(point)
         return worldToScreen(world.toPoint3(), screenWidth, screenHeight)
+    }
+
+    fun sketchToScreen(point: Vec2, screenWidth: Float, screenHeight: Float): Offset {
+        return sketchToScreen(point, activeSketchPlane, screenWidth, screenHeight)
     }
 
     // Math Helpers
@@ -343,18 +350,19 @@ class CADViewModel : ViewModel() {
 
     fun enterSketchMode(plane: String) {
         selectedSketchPlane = plane
-        activeSketchPlane = when(plane) {
+        val planeObj = when(plane) {
             "XY" -> SketchPlane.XY
             "XZ" -> SketchPlane.XZ
             "YZ" -> SketchPlane.YZ
             else -> SketchPlane.XY
         }
+        activeSketchPlane = planeObj
         isSketchMode = true
         showPlaneSelector = false
         activeSketchTool = SketchTool.SELECT
         currentMode = CadMode.SMART_SKETCH
         
-        val newSketch = SketchFeature("Sketch ${document.sketches.size + 1}")
+        val newSketch = SketchFeature("Sketch ${document.sketches.size + 1}", planeObj)
         document.sketches.add(newSketch)
         activeSketch = newSketch
         triggerUpdate()

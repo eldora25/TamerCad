@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateListOf
 
 class SketchFeature(
     override val name: String = "Sketch",
+    val plane: SketchPlane = SketchPlane.XY,
     override val id: String = UUID.randomUUID().toString()
 ) : IFeature, ISerializable {
     
