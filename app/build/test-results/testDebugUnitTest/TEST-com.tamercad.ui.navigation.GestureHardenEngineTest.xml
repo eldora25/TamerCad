@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.tamercad.ui.navigation.GestureHardenEngineTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-08-11T17:22:06" hostname="DESKTOP-OUQLP2N" time="0.001">
+<testsuite name="com.tamercad.ui.navigation.GestureHardenEngineTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-08-11T20:11:05" hostname="DESKTOP-OUQLP2N" time="0.003">
   <properties/>
-  <testcase name="testPanZoomToOrbitRebase" classname="com.tamercad.ui.navigation.GestureHardenEngineTest" time="0.001"/>
+  <testcase name="testPanZoomToOrbitRebase" classname="com.tamercad.ui.navigation.GestureHardenEngineTest" time="0.002"/>
   <testcase name="testIdleToOrbit" classname="com.tamercad.ui.navigation.GestureHardenEngineTest" time="0.0"/>
-  <testcase name="testPinchZoom" classname="com.tamercad.ui.navigation.GestureHardenEngineTest" time="0.0"/>
+  <testcase name="testPinchZoom" classname="com.tamercad.ui.navigation.GestureHardenEngineTest" time="0.001"/>
   <testcase name="testOrbitToPanZoom" classname="com.tamercad.ui.navigation.GestureHardenEngineTest" time="0.0"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>

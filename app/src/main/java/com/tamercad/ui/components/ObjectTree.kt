@@ -26,18 +26,18 @@ import com.tamercad.ui.theme.TamerCadColors
 import com.tamercad.ui.theme.TamerCadDimensions
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.foundation.layout.offset
+import com.tamercad.core.document.CADDocument
+import com.tamercad.core.sketch.SketchFeature
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ObjectTree(
-    assembly: Assembly3D,
+    document: CADDocument,
     onVisibilityToggle: (Component3D) -> Unit,
     onRenameRequest: (Component3D) -> Unit,
     onSelect: (Component3D) -> Unit,
@@ -61,7 +61,6 @@ fun ObjectTree(
             .shadow(TamerCadDimensions.ElevationMedium)
     ) {
         Column {
-            // Sürüklenebilir Başlık Çubuğu
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -76,34 +75,40 @@ fun ObjectTree(
                     .padding(horizontal = TamerCadDimensions.SpacingMedium),
                 contentAlignment = Alignment.CenterStart
             ) {
-                Text(
-                    "Browser",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = TamerCadColors.TextPrimary
-                )
+                Text("Browser", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TamerCadColors.TextPrimary)
             }
             
             LazyColumn(
                 modifier = Modifier.padding(TamerCadDimensions.SpacingMedium),
                 verticalArrangement = Arrangement.spacedBy(TamerCadDimensions.SpacingSmall)
             ) {
-                // BODIES & FEATURES
-                items(assembly.components) { comp ->
+                // 1. SKETCHES
+                item {
+                    Text("Sketches", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = TamerCadColors.TextSecondary, modifier = Modifier.padding(vertical = 4.dp))
+                }
+                items(document.sketches) { sketch ->
+                    ObjectTreeSubItem(
+                        name = "${sketch.name} (${sketch.plane.normal})",
+                        icon = Icons.Default.Create,
+                        onSelect = { /* TODO: Select sketch */ }
+                    )
+                }
+
+                // 2. BODIES
+                item {
+                    Spacer(Modifier.height(8.dp))
+                    Text("Bodies", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = TamerCadColors.TextSecondary, modifier = Modifier.padding(vertical = 4.dp))
+                }
+                items(document.assembly.components) { comp ->
                     var isExpanded by remember { mutableStateOf(false) }
-                    
                     Column {
                         ObjectTreeItem(
-                            name = comp.name,
-                            isSelected = comp.isSelected,
-                            isVisible = comp.isVisible,
-                            isExpanded = isExpanded,
+                            name = comp.name, isSelected = comp.isSelected, isVisible = comp.isVisible, isExpanded = isExpanded,
                             onVisibilityToggle = { onVisibilityToggle(comp) },
                             onRenameRequest = { onRenameRequest(comp) },
                             onSelect = { onSelect(comp); isExpanded = !isExpanded },
                             icon = Icons.Default.ViewInAr
                         )
-                        
                         if (isExpanded) {
                             comp.features.forEach { feat ->
                                 ObjectTreeSubItem(
@@ -123,76 +128,31 @@ fun ObjectTree(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ObjectTreeItem(
-    name: String,
-    isSelected: Boolean,
-    isVisible: Boolean,
-    isExpanded: Boolean,
-    icon: ImageVector,
-    onVisibilityToggle: () -> Unit,
-    onRenameRequest: () -> Unit,
-    onSelect: () -> Unit
+    name: String, isSelected: Boolean, isVisible: Boolean, isExpanded: Boolean, icon: ImageVector,
+    onVisibilityToggle: () -> Unit, onRenameRequest: () -> Unit, onSelect: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(TamerCadDimensions.CornerSmall))
             .background(if (isSelected) TamerCadColors.Primary.copy(alpha = 0.2f) else Color.Transparent)
-            .combinedClickable(
-                onClick = onSelect,
-                onDoubleClick = onRenameRequest
-            )
+            .combinedClickable(onClick = onSelect, onDoubleClick = onRenameRequest)
             .padding(horizontal = TamerCadDimensions.SpacingSmall, vertical = TamerCadDimensions.SpacingMedium),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
-            null,
-            tint = TamerCadColors.TextSecondary,
-            modifier = Modifier.size(14.dp)
-        )
-        
+        Icon(if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight, null, tint = TamerCadColors.TextSecondary, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(4.dp))
-        
-        Icon(
-            icon,
-            null,
-            tint = if (isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary,
-            modifier = Modifier.size(TamerCadDimensions.IconSmall)
-        )
-        
+        Icon(icon, null, tint = if (isSelected) TamerCadColors.Primary else TamerCadColors.TextSecondary, modifier = Modifier.size(TamerCadDimensions.IconSmall))
         Spacer(Modifier.width(TamerCadDimensions.SpacingMedium))
-        
-        Text(
-            name,
-            color = if (isSelected) TamerCadColors.Primary else TamerCadColors.TextPrimary,
-            fontSize = 13.sp,
-            modifier = Modifier.weight(1f),
-            maxLines = 1
-        )
-
-        Icon(
-            if (isVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-            null,
-            tint = if (isVisible) TamerCadColors.Primary else Color.Gray,
-            modifier = Modifier
-                .size(TamerCadDimensions.IconSmall)
-                .clickable { onVisibilityToggle() }
-        )
+        Text(name, color = if (isSelected) TamerCadColors.Primary else TamerCadColors.TextPrimary, fontSize = 13.sp, modifier = Modifier.weight(1f), maxLines = 1)
+        Icon(if (isVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null, tint = if (isVisible) TamerCadColors.Primary else Color.Gray, modifier = Modifier.size(TamerCadDimensions.IconSmall).clickable { onVisibilityToggle() })
     }
 }
 
 @Composable
-fun ObjectTreeSubItem(
-    name: String,
-    icon: ImageVector,
-    onSelect: () -> Unit
-) {
+fun ObjectTreeSubItem(name: String, icon: ImageVector, onSelect: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 24.dp)
-            .clickable { onSelect() }
-            .padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 24.dp).clickable { onSelect() }.padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = TamerCadColors.TextSecondary, modifier = Modifier.size(12.dp))

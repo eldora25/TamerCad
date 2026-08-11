@@ -132,7 +132,7 @@ fun MainCADScreen(viewModel: CADViewModel = viewModel()) {
 
             // 3. KATMAN: YÜZEN PANELLER
             ObjectTree(
-                assembly = viewModel.mainAssembly,
+                document = viewModel.document,
                 onVisibilityToggle = { comp -> comp.isVisible = !comp.isVisible; viewModel.triggerUpdate() },
                 onRenameRequest = { comp -> viewModel.renameInput = comp.name; viewModel.showRenameDialog = comp },
                 onSelect = { comp -> comp.isSelected = !comp.isSelected; viewModel.triggerUpdate() },

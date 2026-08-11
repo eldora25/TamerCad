@@ -27,7 +27,7 @@ import java.util.*
 import kotlin.math.*
 
 /**
- * TAMERCAD — PHASE 2.0.6 — CAD-GRADE INTERACTION ENGINE
+ * TAMERCAD — PHASE 2.0.6.1 — STYLUS TAP DETECTION & CAD POINT SELECTION
  */
 class CADViewModel : ViewModel() {
     
@@ -75,6 +75,11 @@ class CADViewModel : ViewModel() {
     var currentGridSpacing by mutableDoubleStateOf(100.0)
     
     var lastCommitInfo by mutableStateOf("")
+
+    // Tap Detection State
+    private var stylusDownPos = Offset.Zero
+    private var stylusMaxMoveDist = 0f
+    private val tapSlopPx = 10f 
 
     private val MIN_ZOOM = 0.1f
     private val MAX_ZOOM = 50.0f
@@ -165,131 +170,126 @@ class CADViewModel : ViewModel() {
         return Point3(x1, y2, 0.0)
     }
 
-    // --- CAD-GRADE INTERACTION ENGINE ---
+    // --- CAD-GRADE INTERACTION ENGINE (PHASE 2.0.6.1) ---
 
     fun onStylusHover(x: Float, y: Float, w: Float, h: Float) {
         val pt = screenToSketchPoint(x, y, w, h) ?: return
         hoverPointLocal = pt
         val sketch = currentActiveSketch ?: return
         hoverPointWorld = sketch.plane.localToWorld(pt)
-        
-        // Professional hover-preview even without drag
-        if (rawSketchPoints.isNotEmpty()) {
-            updatePreview(pt, w, h)
-        }
+        if (rawSketchPoints.isNotEmpty()) updatePreview(pt)
     }
 
-    fun onSketchDragStart(offset: Offset, w: Float, h: Float, context: Context?) {
+    fun onStylusDown(x: Float, y: Float, w: Float, h: Float) {
+        stylusDownPos = Offset(x, y)
+        stylusMaxMoveDist = 0f
+        isStylusDown = true
+        val pt = screenToSketchPoint(x, y, w, h) ?: return
+        updatePreview(pt)
+    }
+
+    fun onStylusMove(x: Float, y: Float, w: Float, h: Float) {
+        val dist = (Offset(x, y) - stylusDownPos).getDistance()
+        if (dist > stylusMaxMoveDist) stylusMaxMoveDist = dist
+        val pt = screenToSketchPoint(x, y, w, h) ?: return
+        if (stylusMaxMoveDist > tapSlopPx && rawSketchPoints.isEmpty() && activeSketchTool != SketchTool.NONE && activeSketchTool != SketchTool.SELECT) {
+            val downPt = screenToSketchPoint(stylusDownPos.x, stylusDownPos.y, w, h)
+            if (downPt != null) rawSketchPoints.add(downPt)
+        }
+        hoverPointLocal = pt
+        updatePreview(pt)
+    }
+
+    fun onStylusUp(x: Float, y: Float, w: Float, h: Float) {
+        isStylusDown = false
+        val pt = screenToSketchPoint(x, y, w, h) ?: return
+        onPointSelected(pt)
+    }
+
+    fun onPointSelected(localPt: Vec2) {
         val sketch = currentActiveSketch ?: return
-        if (activeSketchTool == SketchTool.NONE || activeSketchTool == SketchTool.SELECT) {
-            interactionState = InteractionState.IDLE; return
-        }
-
-        val localPt = screenToSketchPoint(offset.x, offset.y, w, h) ?: return
+        if (activeSketchTool == SketchTool.NONE || activeSketchTool == SketchTool.SELECT) return
         val worldPt = sketch.plane.localToWorld(localPt).toPoint3()
-        val snapResult = SnapEngine.snapPoint(worldPt, null, sketch.getGeometries(), mainAssembly.components, zoom)
-        val finalLocalPt = sketch.plane.worldToLocal(Vec3.fromPoint3(snapResult.point))
-
-        if ((activeSketchTool == SketchTool.ARC && rawSketchPoints.size >= 1) || 
-            (activeSketchTool == SketchTool.LINE && rawSketchPoints.size >= 1)) {
-            // Continue existing command
-        } else {
-            rawSketchPoints.clear()
-            rawSketchPoints.add(finalLocalPt)
+        val snap = SnapEngine.snapPoint(worldPt, null, sketch.getGeometries(), mainAssembly.components, zoom)
+        val finalPt = sketch.plane.worldToLocal(Vec3.fromPoint3(snap.point))
+        when (activeSketchTool) {
+            SketchTool.LINE -> {
+                if (rawSketchPoints.isEmpty()) { rawSketchPoints.add(finalPt) } 
+                else {
+                    val p1 = rawSketchPoints.last()
+                    if (p1.distanceTo(finalPt) > CadTolerance.MIN_LENGTH) {
+                        commitEntity(SketchLine(p1, finalPt))
+                        rawSketchPoints.clear(); rawSketchPoints.add(finalPt)
+                    }
+                }
+            }
+            SketchTool.CIRCLE -> {
+                if (rawSketchPoints.isEmpty()) { rawSketchPoints.add(finalPt) }
+                else {
+                    val center = rawSketchPoints[0]; val r = center.distanceTo(finalPt)
+                    if (r > CadTolerance.MIN_LENGTH) commitEntity(SketchCircle(center, r))
+                    rawSketchPoints.clear()
+                }
+            }
+            SketchTool.RECTANGLE -> {
+                if (rawSketchPoints.isEmpty()) { rawSketchPoints.add(finalPt) }
+                else {
+                    val p1 = rawSketchPoints[0]
+                    if (abs(p1.x - finalPt.x) > CadTolerance.MIN_LENGTH && abs(p1.y - finalPt.y) > CadTolerance.MIN_LENGTH) {
+                        commitEntity(SketchRect(p1, finalPt))
+                    }
+                    rawSketchPoints.clear()
+                }
+            }
+            SketchTool.ARC -> {
+                if (rawSketchPoints.size < 2) { rawSketchPoints.add(finalPt) }
+                else {
+                    val p1 = rawSketchPoints[0]; val p2 = rawSketchPoints[1]
+                    val center = Vec2.calculateCircumcenter(p1, p2, finalPt)
+                    if (center != null) {
+                        val r = center.distanceTo(p1)
+                        val sA = atan2(p1.y - center.y, p1.x - center.x)
+                        val eA = atan2(p2.y - center.y, p2.x - center.x)
+                        val mA = atan2(finalPt.y - center.y, finalPt.x - center.x)
+                        commitEntity(SketchArc(center, r, sA, eA, isPointClockwise(sA, mA, eA)))
+                    }
+                    rawSketchPoints.clear()
+                }
+            }
+            else -> {}
         }
-        
-        interactionState = InteractionState.STYLUS_DRAWING
-        updatePreview(finalLocalPt, w, h)
+        triggerUpdate()
     }
 
-    fun onSketchDrag(pos: Offset, dragAmount: Offset, w: Float, h: Float, context: Context?) {
-        val pt = screenToSketchPoint(pos.x, pos.y, w, h) ?: return
-        updatePreview(pt, w, h)
-    }
-
-    private fun updatePreview(localPt: Vec2, w: Float, h: Float) {
+    private fun updatePreview(localPt: Vec2) {
         val sketch = currentActiveSketch ?: return
         val worldPt = sketch.plane.localToWorld(localPt).toPoint3()
         val snap = SnapEngine.snapPoint(worldPt, null, sketch.getGeometries(), mainAssembly.components, zoom)
         currentSnap = snap
-        val finalLocalPt = sketch.plane.worldToLocal(Vec3.fromPoint3(snap.point))
-
+        val finalPt = sketch.plane.worldToLocal(Vec3.fromPoint3(snap.point))
         if (rawSketchPoints.isNotEmpty()) {
-            val p1 = rawSketchPoints.first()
+            val pStart = rawSketchPoints.last()
             when (activeSketchTool) {
-                SketchTool.LINE -> previewGeometry = SketchLine(p1, finalLocalPt)
-                SketchTool.CIRCLE -> previewGeometry = SketchCircle(p1, p1.distanceTo(finalLocalPt))
-                SketchTool.RECTANGLE -> previewGeometry = SketchRect(p1, finalLocalPt)
+                SketchTool.LINE -> previewGeometry = SketchLine(pStart, finalPt)
+                SketchTool.CIRCLE -> previewGeometry = SketchCircle(rawSketchPoints[0], rawSketchPoints[0].distanceTo(finalPt))
+                SketchTool.RECTANGLE -> previewGeometry = SketchRect(rawSketchPoints[0], finalPt)
                 SketchTool.ARC -> {
-                    if (rawSketchPoints.size == 1) {
-                        previewGeometry = SketchLine(p1, finalLocalPt)
-                    } else if (rawSketchPoints.size == 2) {
-                        val p2 = rawSketchPoints[1]
-                        val center = Vec2.calculateCircumcenter(p1, p2, finalLocalPt)
+                    if (rawSketchPoints.size == 1) previewGeometry = SketchLine(rawSketchPoints[0], finalPt)
+                    else if (rawSketchPoints.size == 2) {
+                        val center = Vec2.calculateCircumcenter(rawSketchPoints[0], rawSketchPoints[1], finalPt)
                         if (center != null) {
-                            val r = center.distanceTo(p1)
-                            val sA = atan2(p1.y - center.y, p1.x - center.x)
-                            val eA = atan2(p2.y - center.y, p2.x - center.x)
-                            val mA = atan2(finalLocalPt.y - center.y, finalLocalPt.x - center.x)
+                            val r = center.distanceTo(rawSketchPoints[0])
+                            val sA = atan2(rawSketchPoints[0].y - center.y, rawSketchPoints[0].x - center.x)
+                            val eA = atan2(rawSketchPoints[1].y - center.y, rawSketchPoints[1].x - center.x)
+                            val mA = atan2(finalPt.y - center.y, finalPt.x - center.x)
                             previewGeometry = SketchArc(center, r, sA, eA, isPointClockwise(sA, mA, eA))
                         }
                     }
                 }
                 else -> { previewGeometry = null }
             }
-        }
+        } else { previewGeometry = null }
         triggerUpdate()
-    }
-
-    fun onSketchDragEnd(context: Context?) {
-        val sketch = currentActiveSketch ?: return
-        if (interactionState != InteractionState.STYLUS_DRAWING) return
-
-        val snapEnd = currentSnap ?: return
-        val pEnd = sketch.plane.worldToLocal(Vec3.fromPoint3(snapEnd.point))
-
-        if (rawSketchPoints.isNotEmpty()) {
-            val p1 = rawSketchPoints.first()
-            when (activeSketchTool) {
-                SketchTool.LINE -> {
-                    if (p1.distanceTo(pEnd) > CadTolerance.MIN_LENGTH) {
-                        commitEntity(SketchLine(p1, pEnd))
-                        rawSketchPoints.clear(); rawSketchPoints.add(pEnd)
-                    } else { resetActiveToolInteraction() }
-                }
-                SketchTool.CIRCLE -> {
-                    val r = p1.distanceTo(pEnd)
-                    if (r > CadTolerance.MIN_LENGTH) commitEntity(SketchCircle(p1, r))
-                    resetActiveToolInteraction()
-                }
-                SketchTool.RECTANGLE -> {
-                    if (abs(p1.x - pEnd.x) > CadTolerance.MIN_LENGTH && abs(p1.y - pEnd.y) > CadTolerance.MIN_LENGTH) {
-                        commitEntity(SketchRect(p1, pEnd))
-                    }
-                    resetActiveToolInteraction()
-                }
-                SketchTool.ARC -> {
-                    if (rawSketchPoints.size == 1) {
-                        if (p1.distanceTo(pEnd) > CadTolerance.MIN_LENGTH) {
-                            rawSketchPoints.add(pEnd) // Now have P1 and P2
-                        } else { resetActiveToolInteraction() }
-                    } else if (rawSketchPoints.size == 2) {
-                        val pb = rawSketchPoints[1]
-                        val center = Vec2.calculateCircumcenter(p1, pb, pEnd)
-                        if (center != null) {
-                            val r = center.distanceTo(p1)
-                            val sA = atan2(p1.y - center.y, p1.x - center.x)
-                            val eA = atan2(pb.y - center.y, pb.x - center.x)
-                            val mA = atan2(pEnd.y - center.y, pEnd.x - center.x)
-                            commitEntity(SketchArc(center, r, sA, eA, isPointClockwise(sA, mA, eA)))
-                        }
-                        resetActiveToolInteraction()
-                    }
-                }
-                else -> { resetActiveToolInteraction() }
-            }
-        }
-        interactionState = InteractionState.IDLE
     }
 
     private fun commitEntity(entity: SketchEntity) {
@@ -305,15 +305,12 @@ class CADViewModel : ViewModel() {
         } else {
             commandManager.execute(AddGeometryCommand(sketch, entity))
         }
-        val after = sketch.getGeometries().size
-        lastCommitInfo = "${entity.type} ID=${entity.id.take(4)} COUNT: $before -> $after"
+        lastCommitInfo = "${entity.type} ID=${entity.id.take(4)} COUNT: $before -> ${sketch.getGeometries().size}"
         triggerUpdate()
     }
 
-    private fun resetActiveToolInteraction() {
-        previewGeometry = null; rawSketchPoints.clear()
-        currentSnap = null; startSnap = null; interactionState = InteractionState.IDLE
-        triggerUpdate()
+    fun resetActiveToolInteraction() {
+        previewGeometry = null; rawSketchPoints.clear(); currentSnap = null; startSnap = null; interactionState = InteractionState.IDLE; triggerUpdate()
     }
 
     fun triggerUpdate() { updateTrigger++ }
@@ -342,28 +339,19 @@ class CADViewModel : ViewModel() {
         }
         return null
     }
-
     fun getSelectedEntityCenter(): Point3? = null
     fun startSketchFlow() { showPlaneSelector = true }
-
     fun enterSketchMode(plane: String) {
         selectedSketchPlane = plane
-        val planeObj = when(plane) {
-            "XY" -> SketchPlane.XY; "XZ" -> SketchPlane.XZ; "YZ" -> SketchPlane.YZ
-            else -> SketchPlane.XY
-        }
+        val planeObj = when(plane) { "XY" -> SketchPlane.XY; "XZ" -> SketchPlane.XZ; "YZ" -> SketchPlane.YZ; else -> SketchPlane.XY }
         activeSketchPlane = planeObj; isSketchMode = true; showPlaneSelector = false; activeSketchTool = SketchTool.SELECT
         val newSketch = SketchFeature("Sketch ${document.sketches.size + 1}", planeObj)
-        document.sketches.add(newSketch); activeSketchId = newSketch.id
-        resetActiveToolInteraction(); triggerUpdate()
+        document.sketches.add(newSketch); activeSketchId = newSketch.id; resetActiveToolInteraction(); triggerUpdate()
     }
-
     fun exitSketchMode(commit: Boolean) { 
         isSketchMode = false; activeSketchTool = SketchTool.NONE; activeSketchId = null; resetActiveToolInteraction(); triggerUpdate() 
     }
-
     fun runCommand(id: String, ctx: Context) {
-        Log.d("TAMERCAD_UI", "TOOL_BUTTON_CLICK: $id")
         resetActiveToolInteraction()
         when(id) {
             "line" -> activeSketchTool = SketchTool.LINE
@@ -376,10 +364,8 @@ class CADViewModel : ViewModel() {
         }
         triggerUpdate()
     }
-
     fun renameComponent() { showRenameDialog?.let { it.name = renameInput; showRenameDialog = null; triggerUpdate() } }
     fun applyDimension(v: Double) {}
-
     private fun isPointClockwise(start: Double, mid: Double, end: Double): Boolean {
         fun norm(a: Double) = (a % (2 * PI) + (2 * PI)) % (2 * PI)
         val s = norm(start); val m = norm(mid); val e = norm(end)

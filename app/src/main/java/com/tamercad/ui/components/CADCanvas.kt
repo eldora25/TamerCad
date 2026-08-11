@@ -2,7 +2,6 @@ package com.tamercad.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,12 +43,11 @@ import java.util.Locale
 import kotlin.math.*
 
 /**
- * TAMERCAD — PHASE 2.0.6 — CAD-GRADE INTERACTION ENGINE
+ * TAMERCAD — PHASE 2.0.6.1 — STYLUS TAP DETECTION & CAD POINT SELECTION
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun CADCanvas(viewModel: CADViewModel) {
-    val context = LocalContext.current
     var viewportSize by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(Size.Zero) }
     var lastInputX by androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     var lastInputY by androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
@@ -60,15 +58,15 @@ fun CADCanvas(viewModel: CADViewModel) {
             viewportSize = Size(coords.size.width.toFloat(), coords.size.height.toFloat())
         }
     ) {
-        val screenWidth = viewportSize.width
-        val screenHeight = viewportSize.height
+        val sw = viewportSize.width
+        val sh = viewportSize.height
 
-        if (screenWidth > 0 && screenHeight > 0) {
+        if (sw > 0 && sh > 0) {
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(if (viewModel.isSketchMode) TamerCadColors.SketchBgColor else TamerCadColors.BgColor)
-                    // 1. INPUT ARBITRATION
+                    // 1. STYLUS INPUT ARBITRATION (RAW)
                     .pointerInteropFilter { motionEvent ->
                         val stylusEvent = viewModel.stylusInputManager.resolveEvent(motionEvent)
                         viewModel.rawPointerCount = motionEvent.pointerCount
@@ -77,37 +75,31 @@ fun CADCanvas(viewModel: CADViewModel) {
                         lastInputX = motionEvent.x
                         lastInputY = motionEvent.y
                         
-                        // Authoritative Hover Update
-                        if (motionEvent.actionMasked == android.view.MotionEvent.ACTION_HOVER_MOVE || 
-                            motionEvent.actionMasked == android.view.MotionEvent.ACTION_MOVE) {
-                            viewModel.onStylusHover(motionEvent.x, motionEvent.y, screenWidth, screenHeight)
-                        }
-
                         if (stylusEvent.isStylus) {
-                            viewModel.isStylusDown = motionEvent.actionMasked != android.view.MotionEvent.ACTION_UP && 
-                                                   motionEvent.actionMasked != android.view.MotionEvent.ACTION_CANCEL
-                            viewModel.stylusPressure = stylusEvent.pressure
-                        } else {
-                            if (motionEvent.actionMasked == android.view.MotionEvent.ACTION_UP || 
-                                motionEvent.actionMasked == android.view.MotionEvent.ACTION_CANCEL) {
-                                if (motionEvent.pointerCount <= 1) viewModel.isStylusDown = false
+                            when (motionEvent.actionMasked) {
+                                android.view.MotionEvent.ACTION_HOVER_MOVE -> {
+                                    viewModel.onStylusHover(motionEvent.x, motionEvent.y, sw, sh)
+                                }
+                                android.view.MotionEvent.ACTION_DOWN -> {
+                                    viewModel.onStylusDown(motionEvent.x, motionEvent.y, sw, sh)
+                                }
+                                android.view.MotionEvent.ACTION_MOVE -> {
+                                    viewModel.onStylusMove(motionEvent.x, motionEvent.y, sw, sh)
+                                }
+                                android.view.MotionEvent.ACTION_UP -> {
+                                    viewModel.onStylusUp(motionEvent.x, motionEvent.y, sw, sh)
+                                }
+                                android.view.MotionEvent.ACTION_CANCEL -> {
+                                    viewModel.isStylusDown = false
+                                }
                             }
+                            return@pointerInteropFilter true
                         }
 
                         if (viewModel.stylusInputManager.isTouchForbidden(stylusEvent)) return@pointerInteropFilter true
-                        
-                        if (viewModel.isStylusInUse) {
-                            when (motionEvent.actionMasked) {
-                                android.view.MotionEvent.ACTION_UP -> {
-                                    if (viewModel.interactionState == InteractionState.STYLUS_DRAWING) {
-                                        viewModel.onSketchDragEnd(context)
-                                    }
-                                }
-                            }
-                        }
                         false
                     }
-                    // 2. HARDENED NAVIGATION PIPELINE
+                    // 2. HARDENED FINGER NAVIGATION PIPELINE
                     .pointerInput(Unit) {
                         val engine = GestureHardenEngine()
                         awaitPointerEventScope {
@@ -130,34 +122,18 @@ fun CADCanvas(viewModel: CADViewModel) {
                             }
                         }
                     }
-                    // 3. SKETCH/STYLUS PRODUCTION (TAP & DRAG READY)
-                    .pointerInput(Unit) {
-                        detectDragGestures(
-                            onDragStart = { offset ->
-                                if (viewModel.isStylusInUse) {
-                                    viewModel.onSketchDragStart(offset, screenWidth, screenHeight, context)
-                                }
-                            },
-                            onDrag = { change, dragAmount ->
-                                if (viewModel.isStylusInUse) {
-                                    viewModel.onSketchDrag(change.position, dragAmount, screenWidth, screenHeight, context)
-                                }
-                            },
-                            onDragEnd = { }
-                        )
-                    }
             ) {
                 drawWorldGrid(this, viewModel)
                 drawWorldAxes(this, viewModel)
 
-                // A. COMMITTED GEOMETRY FROM ALL SKETCHES
+                // A. COMMITTED GEOMETRY
                 viewModel.document.sketches.forEach { sketch ->
                     sketch.getGeometries().forEach { geom ->
                         drawGeometry(this, viewModel, geom, sketch.plane, Color.Blue, 2f)
                     }
                 }
 
-                // B. ACTIVE TOOL PREVIEW
+                // B. LIVE PREVIEW
                 viewModel.previewGeometry?.let { geom ->
                     val plane = viewModel.currentActiveSketch?.plane ?: viewModel.activeSketchPlane
                     drawGeometry(this, viewModel, geom, plane, TamerCadColors.Primary, 4f)
@@ -174,7 +150,7 @@ fun CADCanvas(viewModel: CADViewModel) {
             }
         }
 
-        // --- ENHANCED DIAGNOSTIC OVERLAY (PHASE 2.0.6) ---
+        // --- ENHANCED DIAGNOSTIC OVERLAY (PHASE 2.0.6.1) ---
         Column(
             modifier = Modifier
                 .align(androidx.compose.ui.Alignment.BottomEnd)
@@ -183,26 +159,21 @@ fun CADCanvas(viewModel: CADViewModel) {
                 .padding(10.dp)
         ) {
             DebugText("INPUT: ${if (viewModel.isStylusInUse) "STYLUS" else "FINGER"}")
-            DebugText("FINGERS: ${viewModel.activeFingerCount}")
+            DebugText("STYLUS DOWN: ${viewModel.isStylusDown}")
 
             DebugText("--- DOCUMENT ---")
             DebugText("SKETCHES: ${viewModel.document.sketches.size}")
-            DebugText("ACTIVE ID: ${viewModel.activeSketchId?.take(5) ?: "NONE"}")
-            val active = viewModel.currentActiveSketch
-            DebugText("ACTIVE PLANE: ${active?.plane?.normal ?: "NONE"}")
-            DebugText("ACTIVE ENTITIES: ${active?.getGeometries()?.size ?: 0}")
             DebugText("TOTAL ENTITIES: ${viewModel.document.sketches.sumOf { it.getGeometries().size }}")
             
             DebugText("--- INTERACTION ---")
             DebugText("TOOL: ${viewModel.activeSketchTool}")
-            DebugText("STATE: ${viewModel.interactionState}")
             DebugText("POINTS: ${viewModel.rawSketchPoints.size}")
             DebugText("LAST COMMIT: ${viewModel.lastCommitInfo}")
 
             DebugText("--- ALIGNMENT ---")
             viewModel.hoverPointLocal?.let { local ->
                 val plane = viewModel.currentActiveSketch?.plane ?: viewModel.activeSketchPlane
-                val reprojected = viewModel.sketchToScreen(local, plane, screenWidth, screenHeight)
+                val reprojected = viewModel.sketchToScreen(local, plane, sw, sh)
                 DebugText("INPUT XY: ${String.format(Locale.US, "%.1f / %.1f", lastInputX, lastInputY)}")
                 DebugText("REPROJECTED XY: ${String.format(Locale.US, "%.1f / %.1f", reprojected.x, reprojected.y)}")
                 DebugText("ERROR XY: ${String.format(Locale.US, "%+.1f / %+.1f", reprojected.x - lastInputX, reprojected.y - lastInputY)}")

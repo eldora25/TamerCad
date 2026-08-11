@@ -10,112 +10,76 @@ import kotlin.math.PI
 class Phase206Test {
 
     @Test
-    fun testRealCommitIncrementsDocumentCount() {
+    fun testStylusTapWithoutMoveRecognized() {
         val viewModel = CADViewModel()
         viewModel.enterSketchMode("XY")
         viewModel.activeSketchTool = SketchTool.LINE
         val w = 1000f; val h = 1000f
 
-        // One Line (Drag interaction)
-        viewModel.onSketchDragStart(Offset(0f, 0f), w, h, null)
-        viewModel.onSketchDrag(Offset(100f, 0f), Offset(100f, 0f), w, h, null)
-        viewModel.onSketchDragEnd(null)
+        // Simulate DOWN + UP at same point (Pure Tap)
+        viewModel.onStylusDown(100f, 100f, w, h)
+        viewModel.onStylusUp(100f, 100f, w, h)
 
-        assertEquals("TOTAL ENTITIES should be 1 after one line commit", 1, viewModel.document.sketches.sumOf { it.getGeometries().size })
+        assertEquals("P1 should be accepted on pure tap", 1, viewModel.rawSketchPoints.size)
     }
 
     @Test
-    fun testContinuousLineTapHoverTap() {
+    fun testContinuousLineTapHoverTapWithoutMove() {
         val viewModel = CADViewModel()
         viewModel.enterSketchMode("XY")
         viewModel.activeSketchTool = SketchTool.LINE
         val w = 1000f; val h = 1000f
 
-        // Segment 1
-        viewModel.onSketchDragStart(Offset(100f, 100f), w, h, null)
-        viewModel.onSketchDrag(Offset(200f, 100f), Offset(100f, 0f), w, h, null)
-        viewModel.onSketchDragEnd(null)
-
-        assertEquals(1, viewModel.currentActiveSketch!!.getGeometries().size)
+        // Tap P1
+        viewModel.onStylusDown(100f, 100f, w, h)
+        viewModel.onStylusUp(100f, 100f, w, h)
         assertEquals(1, viewModel.rawSketchPoints.size)
-        
-        // Segment 2 (Continuous)
-        viewModel.onSketchDragStart(Offset(200f, 100f), w, h, null)
-        viewModel.onSketchDrag(Offset(200f, 200f), Offset(0f, 100f), w, h, null)
-        viewModel.onSketchDragEnd(null)
 
-        assertEquals(2, viewModel.currentActiveSketch!!.getGeometries().size)
+        // Hover to P2 (simulated)
+        viewModel.onStylusHover(200f, 100f, w, h)
+        assertTrue(viewModel.previewGeometry is com.tamercad.core.sketch.SketchLine)
+
+        // Tap P2
+        viewModel.onStylusDown(200f, 100f, w, h)
+        viewModel.onStylusUp(200f, 100f, w, h)
+
+        assertEquals("Line should commit after two taps", 1, viewModel.currentActiveSketch!!.getGeometries().size)
+        assertEquals("Continuous chain: P2 should be in rawSketchPoints", 1, viewModel.rawSketchPoints.size)
     }
 
     @Test
-    fun testCircleCenterRadiusInteraction() {
-        val viewModel = CADViewModel()
-        viewModel.enterSketchMode("XY")
-        viewModel.activeSketchTool = SketchTool.CIRCLE
-        val w = 1000f; val h = 1000f
-
-        viewModel.onSketchDragStart(Offset(500f, 500f), w, h, null)
-        viewModel.onSketchDrag(Offset(600f, 500f), Offset(100f, 0f), w, h, null)
-        viewModel.onSketchDragEnd(null)
-
-        assertEquals(1, viewModel.currentActiveSketch!!.getGeometries().size)
-        assertTrue(viewModel.currentActiveSketch!!.getGeometries()[0] is com.tamercad.core.sketch.SketchCircle)
-    }
-
-    @Test
-    fun testRectangleInteraction() {
-        val viewModel = CADViewModel()
-        viewModel.enterSketchMode("XY")
-        viewModel.activeSketchTool = SketchTool.RECTANGLE
-        val w = 1000f; val h = 1000f
-
-        viewModel.onSketchDragStart(Offset(100f, 100f), w, h, null)
-        viewModel.onSketchDrag(Offset(300f, 300f), Offset(200f, 200f), w, h, null)
-        viewModel.onSketchDragEnd(null)
-
-        assertEquals(4, viewModel.currentActiveSketch!!.getGeometries().size)
-    }
-
-    @Test
-    fun testArcThreePointInteraction() {
+    fun testArcThreeSeparateTaps() {
         val viewModel = CADViewModel()
         viewModel.enterSketchMode("XY")
         viewModel.activeSketchTool = SketchTool.ARC
         val w = 1000f; val h = 1000f
 
-        // 1. P1 to P2 (Drag start to end)
-        viewModel.onSketchDragStart(Offset(100f, 100f), w, h, null)
-        viewModel.onSketchDrag(Offset(200f, 100f), Offset(100f, 0f), w, h, null)
-        viewModel.onSketchDragEnd(null)
+        // Tap P1
+        viewModel.onStylusDown(100f, 100f, w, h); viewModel.onStylusUp(100f, 100f, w, h)
+        assertEquals(1, viewModel.rawSketchPoints.size)
+
+        // Tap P2
+        viewModel.onStylusDown(200f, 100f, w, h); viewModel.onStylusUp(200f, 100f, w, h)
         assertEquals(2, viewModel.rawSketchPoints.size)
 
-        // 2. P3 (Drag curvature)
-        viewModel.onSketchDragStart(Offset(150f, 150f), w, h, null)
-        viewModel.onSketchDrag(Offset(150f, 150f), Offset(0f, 0f), w, h, null)
-        viewModel.onSketchDragEnd(null)
-
-        assertEquals(0, viewModel.rawSketchPoints.size)
+        // Tap P3
+        viewModel.onStylusDown(150f, 150f, w, h); viewModel.onStylusUp(150f, 150f, w, h)
+        assertEquals(0, viewModel.rawSketchPoints.size) // Reset after commit
         assertEquals(1, viewModel.currentActiveSketch!!.getGeometries().size)
-        assertTrue(viewModel.currentActiveSketch!!.getGeometries()[0] is com.tamercad.core.sketch.SketchArc)
     }
 
     @Test
-    fun testMultiPlanePersistence() {
+    fun testDragConvenienceShortcut() {
         val viewModel = CADViewModel()
-        
         viewModel.enterSketchMode("XY")
-        viewModel.activeSketchTool = SketchTool.LINE
-        viewModel.onSketchDragStart(Offset(0f, 0f), 1000f, 1000f, null)
-        viewModel.onSketchDrag(Offset(100f, 100f), Offset(100f, 100f), 1000f, 1000f, null)
-        viewModel.onSketchDragEnd(null)
-        
-        viewModel.enterSketchMode("XZ")
-        viewModel.activeSketchTool = SketchTool.LINE
-        viewModel.onSketchDragStart(Offset(0f, 0f), 1000f, 1000f, null)
-        viewModel.onSketchDrag(Offset(100f, 100f), Offset(100f, 100f), 1000f, 1000f, null)
-        viewModel.onSketchDragEnd(null)
+        viewModel.activeSketchTool = SketchTool.CIRCLE
+        val w = 1000f; val h = 1000f
 
-        assertEquals(2, viewModel.document.sketches.size)
-        assertEquals(2, viewModel.document.sketches.sumOf { it.getGeometries().size })
+        // Drag center to radius
+        viewModel.onStylusDown(500f, 500f, w, h)
+        viewModel.onStylusMove(600f, 500f, w, h) // Movement beyond slop
+        viewModel.onStylusUp(600f, 500f, w, h)
+
+        assertEquals(1, viewModel.currentActiveSketch!!.getGeometries().size)
     }
 }

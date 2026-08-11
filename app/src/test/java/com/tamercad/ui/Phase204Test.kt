@@ -18,14 +18,14 @@ class Phase204Test {
         val h = 1000f
         
         // Line 1
-        viewModel.onSketchDragStart(Offset(100f, 100f), w, h, null)
-        viewModel.onSketchDrag(Offset(200f, 200f), Offset(100f, 100f), w, h, null)
-        viewModel.onSketchDragEnd(null)
+        viewModel.onStylusDown(100f, 100f, w, h)
+        viewModel.onStylusMove(200f, 200f, w, h)
+        viewModel.onStylusUp(200f, 200f, w, h)
         
         // Line 2
-        viewModel.onSketchDragStart(Offset(300f, 300f), w, h, null)
-        viewModel.onSketchDrag(Offset(400f, 400f), Offset(100f, 100f), w, h, null)
-        viewModel.onSketchDragEnd(null)
+        viewModel.onStylusDown(300f, 300f, w, h)
+        viewModel.onStylusMove(400f, 400f, w, h)
+        viewModel.onStylusUp(400f, 400f, w, h)
         
         val entities = viewModel.currentActiveSketch!!.getGeometries()
         assertEquals(2, entities.size)
@@ -39,22 +39,23 @@ class Phase204Test {
         val w = 1000f
         val h = 1000f
         
-        // Stage 1: P1 to P2
-        viewModel.onSketchDragStart(Offset(100f, 100f), w, h, null)
-        viewModel.onSketchDrag(Offset(200f, 100f), Offset(100f, 0f), w, h, null)
-        viewModel.onSketchDragEnd(null)
+        // Stage 1: P1
+        viewModel.onStylusDown(100f, 100f, w, h)
+        viewModel.onStylusUp(100f, 100f, w, h)
+        assertEquals(1, viewModel.rawSketchPoints.size) 
         
-        assertEquals(2, viewModel.rawSketchPoints.size) // Points saved for Stage 2
-        assertEquals(0, viewModel.currentActiveSketch!!.getGeometries().size)
+        // Stage 2: P2
+        viewModel.onStylusDown(200f, 100f, w, h)
+        viewModel.onStylusUp(200f, 100f, w, h)
+        assertEquals(2, viewModel.rawSketchPoints.size) 
         
-        // Stage 2: P3
-        viewModel.onSketchDragStart(Offset(150f, 150f), w, h, null)
-        viewModel.onSketchDrag(Offset(150f, 150f), Offset(0f, 0f), w, h, null)
-        viewModel.onSketchDragEnd(null)
+        // Stage 3: P3
+        viewModel.onStylusDown(150f, 150f, w, h)
+        viewModel.onStylusUp(150f, 150f, w, h)
         
         val active = viewModel.currentActiveSketch!!
         assertEquals(1, active.getGeometries().size)
         assertTrue(active.getGeometries()[0] is com.tamercad.core.sketch.SketchArc)
-        assertEquals(0, viewModel.rawSketchPoints.size) // Reset after commit
+        assertEquals(0, viewModel.rawSketchPoints.size) 
     }
 }
