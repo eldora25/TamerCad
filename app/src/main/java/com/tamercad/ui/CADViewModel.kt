@@ -26,12 +26,13 @@ import com.tamercad.ui.toolbar.ToolbarCategory
 import java.util.*
 import kotlin.math.*
 
+enum class InteractionIntent { PENDING, TAP, DRAG }
+
 /**
- * TAMERCAD — PHASE 2.0.6.1 — STYLUS TAP DETECTION & CAD POINT SELECTION
+ * TAMERCAD — PHASE 2.0.6.2 — STYLUS ROBUSTNESS & PLANE ALIGNMENT
  */
 class CADViewModel : ViewModel() {
     
-    // UI & Interaction States
     var activeCategory by mutableStateOf(ToolbarCategory.INSPECT)
     var interactionState by mutableStateOf(InteractionState.IDLE)
     
@@ -39,22 +40,18 @@ class CADViewModel : ViewModel() {
     val selectionManager = SelectionManager()
     val stylusInputManager = StylusInputManager()
     var isStylusInUse by mutableStateOf(false)
-    var pointerCount by mutableIntStateOf(0)
     
-    // Core Document
     val document = CADDocument()
     val mainAssembly get() = document.assembly
     val gcsManager get() = document.gcsManager
     val commandManager = CommandManager()
     
-    // Camera
     var cameraPitch by mutableFloatStateOf(0.5f)
     var cameraYaw by mutableFloatStateOf(-0.5f)
     var panX by mutableFloatStateOf(0f)
     var panY by mutableFloatStateOf(0f)
     var zoom by mutableFloatStateOf(1.5f)
     
-    // Authoritative Sketch Session
     var activeSketchId by mutableStateOf<String?>(null)
     var activeSketchTool by mutableStateOf(SketchTool.NONE)
     var isSketchMode by mutableStateOf(false)
@@ -62,37 +59,30 @@ class CADViewModel : ViewModel() {
     
     val currentActiveSketch: SketchFeature? get() = document.sketches.find { it.id == activeSketchId }
 
-    // Diagnostics
     var stylusPressure by mutableFloatStateOf(0f)
     var isStylusDown by mutableStateOf(false)
     var gestureMode by mutableStateOf("IDLE")
-    var diagnosticPanDelta by mutableStateOf(Offset.Zero)
-    var diagnosticZoomScale by mutableFloatStateOf(1f)
     var rawPointerCount by mutableIntStateOf(0)
     var activeFingerCount by mutableIntStateOf(0)
     var hoverPointWorld by mutableStateOf<Vec3?>(null)
     var hoverPointLocal by mutableStateOf<Vec2?>(null)
     var currentGridSpacing by mutableDoubleStateOf(100.0)
-    
     var lastCommitInfo by mutableStateOf("")
 
-    // Tap Detection State
+    // Gesture Robustness
+    var interactionIntent by mutableStateOf(InteractionIntent.PENDING)
+    var stylusMaxMoveDist by mutableFloatStateOf(0f)
     private var stylusDownPos = Offset.Zero
-    private var stylusMaxMoveDist = 0f
     private val tapSlopPx = 10f 
+    private val dragStartSlopPx = 18f
 
-    private val MIN_ZOOM = 0.1f
-    private val MAX_ZOOM = 50.0f
+    private val MIN_ZOOM = 0.1f; private val MAX_ZOOM = 50.0f
     private val PITCH_LIMIT = (PI / 2.0 - 0.01).toFloat()
 
     fun updateCamera(deltaYaw: Float, deltaPitch: Float, deltaZoom: Float, deltaPanX: Float, deltaPanY: Float) {
-        if (!deltaYaw.isFinite() || !deltaPitch.isFinite() || !deltaZoom.isFinite() || 
-            !deltaPanX.isFinite() || !deltaPanY.isFinite()) return
-        cameraYaw += deltaYaw
-        cameraPitch = (cameraPitch + deltaPitch).coerceIn(-PITCH_LIMIT, PITCH_LIMIT)
-        zoom = (zoom * deltaZoom).coerceIn(MIN_ZOOM, MAX_ZOOM)
-        panX += deltaPanX; panY += deltaPanY
-        triggerUpdate()
+        if (!deltaYaw.isFinite() || !deltaPitch.isFinite() || !deltaZoom.isFinite() || !deltaPanX.isFinite() || !deltaPanY.isFinite()) return
+        cameraYaw += deltaYaw; cameraPitch = (cameraPitch + deltaPitch).coerceIn(-PITCH_LIMIT, PITCH_LIMIT)
+        zoom = (zoom * deltaZoom).coerceIn(MIN_ZOOM, MAX_ZOOM); panX += deltaPanX; panY += deltaPanY; triggerUpdate()
     }
 
     var currentMode by mutableStateOf(CadMode.NAVIGATE)
@@ -100,36 +90,26 @@ class CADViewModel : ViewModel() {
     var showPlaneSelector by mutableStateOf(false)
     var isPerspective by mutableStateOf(false)
     
-    // Interaction Engine State
     var previewGeometry by mutableStateOf<IGeometry?>(null)
-    var rawSketchPoints = mutableStateListOf<Vec2>()
+    val rawSketchPoints = mutableStateListOf<Vec2>()
     var currentSnap by mutableStateOf<SnapResult?>(null)
     var startSnap by mutableStateOf<SnapResult?>(null)
-    var activeManipulatorAxis by mutableStateOf<String?>(null)
-    var manipulationAnchorPoint by mutableStateOf<Point3?>(null)
-    
-    // Extrude & Direct Modeling
+
+    // RESTORED PROPERTIES
     var dynamicExtrudeHeight by mutableFloatStateOf(0f)
     var isExtrudeSymmetric by mutableStateOf(false)
     var isExtrudeReversed by mutableStateOf(false)
     var extrudeOperation by mutableStateOf(ExtrudeOperation.NEW_BODY)
 
-    // Dialog & UI
-    var renameInput by mutableStateOf("")
-    var showRenameDialog by mutableStateOf<Component3D?>(null)
-    var showInfoDialog by mutableStateOf(false)
-    var showSettings by mutableStateOf(false)
-    var showDimDialog by mutableStateOf(false)
-    var dimInput by mutableStateOf("")
-    var browserOffset by mutableStateOf(Offset(250f, 100f))
-    var selectionPoint by mutableStateOf<Offset?>(null)
-    var saveStatus by mutableStateOf("Saved")
-    var updateTrigger by mutableIntStateOf(0)
+    var renameInput by mutableStateOf(""); var showRenameDialog by mutableStateOf<Component3D?>(null)
+    var showInfoDialog by mutableStateOf(false); var showSettings by mutableStateOf(false)
+    var showDimDialog by mutableStateOf(false); var dimInput by mutableStateOf("")
+    var browserOffset by mutableStateOf(Offset(250f, 100f)); var selectionPoint by mutableStateOf<Offset?>(null)
+    var saveStatus by mutableStateOf("Saved"); var updateTrigger by mutableIntStateOf(0)
     var currentMeasurement by mutableStateOf<MeasurementEngine.MeasurementResult?>(null)
 
     val componentMaterials = mutableStateMapOf<Component3D, RenderMaterial>()
 
-    // Authoritative Coordinate Pipeline
     fun getPickRay(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): Ray3 {
         val centerX = screenWidth / 2f; val centerY = screenHeight / 2f
         val vx = (screenX - panX - centerX) / zoom.toDouble(); val vy = (centerY + panY - screenY) / zoom.toDouble()
@@ -157,8 +137,7 @@ class CADViewModel : ViewModel() {
     }
 
     fun worldToScreen(point: Point3, screenWidth: Float, screenHeight: Float): Offset {
-        val proj = project3DTo2D(point)
-        val centerX = screenWidth / 2f; val centerY = screenHeight / 2f
+        val proj = project3DTo2D(point); val centerX = screenWidth / 2f; val centerY = screenHeight / 2f
         return Offset((proj.x * zoom).toFloat() + panX + centerX, (centerY + panY) - (proj.y * zoom).toFloat())
     }
 
@@ -170,48 +149,47 @@ class CADViewModel : ViewModel() {
         return Point3(x1, y2, 0.0)
     }
 
-    // --- CAD-GRADE INTERACTION ENGINE (PHASE 2.0.6.1) ---
+    // --- INTERACTION ENGINE ---
 
     fun onStylusHover(x: Float, y: Float, w: Float, h: Float) {
         val pt = screenToSketchPoint(x, y, w, h) ?: return
-        hoverPointLocal = pt
-        val sketch = currentActiveSketch ?: return
-        hoverPointWorld = sketch.plane.localToWorld(pt)
-        if (rawSketchPoints.isNotEmpty()) updatePreview(pt)
+        hoverPointLocal = pt; val sketch = currentActiveSketch ?: return
+        hoverPointWorld = sketch.plane.localToWorld(pt); updatePreview(pt)
     }
 
     fun onStylusDown(x: Float, y: Float, w: Float, h: Float) {
-        stylusDownPos = Offset(x, y)
-        stylusMaxMoveDist = 0f
-        isStylusDown = true
-        val pt = screenToSketchPoint(x, y, w, h) ?: return
+        stylusDownPos = Offset(x, y); stylusMaxMoveDist = 0f; interactionIntent = InteractionIntent.PENDING
+        isStylusDown = true; val pt = screenToSketchPoint(x, y, w, h) ?: return
         updatePreview(pt)
     }
 
     fun onStylusMove(x: Float, y: Float, w: Float, h: Float) {
         val dist = (Offset(x, y) - stylusDownPos).getDistance()
         if (dist > stylusMaxMoveDist) stylusMaxMoveDist = dist
-        val pt = screenToSketchPoint(x, y, w, h) ?: return
-        if (stylusMaxMoveDist > tapSlopPx && rawSketchPoints.isEmpty() && activeSketchTool != SketchTool.NONE && activeSketchTool != SketchTool.SELECT) {
-            val downPt = screenToSketchPoint(stylusDownPos.x, stylusDownPos.y, w, h)
-            if (downPt != null) rawSketchPoints.add(downPt)
+        if (interactionIntent == InteractionIntent.PENDING && stylusMaxMoveDist > dragStartSlopPx) {
+            interactionIntent = InteractionIntent.DRAG
+            if (rawSketchPoints.isEmpty() && activeSketchTool != SketchTool.NONE && activeSketchTool != SketchTool.SELECT) {
+                val startPt = screenToSketchPoint(stylusDownPos.x, stylusDownPos.y, w, h)
+                if (startPt != null) rawSketchPoints.add(startPt)
+            }
         }
-        hoverPointLocal = pt
-        updatePreview(pt)
+        val pt = screenToSketchPoint(x, y, w, h) ?: return
+        hoverPointLocal = pt; updatePreview(pt)
     }
 
     fun onStylusUp(x: Float, y: Float, w: Float, h: Float) {
-        isStylusDown = false
-        val pt = screenToSketchPoint(x, y, w, h) ?: return
-        onPointSelected(pt)
+        isStylusDown = false; val pt = screenToSketchPoint(x, y, w, h) ?: return
+        if (stylusMaxMoveDist < dragStartSlopPx) {
+            interactionIntent = InteractionIntent.TAP; onPointSelected(pt)
+        } else { onPointSelected(pt) }
+        interactionIntent = InteractionIntent.PENDING
     }
 
     fun onPointSelected(localPt: Vec2) {
         val sketch = currentActiveSketch ?: return
         if (activeSketchTool == SketchTool.NONE || activeSketchTool == SketchTool.SELECT) return
-        val worldPt = sketch.plane.localToWorld(localPt).toPoint3()
-        val snap = SnapEngine.snapPoint(worldPt, null, sketch.getGeometries(), mainAssembly.components, zoom)
-        val finalPt = sketch.plane.worldToLocal(Vec3.fromPoint3(snap.point))
+        val snap = SnapEngine.snapPoint(localPt, rawSketchPoints.lastOrNull(), sketch.getGeometries(), zoom, currentGridSpacing)
+        val finalPt = snap.point
         when (activeSketchTool) {
             SketchTool.LINE -> {
                 if (rawSketchPoints.isEmpty()) { rawSketchPoints.add(finalPt) } 
@@ -219,7 +197,7 @@ class CADViewModel : ViewModel() {
                     val p1 = rawSketchPoints.last()
                     if (p1.distanceTo(finalPt) > CadTolerance.MIN_LENGTH) {
                         commitEntity(SketchLine(p1, finalPt))
-                        rawSketchPoints.clear(); rawSketchPoints.add(finalPt)
+                        rawSketchPoints.clear(); rawSketchPoints.add(finalPt) 
                     }
                 }
             }
@@ -263,10 +241,9 @@ class CADViewModel : ViewModel() {
 
     private fun updatePreview(localPt: Vec2) {
         val sketch = currentActiveSketch ?: return
-        val worldPt = sketch.plane.localToWorld(localPt).toPoint3()
-        val snap = SnapEngine.snapPoint(worldPt, null, sketch.getGeometries(), mainAssembly.components, zoom)
+        val snap = SnapEngine.snapPoint(localPt, rawSketchPoints.lastOrNull(), sketch.getGeometries(), zoom, currentGridSpacing)
         currentSnap = snap
-        val finalPt = sketch.plane.worldToLocal(Vec3.fromPoint3(snap.point))
+        val finalPt = snap.point
         if (rawSketchPoints.isNotEmpty()) {
             val pStart = rawSketchPoints.last()
             when (activeSketchTool) {
@@ -294,7 +271,6 @@ class CADViewModel : ViewModel() {
 
     private fun commitEntity(entity: SketchEntity) {
         val sketch = currentActiveSketch ?: return
-        val before = sketch.getGeometries().size
         if (entity is SketchRect) {
             val p1 = entity.p1; val p2 = entity.p2
             val c2 = Vec2(p2.x, p1.y); val c4 = Vec2(p1.x, p2.y)
@@ -302,22 +278,21 @@ class CADViewModel : ViewModel() {
             commandManager.execute(AddGeometryCommand(sketch, SketchLine(c2, p2)))
             commandManager.execute(AddGeometryCommand(sketch, SketchLine(p2, c4)))
             commandManager.execute(AddGeometryCommand(sketch, SketchLine(c4, p1)))
-        } else {
-            commandManager.execute(AddGeometryCommand(sketch, entity))
-        }
-        lastCommitInfo = "${entity.type} ID=${entity.id.take(4)} COUNT: $before -> ${sketch.getGeometries().size}"
-        triggerUpdate()
+        } else { commandManager.execute(AddGeometryCommand(sketch, entity)) }
+        lastCommitInfo = "${entity.type} COUNT: ${sketch.getGeometries().size}"; triggerUpdate()
     }
 
     fun resetActiveToolInteraction() {
         previewGeometry = null; rawSketchPoints.clear(); currentSnap = null; startSnap = null; interactionState = InteractionState.IDLE; triggerUpdate()
     }
 
-    fun triggerUpdate() { updateTrigger++ }
-    fun onUndo() { commandManager.undo(); triggerUpdate() }
-    fun onRedo() { commandManager.redo(); triggerUpdate() }
+    // CAMERA UTILS
+    fun alignCameraToPlane(plane: SketchPlane) {
+        val n = plane.normal; cameraPitch = asin(n.y).toFloat(); cameraYaw = atan2(n.x, n.z).toFloat(); triggerUpdate()
+    }
     fun goHome() { cameraPitch = 0.5f; cameraYaw = -0.5f; panX = 0f; panY = 0f; zoom = 1.5f; triggerUpdate() }
     fun fitAll() { goHome() }
+    fun getSelectedEntityCenter(): Point3? = null
     fun setFrontView() { cameraPitch = 0f; cameraYaw = 0f; triggerUpdate() }
     fun setBackView() { cameraPitch = 0f; cameraYaw = PI.toFloat(); triggerUpdate() }
     fun setTopView() { cameraPitch = PI.toFloat()/2f; cameraYaw = 0f; triggerUpdate() }
@@ -325,32 +300,21 @@ class CADViewModel : ViewModel() {
     fun setLeftView() { cameraPitch = 0f; cameraYaw = -PI.toFloat()/2f; triggerUpdate() }
     fun setRightView() { cameraPitch = 0f; cameraYaw = PI.toFloat()/2f; triggerUpdate() }
     fun setIsometricView() { cameraPitch = 0.6f; cameraYaw = -0.6f; triggerUpdate() }
-    
-    fun pick3DEntity(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): IGeometry? {
-        if (selectionManager.showSketches) {
-            val ray = getPickRay(screenX, screenY, screenWidth, screenHeight)
-            document.sketches.forEach { sketch ->
-                val hitWorld = sketch.plane.intersectRay(ray)
-                if (hitWorld != null) {
-                    val hit = sketch.pickGeometry(hitWorld.toPoint3(), 20.0 / zoom)
-                    if (hit != null) return hit
-                }
-            }
-        }
-        return null
-    }
-    fun getSelectedEntityCenter(): Point3? = null
+
+    // SKETCH SESSION
     fun startSketchFlow() { showPlaneSelector = true }
     fun enterSketchMode(plane: String) {
         selectedSketchPlane = plane
         val planeObj = when(plane) { "XY" -> SketchPlane.XY; "XZ" -> SketchPlane.XZ; "YZ" -> SketchPlane.YZ; else -> SketchPlane.XY }
         activeSketchPlane = planeObj; isSketchMode = true; showPlaneSelector = false; activeSketchTool = SketchTool.SELECT
         val newSketch = SketchFeature("Sketch ${document.sketches.size + 1}", planeObj)
-        document.sketches.add(newSketch); activeSketchId = newSketch.id; resetActiveToolInteraction(); triggerUpdate()
+        document.sketches.add(newSketch); activeSketchId = newSketch.id
+        alignCameraToPlane(planeObj); resetActiveToolInteraction(); triggerUpdate()
     }
     fun exitSketchMode(commit: Boolean) { 
         isSketchMode = false; activeSketchTool = SketchTool.NONE; activeSketchId = null; resetActiveToolInteraction(); triggerUpdate() 
     }
+
     fun runCommand(id: String, ctx: Context) {
         resetActiveToolInteraction()
         when(id) {
@@ -364,8 +328,13 @@ class CADViewModel : ViewModel() {
         }
         triggerUpdate()
     }
+
     fun renameComponent() { showRenameDialog?.let { it.name = renameInput; showRenameDialog = null; triggerUpdate() } }
     fun applyDimension(v: Double) {}
+    fun triggerUpdate() { updateTrigger++ }
+    fun onUndo() { commandManager.undo(); triggerUpdate() }
+    fun onRedo() { commandManager.redo(); triggerUpdate() }
+
     private fun isPointClockwise(start: Double, mid: Double, end: Double): Boolean {
         fun norm(a: Double) = (a % (2 * PI) + (2 * PI)) % (2 * PI)
         val s = norm(start); val m = norm(mid); val e = norm(end)

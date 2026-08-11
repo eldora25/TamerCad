@@ -43,7 +43,7 @@ import java.util.Locale
 import kotlin.math.*
 
 /**
- * TAMERCAD — PHASE 2.0.6.1 — STYLUS TAP DETECTION & CAD POINT SELECTION
+ * TAMERCAD — PHASE 2.0.6.2 — STYLUS ROBUSTNESS & PLANE ALIGNMENT
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -72,34 +72,22 @@ fun CADCanvas(viewModel: CADViewModel) {
                         viewModel.rawPointerCount = motionEvent.pointerCount
                         viewModel.isStylusInUse = stylusEvent.isStylus
                         
-                        lastInputX = motionEvent.x
-                        lastInputY = motionEvent.y
+                        lastInputX = motionEvent.x; lastInputY = motionEvent.y
                         
                         if (stylusEvent.isStylus) {
                             when (motionEvent.actionMasked) {
-                                android.view.MotionEvent.ACTION_HOVER_MOVE -> {
-                                    viewModel.onStylusHover(motionEvent.x, motionEvent.y, sw, sh)
-                                }
-                                android.view.MotionEvent.ACTION_DOWN -> {
-                                    viewModel.onStylusDown(motionEvent.x, motionEvent.y, sw, sh)
-                                }
-                                android.view.MotionEvent.ACTION_MOVE -> {
-                                    viewModel.onStylusMove(motionEvent.x, motionEvent.y, sw, sh)
-                                }
-                                android.view.MotionEvent.ACTION_UP -> {
-                                    viewModel.onStylusUp(motionEvent.x, motionEvent.y, sw, sh)
-                                }
-                                android.view.MotionEvent.ACTION_CANCEL -> {
-                                    viewModel.isStylusDown = false
-                                }
+                                android.view.MotionEvent.ACTION_HOVER_MOVE -> viewModel.onStylusHover(motionEvent.x, motionEvent.y, sw, sh)
+                                android.view.MotionEvent.ACTION_DOWN -> viewModel.onStylusDown(motionEvent.x, motionEvent.y, sw, sh)
+                                android.view.MotionEvent.ACTION_MOVE -> viewModel.onStylusMove(motionEvent.x, motionEvent.y, sw, sh)
+                                android.view.MotionEvent.ACTION_UP -> viewModel.onStylusUp(motionEvent.x, motionEvent.y, sw, sh)
+                                android.view.MotionEvent.ACTION_CANCEL -> viewModel.isStylusDown = false
                             }
                             return@pointerInteropFilter true
                         }
-
                         if (viewModel.stylusInputManager.isTouchForbidden(stylusEvent)) return@pointerInteropFilter true
                         false
                     }
-                    // 2. HARDENED FINGER NAVIGATION PIPELINE
+                    // 2. FINGER NAVIGATION
                     .pointerInput(Unit) {
                         val engine = GestureHardenEngine()
                         awaitPointerEventScope {
@@ -116,9 +104,7 @@ fun CADCanvas(viewModel: CADViewModel) {
                                         viewModel.updateCamera(res.yawDelta, res.pitchDelta, res.zoomScale, res.panDelta.x, res.panDelta.y)
                                         event.changes.forEach { it.consume() }
                                     }
-                                } else {
-                                    engine.reset(); viewModel.activeFingerCount = 0; viewModel.gestureMode = "IDLE (STYLUS)"
-                                }
+                                } else { engine.reset(); viewModel.activeFingerCount = 0; viewModel.gestureMode = "IDLE (STYLUS)" }
                             }
                         }
                     }
@@ -150,7 +136,7 @@ fun CADCanvas(viewModel: CADViewModel) {
             }
         }
 
-        // --- ENHANCED DIAGNOSTIC OVERLAY (PHASE 2.0.6.1) ---
+        // --- ENHANCED DIAGNOSTIC OVERLAY (PHASE 2.0.6.2) ---
         Column(
             modifier = Modifier
                 .align(androidx.compose.ui.Alignment.BottomEnd)
@@ -158,26 +144,26 @@ fun CADCanvas(viewModel: CADViewModel) {
                 .background(Color.Black.copy(alpha = 0.6f))
                 .padding(10.dp)
         ) {
-            DebugText("INPUT: ${if (viewModel.isStylusInUse) "STYLUS" else "FINGER"}")
-            DebugText("STYLUS DOWN: ${viewModel.isStylusDown}")
+            DebugText("INPUT: ${if (viewModel.isStylusInUse) "STYLUS" else "FINGER"} DOWN: ${viewModel.isStylusDown}")
+            DebugText("INTENT: ${viewModel.interactionIntent} MAX MOVE: ${String.format(Locale.US, "%.1f", viewModel.stylusMaxMoveDist)}")
 
             DebugText("--- DOCUMENT ---")
-            DebugText("SKETCHES: ${viewModel.document.sketches.size}")
+            DebugText("TOTAL SKETCHES: ${viewModel.document.sketches.size}")
             DebugText("TOTAL ENTITIES: ${viewModel.document.sketches.sumOf { it.getGeometries().size }}")
             
             DebugText("--- INTERACTION ---")
             DebugText("TOOL: ${viewModel.activeSketchTool}")
             DebugText("POINTS: ${viewModel.rawSketchPoints.size}")
+            DebugText("SNAP: ${viewModel.currentSnap?.type ?: "NONE"}")
             DebugText("LAST COMMIT: ${viewModel.lastCommitInfo}")
 
             DebugText("--- ALIGNMENT ---")
             viewModel.hoverPointLocal?.let { local ->
                 val plane = viewModel.currentActiveSketch?.plane ?: viewModel.activeSketchPlane
                 val reprojected = viewModel.sketchToScreen(local, plane, sw, sh)
-                DebugText("INPUT XY: ${String.format(Locale.US, "%.1f / %.1f", lastInputX, lastInputY)}")
                 DebugText("REPROJECTED XY: ${String.format(Locale.US, "%.1f / %.1f", reprojected.x, reprojected.y)}")
                 DebugText("ERROR XY: ${String.format(Locale.US, "%+.1f / %+.1f", reprojected.x - lastInputX, reprojected.y - lastInputY)}")
-                DebugText("SKETCH XY: ${String.format(Locale.US, "%.2f / %.2f", local.x, local.y)}")
+                DebugText("SKETCH LOCAL XY: ${String.format(Locale.US, "%.2f / %.2f", local.x, local.y)}")
             }
         }
     }
@@ -216,7 +202,8 @@ fun drawWorldAxes(drawScope: DrawScope, viewModel: CADViewModel) {
 }
 
 fun drawSnapMarker(drawScope: DrawScope, viewModel: CADViewModel, snap: SnapResult) {
-    val screenPos = viewModel.worldToScreen(snap.point, drawScope.size.width, drawScope.size.height)
+    val plane = viewModel.currentActiveSketch?.plane ?: viewModel.activeSketchPlane
+    val screenPos = viewModel.sketchToScreen(snap.point, plane, drawScope.size.width, drawScope.size.height)
     val color = TamerCadColors.SnapColor; val size = 12f
     when (snap.type) {
         SnapType.ENDPOINT -> drawScope.drawRect(color, Offset(screenPos.x - size/2, screenPos.y - size/2), Size(size, size), style = Stroke(2f))
@@ -228,14 +215,10 @@ fun drawSnapMarker(drawScope: DrawScope, viewModel: CADViewModel, snap: SnapResu
             drawScope.drawPath(path, color, style = Stroke(2f))
         }
         SnapType.CENTER -> drawScope.drawCircle(color, size/2, screenPos, style = Stroke(2f))
-        SnapType.INTERSECTION -> {
-            drawScope.drawLine(color, Offset(screenPos.x - size/2, screenPos.y - size/2), Offset(screenPos.x + size/2, screenPos.y + size/2), 2f)
-            drawScope.drawLine(color, Offset(screenPos.x + size/2, screenPos.y - size/2), Offset(screenPos.x - size/2, screenPos.y + size/2), 2f)
-        }
         SnapType.GRID -> drawScope.drawCircle(color.copy(alpha = 0.5f), 4f, screenPos)
         SnapType.HORIZONTAL, SnapType.VERTICAL -> {
-            viewModel.startSnap?.let { start ->
-                val startScreen = viewModel.worldToScreen(start.point, drawScope.size.width, drawScope.size.height)
+            viewModel.rawSketchPoints.lastOrNull()?.let { start ->
+                val startScreen = viewModel.sketchToScreen(start, plane, drawScope.size.width, drawScope.size.height)
                 drawScope.drawLine(color = color, start = startScreen, end = screenPos, strokeWidth = 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f))
             }
             drawScope.drawCircle(color, 6f, screenPos, style = Stroke(2f))

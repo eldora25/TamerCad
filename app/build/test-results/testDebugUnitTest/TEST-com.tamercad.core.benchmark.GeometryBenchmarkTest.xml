@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.tamercad.core.benchmark.GeometryBenchmarkTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-08-11T20:11:05" hostname="DESKTOP-OUQLP2N" time="0.424">
+<testsuite name="com.tamercad.core.benchmark.GeometryBenchmarkTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-08-11T22:46:07" hostname="DESKTOP-OUQLP2N" time="0.436">
   <properties/>
-  <testcase name="testFeatureRegenerationPerformance" classname="com.tamercad.core.benchmark.GeometryBenchmarkTest" time="0.223"/>
+  <testcase name="testFeatureRegenerationPerformance" classname="com.tamercad.core.benchmark.GeometryBenchmarkTest" time="0.234"/>
   <testcase name="testTopologyValidationPerformance" classname="com.tamercad.core.benchmark.GeometryBenchmarkTest" time="0.046"/>
-  <testcase name="testSimpleBooleanPerformance" classname="com.tamercad.core.benchmark.GeometryBenchmarkTest" time="0.153"/>
-  <system-out><![CDATA[Unsur Yeniden Oluşturma Süresi: 214ms
+  <testcase name="testSimpleBooleanPerformance" classname="com.tamercad.core.benchmark.GeometryBenchmarkTest" time="0.155"/>
+  <system-out><![CDATA[Unsur Yeniden Oluşturma Süresi: 225ms
 Topoloji Doğrulama Süresi: 46ms
-Boolean İşlemi Süresi: 153ms
+Boolean İşlemi Süresi: 155ms
 ]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

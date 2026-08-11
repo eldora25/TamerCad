@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.tamercad.core.math.CadMathTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-08-11T20:11:05" hostname="DESKTOP-OUQLP2N" time="0.006">
+<testsuite name="com.tamercad.core.math.CadMathTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-08-11T22:46:07" hostname="DESKTOP-OUQLP2N" time="0.005">
   <properties/>
-  <testcase name="testSketchPlaneProjections" classname="com.tamercad.core.math.CadMathTest" time="0.004"/>
-  <testcase name="testCadTolerance" classname="com.tamercad.core.math.CadMathTest" time="0.0"/>
+  <testcase name="testSketchPlaneProjections" classname="com.tamercad.core.math.CadMathTest" time="0.003"/>
+  <testcase name="testCadTolerance" classname="com.tamercad.core.math.CadMathTest" time="0.001"/>
   <testcase name="testVec3Operations" classname="com.tamercad.core.math.CadMathTest" time="0.0"/>
   <testcase name="test100mmInvariance" classname="com.tamercad.core.math.CadMathTest" time="0.0"/>
-  <testcase name="testRayPlaneIntersection" classname="com.tamercad.core.math.CadMathTest" time="0.0"/>
-  <testcase name="testVec2Operations" classname="com.tamercad.core.math.CadMathTest" time="0.001"/>
+  <testcase name="testRayPlaneIntersection" classname="com.tamercad.core.math.CadMathTest" time="0.001"/>
+  <testcase name="testVec2Operations" classname="com.tamercad.core.math.CadMathTest" time="0.0"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>
