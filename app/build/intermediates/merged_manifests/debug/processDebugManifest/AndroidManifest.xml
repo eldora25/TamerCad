@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.tamercad.debug"
-    android:versionCode="103"
-    android:versionName="0.1.103-debug" >
+    android:versionCode="108"
+    android:versionName="0.1.108-debug" >
 
     <uses-sdk
         android:minSdkVersion="29"

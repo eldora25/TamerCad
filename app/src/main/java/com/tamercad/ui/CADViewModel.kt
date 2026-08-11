@@ -29,7 +29,7 @@ import java.util.*
 import kotlin.math.*
 
 /**
- * TAMERCAD — PHASE 2.1 — STABILIZED SKETCH TOOL PIPELINE
+ * TAMERCAD — PHASE 2.0.5 — DOCUMENT TRUTH SOURCE REPAIR
  */
 class CADViewModel : ViewModel() {
     
@@ -56,13 +56,14 @@ class CADViewModel : ViewModel() {
     var panY by mutableFloatStateOf(0f)
     var zoom by mutableFloatStateOf(1.5f)
     
-    // Authoritative Sketch Session (PHASE 2.0.4)
+    // Authoritative Sketch Session (PHASE 2.0.5)
     var activeSketchId by mutableStateOf<String?>(null)
     var activeSketchTool by mutableStateOf(SketchTool.NONE)
     var isSketchMode by mutableStateOf(false)
     var activeSketchPlane by mutableStateOf(SketchPlane.XY)
     
-    val activeSketch: SketchFeature? get() = document.sketches.find { it.id == activeSketchId }
+    // Auth getter: ALWAYS find in the document list.
+    val currentActiveSketch: SketchFeature? get() = document.sketches.find { it.id == activeSketchId }
 
     // Diagnostic / Hardening State
     var stylusPressure by mutableFloatStateOf(0f)
@@ -131,12 +132,11 @@ class CADViewModel : ViewModel() {
     // Materials
     val componentMaterials = mutableStateMapOf<Component3D, RenderMaterial>()
 
-    // Authoritative Coordinate Pipeline (PHASE 2.0.1 FIX)
+    // Authoritative Coordinate Pipeline
     fun getPickRay(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): Ray3 {
         val centerX = screenWidth / 2f
         val centerY = screenHeight / 2f
         
-        // Convert screen pixels to Viewport Space (centered, Y-up)
         val vx = (screenX - panX - centerX) / zoom.toDouble()
         val vy = (centerY + panY - screenY) / zoom.toDouble()
         
@@ -145,28 +145,23 @@ class CADViewModel : ViewModel() {
         val cosP = cos(cameraPitch.toDouble())
         val sinP = sin(cameraPitch.toDouble())
         
-        // Ray origin at vz=0 in View Space, transformed to World Space
-        // Using R^T where R is the view matrix from project3DTo2D
         val rayOrigin = Vec3(
             vx * cosY - vy * sinP * sinY,
             vy * cosP,
             -vx * sinY - vy * sinP * cosY
         )
         
-        // Ray direction is the View Space Z-axis transformed to World Space
-        // (The third row of the R matrix)
         val rayDir = Vec3(sinY * cosP, sinP, cosY * cosP)
-        
-        // Offset ray origin back to ensure intersection t > 0
         val offsetOrigin = rayOrigin - (rayDir * 10000.0)
         
         return Ray3(offsetOrigin, rayDir)
     }
 
     fun screenToSketchPoint(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): Vec2? {
+        val plane = currentActiveSketch?.plane ?: activeSketchPlane
         val ray = getPickRay(screenX, screenY, screenWidth, screenHeight)
-        val hitWorld = activeSketchPlane.intersectRay(ray) ?: return null
-        return activeSketchPlane.worldToLocal(hitWorld)
+        val hitWorld = plane.intersectRay(ray) ?: return null
+        return plane.worldToLocal(hitWorld)
     }
 
     fun sketchToScreen(point: Vec2, plane: SketchPlane, screenWidth: Float, screenHeight: Float): Offset {
@@ -174,8 +169,10 @@ class CADViewModel : ViewModel() {
         return worldToScreen(world.toPoint3(), screenWidth, screenHeight)
     }
 
+    // Convenience for preview/active
     fun sketchToScreen(point: Vec2, screenWidth: Float, screenHeight: Float): Offset {
-        return sketchToScreen(point, activeSketchPlane, screenWidth, screenHeight)
+        val plane = currentActiveSketch?.plane ?: activeSketchPlane
+        return sketchToScreen(point, plane, screenWidth, screenHeight)
     }
 
     // Math Helpers
@@ -204,8 +201,10 @@ class CADViewModel : ViewModel() {
         return Point3(x1, y2, 0.0)
     }
 
+    // --- INTERACTION HANDLERS ---
+
     fun onSketchDragStart(offset: Offset, screenWidth: Float, screenHeight: Float, context: Context?) {
-        val sketch = activeSketch ?: return
+        val sketch = currentActiveSketch ?: return
         if (activeSketchTool == SketchTool.NONE || activeSketchTool == SketchTool.SELECT) {
             interactionState = InteractionState.IDLE
             return
@@ -220,10 +219,11 @@ class CADViewModel : ViewModel() {
         startSnap = snapResult
         currentSnap = snapResult
         
-        // Arc interaction state handling
+        // Multi-stage tools (Arc) handle state differently
         if (activeSketchTool == SketchTool.ARC && rawSketchPoints.size == 2) {
-            // We have A and B, now dragging for C
+            // Already have Start and End, this drag is for P3 (curvature)
         } else {
+            // Start fresh for new primitive
             rawSketchPoints = listOf(localSnapPt)
         }
         
@@ -231,7 +231,7 @@ class CADViewModel : ViewModel() {
     }
 
     fun onSketchDrag(position: Offset, dragAmount: Offset, screenWidth: Float, screenHeight: Float, context: Context?) {
-        val sketch = activeSketch ?: return
+        val sketch = currentActiveSketch ?: return
         if (interactionState != InteractionState.STYLUS_DRAWING) return
         
         val sketchPt = screenToSketchPoint(position.x, position.y, screenWidth, screenHeight) ?: return
@@ -256,103 +256,91 @@ class CADViewModel : ViewModel() {
                 }
                 SketchTool.ARC -> {
                     if (rawSketchPoints.size == 1) {
-                        // Dragging from Start to End
-                        previewGeometry = SketchLine(p1, localPt) // Temporary visual
+                        previewGeometry = SketchLine(p1, localPt)
                     } else if (rawSketchPoints.size == 2) {
-                        // Dragging for Curvature (C)
                         val p2 = rawSketchPoints[1]
                         val center = Vec2.calculateCircumcenter(p1, p2, localPt)
                         if (center != null) {
                             val radius = center.distanceTo(p1)
-                            val startAngle = atan2(p1.y - center.y, p1.x - center.x)
-                            val endAngle = atan2(p2.y - center.y, p2.x - center.x)
-                            val midAngle = atan2(localPt.y - center.y, localPt.x - center.x)
-                            
-                            // Calculate sweep to see if we go through midAngle
-                            val isCw = isPointClockwise(startAngle, midAngle, endAngle)
-                            previewGeometry = SketchArc(center, radius, startAngle, endAngle, isCw)
+                            val sA = atan2(p1.y - center.y, p1.x - center.x)
+                            val eA = atan2(p2.y - center.y, p2.x - center.x)
+                            val mA = atan2(localPt.y - center.y, localPt.x - center.x)
+                            previewGeometry = SketchArc(center, radius, sA, eA, isPointClockwise(sA, mA, eA))
                         }
                     }
                 }
-                else -> {
-                    previewGeometry = null
-                }
+                else -> { previewGeometry = null }
             }
         }
         triggerUpdate()
     }
 
     fun onSketchDragEnd(context: Context?) {
-        val sketch = activeSketch ?: return
+        val sketch = currentActiveSketch ?: return
         if (interactionState != InteractionState.STYLUS_DRAWING) {
-            resetInteraction()
+            resetActiveToolInteraction()
             return
         }
 
         val snapEnd = currentSnap ?: return
-        val localPt = sketch.plane.worldToLocal(Vec3.fromPoint3(snapEnd.point))
+        val p2 = sketch.plane.worldToLocal(Vec3.fromPoint3(snapEnd.point))
         
         if (rawSketchPoints.isNotEmpty()) {
             val p1 = rawSketchPoints.first()
             
             when (activeSketchTool) {
                 SketchTool.LINE -> {
-                    if (p1.distanceTo(localPt) > CadTolerance.MIN_LENGTH) {
-                        commandManager.execute(AddGeometryCommand(sketch, SketchLine(p1, localPt)))
+                    if (p1.distanceTo(p2) > CadTolerance.MIN_LENGTH) {
+                        commandManager.execute(AddGeometryCommand(sketch, SketchLine(p1, p2)))
                     }
-                    resetInteraction()
+                    resetActiveToolInteraction()
                 }
                 SketchTool.CIRCLE -> {
-                    val radius = p1.distanceTo(localPt)
+                    val radius = p1.distanceTo(p2)
                     if (radius > CadTolerance.MIN_LENGTH) {
                         commandManager.execute(AddGeometryCommand(sketch, SketchCircle(p1, radius)))
                     }
-                    resetInteraction()
+                    resetActiveToolInteraction()
                 }
                 SketchTool.RECTANGLE -> {
-                    if (abs(p1.x - localPt.x) > CadTolerance.MIN_LENGTH && abs(p1.y - localPt.y) > CadTolerance.MIN_LENGTH) {
-                        val c2 = Vec2(localPt.x, p1.y)
-                        val c4 = Vec2(p1.x, localPt.y)
+                    if (abs(p1.x - p2.x) > CadTolerance.MIN_LENGTH && abs(p1.y - p2.y) > CadTolerance.MIN_LENGTH) {
+                        val c2 = Vec2(p2.x, p1.y); val c4 = Vec2(p1.x, p2.y)
                         commandManager.execute(AddGeometryCommand(sketch, SketchLine(p1, c2)))
-                        commandManager.execute(AddGeometryCommand(sketch, SketchLine(c2, localPt)))
-                        commandManager.execute(AddGeometryCommand(sketch, SketchLine(localPt, c4)))
+                        commandManager.execute(AddGeometryCommand(sketch, SketchLine(c2, p2)))
+                        commandManager.execute(AddGeometryCommand(sketch, SketchLine(p2, c4)))
                         commandManager.execute(AddGeometryCommand(sketch, SketchLine(c4, p1)))
                     }
-                    resetInteraction()
+                    resetActiveToolInteraction()
                 }
                 SketchTool.ARC -> {
                     if (rawSketchPoints.size == 1) {
-                        // Finished Stage 1: P1 and P2 set
-                        if (p1.distanceTo(localPt) > CadTolerance.MIN_LENGTH) {
-                            rawSketchPoints = listOf(p1, localPt)
+                        if (p1.distanceTo(p2) > CadTolerance.MIN_LENGTH) {
+                            rawSketchPoints = listOf(p1, p2)
+                            // DO NOT RESET, waiting for P3
                         } else {
-                            resetInteraction()
+                            resetActiveToolInteraction()
                         }
                     } else if (rawSketchPoints.size == 2) {
-                        // Finished Stage 2: P3 set, Commit Arc
-                        val p2 = rawSketchPoints[1]
-                        val center = Vec2.calculateCircumcenter(p1, p2, localPt)
+                        val pb = rawSketchPoints[1]
+                        val center = Vec2.calculateCircumcenter(p1, pb, p2)
                         if (center != null) {
-                            val radius = center.distanceTo(p1)
-                            val startAngle = atan2(p1.y - center.y, p1.x - center.x)
-                            val endAngle = atan2(p2.y - center.y, p2.x - center.x)
-                            val midAngle = atan2(localPt.y - center.y, localPt.x - center.x)
-                            val isCw = isPointClockwise(startAngle, midAngle, endAngle)
-                            commandManager.execute(AddGeometryCommand(sketch, SketchArc(center, radius, startAngle, endAngle, isCw)))
+                            val r = center.distanceTo(p1)
+                            val sA = atan2(p1.y - center.y, p1.x - center.x)
+                            val eA = atan2(pb.y - center.y, pb.x - center.x)
+                            val mA = atan2(p2.y - center.y, p2.x - center.x)
+                            commandManager.execute(AddGeometryCommand(sketch, SketchArc(center, r, sA, eA, isPointClockwise(sA, mA, eA))))
                         }
-                        resetInteraction()
+                        resetActiveToolInteraction()
                     }
                 }
-                else -> {
-                    resetInteraction()
-                }
+                else -> { resetActiveToolInteraction() }
             }
         } else {
-            resetInteraction()
+            resetActiveToolInteraction()
         }
     }
 
-    private fun resetInteraction() {
+    private fun resetActiveToolInteraction() {
         previewGeometry = null
         rawSketchPoints = emptyList()
         currentSnap = null
@@ -363,12 +351,13 @@ class CADViewModel : ViewModel() {
 
     fun pick3DEntity(screenX: Float, screenY: Float, screenWidth: Float, screenHeight: Float): IGeometry? {
         if (selectionManager.showSketches) {
-            val sketchPt = screenToSketchPoint(screenX, screenY, screenWidth, screenHeight) ?: return null
-            val worldPt = activeSketchPlane.localToWorld(sketchPt).toPoint3()
-            
+            val ray = getPickRay(screenX, screenY, screenWidth, screenHeight)
             document.sketches.forEach { sketch ->
-                val hit = sketch.pickGeometry(worldPt, 20.0 / zoom)
-                if (hit != null) return hit
+                val hitWorld = sketch.plane.intersectRay(ray)
+                if (hitWorld != null) {
+                    val hit = sketch.pickGeometry(hitWorld.toPoint3(), 20.0 / zoom)
+                    if (hit != null) return hit
+                }
             }
         }
         return null
@@ -388,9 +377,8 @@ class CADViewModel : ViewModel() {
     fun setLeftView() { cameraPitch = 0f; cameraYaw = -PI.toFloat()/2f; triggerUpdate() }
     fun setRightView() { cameraPitch = 0f; cameraYaw = PI.toFloat()/2f; triggerUpdate() }
     fun setIsometricView() { cameraPitch = 0.6f; cameraYaw = -0.6f; triggerUpdate() }
-    fun startSketchFlow() { 
-        showPlaneSelector = true 
-    }
+    
+    fun startSketchFlow() { showPlaneSelector = true }
 
     fun enterSketchMode(plane: String) {
         selectedSketchPlane = plane
@@ -406,9 +394,11 @@ class CADViewModel : ViewModel() {
         activeSketchTool = SketchTool.SELECT
         currentMode = CadMode.SMART_SKETCH
         
+        // Always create a NEW sketch feature for a new session
         val newSketch = SketchFeature("Sketch ${document.sketches.size + 1}", planeObj)
         document.sketches.add(newSketch)
         activeSketchId = newSketch.id
+        resetActiveToolInteraction()
         triggerUpdate()
     }
 
@@ -417,6 +407,7 @@ class CADViewModel : ViewModel() {
         activeSketchTool = SketchTool.NONE
         activeSketchId = null
         currentMode = CadMode.NAVIGATE
+        resetActiveToolInteraction()
         triggerUpdate() 
     }
 
@@ -433,10 +424,7 @@ class CADViewModel : ViewModel() {
             "trim" -> activeSketchTool = SketchTool.TRIM
             "select" -> activeSketchTool = SketchTool.SELECT
             "sketch" -> startSketchFlow()
-            else -> {
-                // Creation tools
-                if (id == "extrude") { /* Handle creation */ }
-            }
+            else -> {}
         }
         triggerUpdate()
     }

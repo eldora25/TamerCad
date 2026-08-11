@@ -44,7 +44,7 @@ import java.util.Locale
 import kotlin.math.*
 
 /**
- * TAMERCAD — PHASE 2.0.3 — PLANE-AWARE SKETCH RENDERING
+ * TAMERCAD — PHASE 2.0.5 — DOCUMENT TRUTH SOURCE REPAIR
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -86,7 +86,7 @@ fun CADCanvas(viewModel: CADViewModel) {
                             val sketchPt = viewModel.screenToSketchPoint(motionEvent.x, motionEvent.y, screenWidth, screenHeight)
                             if (sketchPt != null) {
                                 viewModel.hoverPointLocal = sketchPt
-                                viewModel.hoverPointWorld = viewModel.activeSketchPlane.localToWorld(sketchPt)
+                                viewModel.hoverPointWorld = (viewModel.currentActiveSketch?.plane ?: viewModel.activeSketchPlane).localToWorld(sketchPt)
                             }
                         } else {
                             if (motionEvent.actionMasked == android.view.MotionEvent.ACTION_UP || 
@@ -105,41 +105,26 @@ fun CADCanvas(viewModel: CADViewModel) {
                                     if (viewModel.interactionState == InteractionState.STYLUS_DRAWING) {
                                         viewModel.onSketchDragEnd(context)
                                     }
-                                    viewModel.interactionState = InteractionState.IDLE
                                 }
                             }
                         }
                         false
                     }
-                    // 2. NAVIGATION PIPELINE
+                    // 2. HARDENED NAVIGATION PIPELINE
                     .pointerInput(Unit) {
                         val engine = GestureHardenEngine()
                         awaitPointerEventScope {
                             while (true) {
                                 val event = awaitPointerEvent()
-                                
                                 if (!viewModel.isStylusInUse) {
                                     val fingerChanges = event.changes.filter { 
                                         it.pressed && (it.type == PointerType.Touch || it.type == PointerType.Unknown) 
                                     }
-                                    
                                     viewModel.activeFingerCount = fingerChanges.size
-                                    val pointers = fingerChanges.map { it.position }
-                                    
-                                    val res = engine.process(fingerChanges.size, pointers)
-                                    
+                                    val res = engine.process(fingerChanges.size, fingerChanges.map { it.position })
                                     viewModel.gestureMode = res.mode.name
-                                    viewModel.diagnosticPanDelta = res.panDelta
-                                    viewModel.diagnosticZoomScale = res.zoomScale
-                                    
                                     if (res.mode != NavigationMode.IDLE) {
-                                        viewModel.updateCamera(
-                                            res.yawDelta,
-                                            res.pitchDelta,
-                                            res.zoomScale,
-                                            res.panDelta.x,
-                                            res.panDelta.y
-                                        )
+                                        viewModel.updateCamera(res.yawDelta, res.pitchDelta, res.zoomScale, res.panDelta.x, res.panDelta.y)
                                         event.changes.forEach { it.consume() }
                                     }
                                 } else {
@@ -155,7 +140,6 @@ fun CADCanvas(viewModel: CADViewModel) {
                         detectDragGestures(
                             onDragStart = { offset ->
                                 if (viewModel.isStylusInUse) {
-                                    viewModel.interactionState = InteractionState.STYLUS_DRAWING
                                     viewModel.onSketchDragStart(offset, screenWidth, screenHeight, context)
                                 }
                             },
@@ -171,32 +155,33 @@ fun CADCanvas(viewModel: CADViewModel) {
                 drawWorldGrid(this, viewModel)
                 drawWorldAxes(this, viewModel)
 
-                // 1. ALL COMMITTED SKETCHES
+                // A. COMMITTED GEOMETRY FROM ALL SKETCHES
                 viewModel.document.sketches.forEach { sketch ->
                     sketch.getGeometries().forEach { geom ->
                         drawGeometry(this, viewModel, geom, sketch.plane, Color.Blue, 2f)
                     }
                 }
 
-                // 2. ACTIVE PREVIEW
+                // B. ACTIVE TOOL PREVIEW
                 viewModel.previewGeometry?.let { geom ->
-                    drawGeometry(this, viewModel, geom, viewModel.activeSketchPlane, TamerCadColors.Primary, 4f)
+                    val plane = viewModel.currentActiveSketch?.plane ?: viewModel.activeSketchPlane
+                    drawGeometry(this, viewModel, geom, plane, TamerCadColors.Primary, 4f)
                 }
                 
-                // 3. SNAP INDICATOR
+                // C. SNAP INDICATOR
                 viewModel.currentSnap?.let { snap ->
                     if (snap.type != SnapType.NONE) {
                         drawSnapMarker(this, viewModel, snap)
                     }
                 }
                 
-                // 4. CROSSHAIR (Alignment Check)
+                // D. CROSSHAIR (Alignment Check)
                 drawLine(Color.Red, Offset(lastInputX - 20f, lastInputY), Offset(lastInputX + 20f, lastInputY), 1f)
                 drawLine(Color.Red, Offset(lastInputX, lastInputY - 20f), Offset(lastInputX, lastInputY + 20f), 1f)
             }
         }
 
-        // --- ENHANCED DIAGNOSTIC OVERLAY (PHASE 2.0.3) ---
+        // --- ENHANCED DIAGNOSTIC OVERLAY ---
         Column(
             modifier = Modifier
                 .align(androidx.compose.ui.Alignment.BottomEnd)
@@ -204,31 +189,28 @@ fun CADCanvas(viewModel: CADViewModel) {
                 .background(Color.Black.copy(alpha = 0.6f))
                 .padding(10.dp)
         ) {
-            DebugText("INPUT DEVICE: ${if (viewModel.isStylusInUse) "STYLUS" else "FINGER"}")
-            DebugText("POINTERS: RAW=${viewModel.rawPointerCount} ACTIVE=${viewModel.activeFingerCount}")
-            DebugText("MODE: ${viewModel.gestureMode}")
+            DebugText("INPUT: ${if (viewModel.isStylusInUse) "STYLUS" else "FINGER"}")
+            DebugText("POINTERS: RAW=${viewModel.rawPointerCount} FINGERS=${viewModel.activeFingerCount}")
             DebugText("STYLUS DOWN: ${viewModel.isStylusDown}")
 
-            DebugText("--- SKETCH SESSION ---")
-            DebugText("SKETCH ID: ${viewModel.activeSketchId?.take(8) ?: "NONE"}")
-            DebugText("PLANE: ${viewModel.selectedSketchPlane ?: "XY"}")
+            DebugText("--- DOCUMENT MODEL ---")
+            DebugText("DOC SKETCHES: ${viewModel.document.sketches.size}")
+            DebugText("ACTIVE SKETCH ID: ${viewModel.activeSketchId?.take(8) ?: "NONE"}")
+            val active = viewModel.currentActiveSketch
+            DebugText("ACTIVE PLANE: ${active?.plane ?: "NONE"}")
+            DebugText("ACTIVE ENTITIES: ${active?.getGeometries()?.size ?: 0}")
+            DebugText("TOTAL ENTITIES: ${viewModel.document.sketches.sumOf { it.getGeometries().size }}")
+            
+            DebugText("--- TOOL STATE ---")
             DebugText("TOOL: ${viewModel.activeSketchTool}")
             DebugText("STATE: ${viewModel.interactionState}")
             DebugText("POINTS: ${viewModel.rawSketchPoints.size}")
-            DebugText("DOC SKETCHES: ${viewModel.document.sketches.size}")
-            DebugText("TOTAL ENTITIES: ${viewModel.document.sketches.sumOf { it.getGeometries().size }}")
-            
-            DebugText("--- CAMERA ---")
-            DebugText("YAW: ${String.format(Locale.US, "%.2f", viewModel.cameraYaw)}")
-            DebugText("PITCH: ${String.format(Locale.US, "%.2f", viewModel.cameraPitch)}")
-            DebugText("PAN: ${String.format(Locale.US, "%.1f, %.1f", viewModel.panX, viewModel.panY)}")
-            DebugText("ZOOM: ${String.format(Locale.US, "%.2f", viewModel.zoom)}")
-            
+
             DebugText("--- ALIGNMENT ---")
             DebugText("INPUT XY: ${String.format(Locale.US, "%.1f / %.1f", lastInputX, lastInputY)}")
-            
             viewModel.hoverPointLocal?.let { local ->
-                val reprojected = viewModel.sketchToScreen(local, viewModel.activeSketchPlane, screenWidth, screenHeight)
+                val plane = viewModel.currentActiveSketch?.plane ?: viewModel.activeSketchPlane
+                val reprojected = viewModel.sketchToScreen(local, plane, screenWidth, screenHeight)
                 DebugText("REPROJECTED XY: ${String.format(Locale.US, "%.1f / %.1f", reprojected.x, reprojected.y)}")
                 val errorX = reprojected.x - lastInputX
                 val errorY = reprojected.y - lastInputY
@@ -247,32 +229,21 @@ fun DebugText(text: String) {
 fun drawWorldGrid(drawScope: DrawScope, viewModel: CADViewModel) {
     val screenWidth = drawScope.size.width
     val screenHeight = drawScope.size.height
-    
     val targetPixelSpacing = 80f
     val approxWorldSpacing = targetPixelSpacing / viewModel.zoom
-    
     val levels = doubleArrayOf(0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0, 500.0, 1000.0)
     var worldSpacing = 100.0
-    for (level in levels) {
-        if (level >= approxWorldSpacing) {
-            worldSpacing = level
-            break
-        }
-    }
+    for (level in levels) { if (level >= approxWorldSpacing) { worldSpacing = level; break } }
     viewModel.currentGridSpacing = worldSpacing
-
     val gridCount = 20
-    val alpha = 0.15f
-    val plane = viewModel.activeSketchPlane
-
+    val plane = viewModel.currentActiveSketch?.plane ?: viewModel.activeSketchPlane
     for (i in -gridCount..gridCount) {
         val startX = Vec2(i * worldSpacing, -gridCount * worldSpacing)
         val endX = Vec2(i * worldSpacing, gridCount * worldSpacing)
         val startY = Vec2(-gridCount * worldSpacing, i * worldSpacing)
         val endY = Vec2(gridCount * worldSpacing, i * worldSpacing)
-
-        drawScope.drawLine(Color.Gray.copy(alpha = alpha), viewModel.sketchToScreen(startX, plane, screenWidth, screenHeight), viewModel.sketchToScreen(endX, plane, screenWidth, screenHeight), 1f)
-        drawScope.drawLine(Color.Gray.copy(alpha = alpha), viewModel.sketchToScreen(startY, plane, screenWidth, screenHeight), viewModel.sketchToScreen(endY, plane, screenWidth, screenHeight), 1f)
+        drawScope.drawLine(Color.Gray.copy(alpha = 0.15f), viewModel.sketchToScreen(startX, plane, screenWidth, screenHeight), viewModel.sketchToScreen(endX, plane, screenWidth, screenHeight), 1f)
+        drawScope.drawLine(Color.Gray.copy(alpha = 0.15f), viewModel.sketchToScreen(startY, plane, screenWidth, screenHeight), viewModel.sketchToScreen(endY, plane, screenWidth, screenHeight), 1f)
     }
 }
 
@@ -280,9 +251,7 @@ fun drawWorldAxes(drawScope: DrawScope, viewModel: CADViewModel) {
     val screenWidth = drawScope.size.width
     val screenHeight = drawScope.size.height
     val axisLength = 200.0
-    val origin = Point3(0.0, 0.0, 0.0)
-    val originScreen = viewModel.worldToScreen(origin, screenWidth, screenHeight)
-    
+    val originScreen = viewModel.worldToScreen(Point3(0.0, 0.0, 0.0), screenWidth, screenHeight)
     drawScope.drawLine(TamerCadColors.AxisX, originScreen, viewModel.worldToScreen(Point3(axisLength, 0.0, 0.0), screenWidth, screenHeight), 3f)
     drawScope.drawLine(TamerCadColors.AxisY, originScreen, viewModel.worldToScreen(Point3(0.0, axisLength, 0.0), screenWidth, screenHeight), 3f)
     drawScope.drawLine(TamerCadColors.AxisZ, originScreen, viewModel.worldToScreen(Point3(0.0, 0.0, axisLength), screenWidth, screenHeight), 3f)
@@ -292,7 +261,6 @@ fun drawSnapMarker(drawScope: DrawScope, viewModel: CADViewModel, snap: SnapResu
     val screenPos = viewModel.worldToScreen(snap.point, drawScope.size.width, drawScope.size.height)
     val color = TamerCadColors.SnapColor
     val size = 12f
-    
     when (snap.type) {
         SnapType.ENDPOINT -> drawScope.drawRect(color, Offset(screenPos.x - size/2, screenPos.y - size/2), Size(size, size), style = Stroke(2f))
         SnapType.MIDPOINT -> {
@@ -324,15 +292,9 @@ fun drawSnapMarker(drawScope: DrawScope, viewModel: CADViewModel, snap: SnapResu
 fun drawGeometry(drawScope: DrawScope, viewModel: CADViewModel, geom: IGeometry, plane: SketchPlane, color: Color, strokeWidth: Float) {
     val screenWidth = drawScope.size.width
     val screenHeight = drawScope.size.height
-    
     when (geom) {
         is SketchLine -> {
-            drawScope.drawLine(
-                color, 
-                viewModel.sketchToScreen(geom.start, plane, screenWidth, screenHeight), 
-                viewModel.sketchToScreen(geom.end, plane, screenWidth, screenHeight), 
-                strokeWidth
-            )
+            drawScope.drawLine(color, viewModel.sketchToScreen(geom.start, plane, screenWidth, screenHeight), viewModel.sketchToScreen(geom.end, plane, screenWidth, screenHeight), strokeWidth)
         }
         is SketchCircle -> {
             val segments = 64
@@ -348,15 +310,12 @@ fun drawGeometry(drawScope: DrawScope, viewModel: CADViewModel, geom: IGeometry,
         is SketchArc -> {
             val segments = 32
             val path = Path()
-            
             fun norm(a: Double) = (a % (2 * PI) + (2 * PI)) % (2 * PI)
             val s = norm(geom.startAngle)
             val e = norm(geom.endAngle)
-            
             var sweep = e - s
             if (geom.isClockwise && sweep > 0) sweep -= 2 * PI
             if (!geom.isClockwise && sweep < 0) sweep += 2 * PI
-            
             for (i in 0..segments) {
                 val t = s + sweep * i / segments
                 val pLocal = geom.center + Vec2(cos(t) * geom.radius, sin(t) * geom.radius)
@@ -376,7 +335,6 @@ fun drawGeometry(drawScope: DrawScope, viewModel: CADViewModel, geom: IGeometry,
             drawScope.drawLine(color, p4s, p1s, strokeWidth)
         }
         is Line -> {
-            // Legacy/World Line
             drawScope.drawLine(color, viewModel.worldToScreen(geom.startPoint, screenWidth, screenHeight), viewModel.worldToScreen(geom.endPoint, screenWidth, screenHeight), strokeWidth)
         }
     }

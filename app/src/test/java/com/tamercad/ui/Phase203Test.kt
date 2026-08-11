@@ -57,12 +57,12 @@ class Phase203Test {
         
         // Sketch 1 on XY
         viewModel.enterSketchMode("XY")
-        val sketch1 = viewModel.activeSketch!!
+        val sketch1 = viewModel.currentActiveSketch!!
         assertEquals(SketchPlane.XY, sketch1.plane)
         
         // Sketch 2 on XZ
         viewModel.enterSketchMode("XZ")
-        val sketch2 = viewModel.activeSketch!!
+        val sketch2 = viewModel.currentActiveSketch!!
         assertEquals(SketchPlane.XZ, sketch2.plane)
         
         // They should be different instances and both in document

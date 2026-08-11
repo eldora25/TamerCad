@@ -60,7 +60,7 @@ class Phase201Test {
         viewModel.onSketchDrag(Offset(200f, 200f), Offset(100f, 100f), w, h, null)
         viewModel.onSketchDragEnd(null)
         
-        val sketch = viewModel.activeSketch!!
+        val sketch = viewModel.currentActiveSketch!!
         val geometries = sketch.getGeometries()
         assertEquals(1, geometries.size)
         val line1 = geometries[0] as com.tamercad.core.sketch.SketchLine

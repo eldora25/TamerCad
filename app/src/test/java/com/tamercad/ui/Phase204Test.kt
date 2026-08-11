@@ -1,7 +1,6 @@
 package com.tamercad.ui
 
 import androidx.compose.ui.geometry.Offset
-import com.tamercad.core.math.Vec2
 import com.tamercad.ui.sketch.SketchTool
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -28,7 +27,7 @@ class Phase204Test {
         viewModel.onSketchDrag(Offset(400f, 400f), Offset(100f, 100f), w, h, null)
         viewModel.onSketchDragEnd(null)
         
-        val entities = viewModel.activeSketch!!.getGeometries()
+        val entities = viewModel.currentActiveSketch!!.getGeometries()
         assertEquals(2, entities.size)
     }
 
@@ -46,15 +45,16 @@ class Phase204Test {
         viewModel.onSketchDragEnd(null)
         
         assertEquals(2, viewModel.rawSketchPoints.size) // Points saved for Stage 2
-        assertEquals(0, viewModel.activeSketch!!.getGeometries().size)
+        assertEquals(0, viewModel.currentActiveSketch!!.getGeometries().size)
         
         // Stage 2: P3
         viewModel.onSketchDragStart(Offset(150f, 150f), w, h, null)
         viewModel.onSketchDrag(Offset(150f, 150f), Offset(0f, 0f), w, h, null)
         viewModel.onSketchDragEnd(null)
         
-        assertEquals(1, viewModel.activeSketch!!.getGeometries().size)
-        assertTrue(viewModel.activeSketch!!.getGeometries()[0] is com.tamercad.core.sketch.SketchArc)
+        val active = viewModel.currentActiveSketch!!
+        assertEquals(1, active.getGeometries().size)
+        assertTrue(active.getGeometries()[0] is com.tamercad.core.sketch.SketchArc)
         assertEquals(0, viewModel.rawSketchPoints.size) // Reset after commit
     }
 }

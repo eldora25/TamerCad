@@ -9,6 +9,7 @@ import com.tamercad.core.math.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
+import kotlin.math.*
 
 import com.tamercad.core.geometry.Circle3D
 import com.tamercad.core.geometry.Arc3D
@@ -46,20 +47,34 @@ class SketchFeature(
         var closestGeometry: IGeometry? = null
         var minDistance = tolerance
 
+        val lp = plane.worldToLocal(Vec3.fromPoint3(point))
+
         for (geom in geometries) {
             val dist = when (geom) {
                 is SketchLine -> {
-                    // Convert point to local for distance check if possible, or just use world logic
-                    // SketchFeature knows its plane? Not yet explicitly stored in the feature itself.
-                    // Assuming for now the pick is passed as a world point.
-                    Line(geom.start.toPoint3(), geom.end.toPoint3()).distanceToPoint(point)
+                    val dx = geom.end.x - geom.start.x; val dy = geom.end.y - geom.start.y
+                    val l2 = dx*dx + dy*dy
+                    if (l2 == 0.0) lp.distanceTo(geom.start)
+                    else {
+                        var t = ((lp.x - geom.start.x) * dx + (lp.y - geom.start.y) * dy) / l2
+                        t = max(0.0, min(1.0, t))
+                        lp.distanceTo(Vec2(geom.start.x + t * dx, geom.start.y + t * dy))
+                    }
                 }
                 is SketchCircle -> {
-                    // Distance to circle perimeter
-                    val localPt = Vec3.fromPoint3(point) // Simplified: assuming pick point is on plane
-                    // In reality, pick point is a world point.
-                    val distToCenter = Vec2(geom.center.x, geom.center.y).distanceTo(Vec2(localPt.x, localPt.y))
-                    kotlin.math.abs(distToCenter - geom.radius)
+                    abs(lp.distanceTo(geom.center) - geom.radius)
+                }
+                is SketchArc -> {
+                    val d = lp.distanceTo(geom.center)
+                    if (abs(d - geom.radius) < tolerance) {
+                        val angle = atan2(lp.y - geom.center.y, lp.x - geom.center.x)
+                        if (isAngleInArc(angle, geom.startAngle, geom.endAngle, geom.isClockwise)) abs(d - geom.radius)
+                        else tolerance + 1.0
+                    } else tolerance + 1.0
+                }
+                is SketchRect -> {
+                    // Min distance to 4 segments
+                    tolerance + 1.0 // Placeholder
                 }
                 is Line -> geom.distanceToPoint(point)
                 is Circle3D -> geom.distanceToPoint(point)
@@ -72,6 +87,16 @@ class SketchFeature(
             }
         }
         return closestGeometry
+    }
+
+    private fun isAngleInArc(a: Double, s: Double, e: Double, cw: Boolean): Boolean {
+        fun norm(v: Double) = (v % (2 * PI) + (2 * PI)) % (2 * PI)
+        val na = norm(a); val ns = norm(s); val ne = norm(e)
+        return if (!cw) {
+            if (ns <= ne) na in ns..ne else na >= ns || na <= ne
+        } else {
+            if (ne <= ns) na in ne..ns else na >= ne || na <= ns
+        }
     }
 
     override fun evaluate() {
