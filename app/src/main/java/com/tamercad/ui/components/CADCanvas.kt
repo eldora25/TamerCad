@@ -44,14 +44,13 @@ import java.util.Locale
 import kotlin.math.*
 
 /**
- * TAMERCAD — PHASE 2.0.5 — DOCUMENT TRUTH SOURCE REPAIR
+ * TAMERCAD — PHASE 2.0.6 — CAD-GRADE INTERACTION ENGINE
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun CADCanvas(viewModel: CADViewModel) {
     val context = LocalContext.current
     var viewportSize by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(Size.Zero) }
-    
     var lastInputX by androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     var lastInputY by androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
 
@@ -78,22 +77,20 @@ fun CADCanvas(viewModel: CADViewModel) {
                         lastInputX = motionEvent.x
                         lastInputY = motionEvent.y
                         
+                        // Authoritative Hover Update
+                        if (motionEvent.actionMasked == android.view.MotionEvent.ACTION_HOVER_MOVE || 
+                            motionEvent.actionMasked == android.view.MotionEvent.ACTION_MOVE) {
+                            viewModel.onStylusHover(motionEvent.x, motionEvent.y, screenWidth, screenHeight)
+                        }
+
                         if (stylusEvent.isStylus) {
                             viewModel.isStylusDown = motionEvent.actionMasked != android.view.MotionEvent.ACTION_UP && 
                                                    motionEvent.actionMasked != android.view.MotionEvent.ACTION_CANCEL
                             viewModel.stylusPressure = stylusEvent.pressure
-                            
-                            val sketchPt = viewModel.screenToSketchPoint(motionEvent.x, motionEvent.y, screenWidth, screenHeight)
-                            if (sketchPt != null) {
-                                viewModel.hoverPointLocal = sketchPt
-                                viewModel.hoverPointWorld = (viewModel.currentActiveSketch?.plane ?: viewModel.activeSketchPlane).localToWorld(sketchPt)
-                            }
                         } else {
                             if (motionEvent.actionMasked == android.view.MotionEvent.ACTION_UP || 
                                 motionEvent.actionMasked == android.view.MotionEvent.ACTION_CANCEL) {
-                                if (motionEvent.pointerCount <= 1) {
-                                    viewModel.isStylusDown = false
-                                }
+                                if (motionEvent.pointerCount <= 1) viewModel.isStylusDown = false
                             }
                         }
 
@@ -128,14 +125,12 @@ fun CADCanvas(viewModel: CADViewModel) {
                                         event.changes.forEach { it.consume() }
                                     }
                                 } else {
-                                    engine.reset()
-                                    viewModel.activeFingerCount = 0
-                                    viewModel.gestureMode = "IDLE (STYLUS)"
+                                    engine.reset(); viewModel.activeFingerCount = 0; viewModel.gestureMode = "IDLE (STYLUS)"
                                 }
                             }
                         }
                     }
-                    // 3. SKETCH/STYLUS PRODUCTION
+                    // 3. SKETCH/STYLUS PRODUCTION (TAP & DRAG READY)
                     .pointerInput(Unit) {
                         detectDragGestures(
                             onDragStart = { offset ->
@@ -170,18 +165,16 @@ fun CADCanvas(viewModel: CADViewModel) {
                 
                 // C. SNAP INDICATOR
                 viewModel.currentSnap?.let { snap ->
-                    if (snap.type != SnapType.NONE) {
-                        drawSnapMarker(this, viewModel, snap)
-                    }
+                    if (snap.type != SnapType.NONE) drawSnapMarker(this, viewModel, snap)
                 }
                 
-                // D. CROSSHAIR (Alignment Check)
-                drawLine(Color.Red, Offset(lastInputX - 20f, lastInputY), Offset(lastInputX + 20f, lastInputY), 1f)
-                drawLine(Color.Red, Offset(lastInputX, lastInputY - 20f), Offset(lastInputX, lastInputY + 20f), 1f)
+                // D. ALIGNMENT CROSSHAIR
+                drawLine(Color.Red, Offset(lastInputX - 15f, lastInputY), Offset(lastInputX + 15f, lastInputY), 1f)
+                drawLine(Color.Red, Offset(lastInputX, lastInputY - 15f), Offset(lastInputX, lastInputY + 15f), 1f)
             }
         }
 
-        // --- ENHANCED DIAGNOSTIC OVERLAY ---
+        // --- ENHANCED DIAGNOSTIC OVERLAY (PHASE 2.0.6) ---
         Column(
             modifier = Modifier
                 .align(androidx.compose.ui.Alignment.BottomEnd)
@@ -190,31 +183,29 @@ fun CADCanvas(viewModel: CADViewModel) {
                 .padding(10.dp)
         ) {
             DebugText("INPUT: ${if (viewModel.isStylusInUse) "STYLUS" else "FINGER"}")
-            DebugText("POINTERS: RAW=${viewModel.rawPointerCount} FINGERS=${viewModel.activeFingerCount}")
-            DebugText("STYLUS DOWN: ${viewModel.isStylusDown}")
+            DebugText("FINGERS: ${viewModel.activeFingerCount}")
 
-            DebugText("--- DOCUMENT MODEL ---")
-            DebugText("DOC SKETCHES: ${viewModel.document.sketches.size}")
-            DebugText("ACTIVE SKETCH ID: ${viewModel.activeSketchId?.take(8) ?: "NONE"}")
+            DebugText("--- DOCUMENT ---")
+            DebugText("SKETCHES: ${viewModel.document.sketches.size}")
+            DebugText("ACTIVE ID: ${viewModel.activeSketchId?.take(5) ?: "NONE"}")
             val active = viewModel.currentActiveSketch
-            DebugText("ACTIVE PLANE: ${active?.plane ?: "NONE"}")
+            DebugText("ACTIVE PLANE: ${active?.plane?.normal ?: "NONE"}")
             DebugText("ACTIVE ENTITIES: ${active?.getGeometries()?.size ?: 0}")
             DebugText("TOTAL ENTITIES: ${viewModel.document.sketches.sumOf { it.getGeometries().size }}")
             
-            DebugText("--- TOOL STATE ---")
+            DebugText("--- INTERACTION ---")
             DebugText("TOOL: ${viewModel.activeSketchTool}")
             DebugText("STATE: ${viewModel.interactionState}")
             DebugText("POINTS: ${viewModel.rawSketchPoints.size}")
+            DebugText("LAST COMMIT: ${viewModel.lastCommitInfo}")
 
             DebugText("--- ALIGNMENT ---")
-            DebugText("INPUT XY: ${String.format(Locale.US, "%.1f / %.1f", lastInputX, lastInputY)}")
             viewModel.hoverPointLocal?.let { local ->
                 val plane = viewModel.currentActiveSketch?.plane ?: viewModel.activeSketchPlane
                 val reprojected = viewModel.sketchToScreen(local, plane, screenWidth, screenHeight)
+                DebugText("INPUT XY: ${String.format(Locale.US, "%.1f / %.1f", lastInputX, lastInputY)}")
                 DebugText("REPROJECTED XY: ${String.format(Locale.US, "%.1f / %.1f", reprojected.x, reprojected.y)}")
-                val errorX = reprojected.x - lastInputX
-                val errorY = reprojected.y - lastInputY
-                DebugText("ERROR XY: ${String.format(Locale.US, "%+.1f / %+.1f", errorX, errorY)}")
+                DebugText("ERROR XY: ${String.format(Locale.US, "%+.1f / %+.1f", reprojected.x - lastInputX, reprojected.y - lastInputY)}")
                 DebugText("SKETCH XY: ${String.format(Locale.US, "%.2f / %.2f", local.x, local.y)}")
             }
         }
@@ -227,8 +218,7 @@ fun DebugText(text: String) {
 }
 
 fun drawWorldGrid(drawScope: DrawScope, viewModel: CADViewModel) {
-    val screenWidth = drawScope.size.width
-    val screenHeight = drawScope.size.height
+    val sw = drawScope.size.width; val sh = drawScope.size.height
     val targetPixelSpacing = 80f
     val approxWorldSpacing = targetPixelSpacing / viewModel.zoom
     val levels = doubleArrayOf(0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0, 500.0, 1000.0)
@@ -238,37 +228,31 @@ fun drawWorldGrid(drawScope: DrawScope, viewModel: CADViewModel) {
     val gridCount = 20
     val plane = viewModel.currentActiveSketch?.plane ?: viewModel.activeSketchPlane
     for (i in -gridCount..gridCount) {
-        val startX = Vec2(i * worldSpacing, -gridCount * worldSpacing)
-        val endX = Vec2(i * worldSpacing, gridCount * worldSpacing)
-        val startY = Vec2(-gridCount * worldSpacing, i * worldSpacing)
-        val endY = Vec2(gridCount * worldSpacing, i * worldSpacing)
-        drawScope.drawLine(Color.Gray.copy(alpha = 0.15f), viewModel.sketchToScreen(startX, plane, screenWidth, screenHeight), viewModel.sketchToScreen(endX, plane, screenWidth, screenHeight), 1f)
-        drawScope.drawLine(Color.Gray.copy(alpha = 0.15f), viewModel.sketchToScreen(startY, plane, screenWidth, screenHeight), viewModel.sketchToScreen(endY, plane, screenWidth, screenHeight), 1f)
+        val sX = Vec2(i * worldSpacing, -gridCount * worldSpacing); val eX = Vec2(i * worldSpacing, gridCount * worldSpacing)
+        val sY = Vec2(-gridCount * worldSpacing, i * worldSpacing); val eY = Vec2(gridCount * worldSpacing, i * worldSpacing)
+        drawScope.drawLine(Color.Gray.copy(alpha = 0.15f), viewModel.sketchToScreen(sX, plane, sw, sh), viewModel.sketchToScreen(eX, plane, sw, sh), 1f)
+        drawScope.drawLine(Color.Gray.copy(alpha = 0.15f), viewModel.sketchToScreen(sY, plane, sw, sh), viewModel.sketchToScreen(eY, plane, sw, sh), 1f)
     }
 }
 
 fun drawWorldAxes(drawScope: DrawScope, viewModel: CADViewModel) {
-    val screenWidth = drawScope.size.width
-    val screenHeight = drawScope.size.height
+    val sw = drawScope.size.width; val sh = drawScope.size.height
     val axisLength = 200.0
-    val originScreen = viewModel.worldToScreen(Point3(0.0, 0.0, 0.0), screenWidth, screenHeight)
-    drawScope.drawLine(TamerCadColors.AxisX, originScreen, viewModel.worldToScreen(Point3(axisLength, 0.0, 0.0), screenWidth, screenHeight), 3f)
-    drawScope.drawLine(TamerCadColors.AxisY, originScreen, viewModel.worldToScreen(Point3(0.0, axisLength, 0.0), screenWidth, screenHeight), 3f)
-    drawScope.drawLine(TamerCadColors.AxisZ, originScreen, viewModel.worldToScreen(Point3(0.0, 0.0, axisLength), screenWidth, screenHeight), 3f)
+    val originScreen = viewModel.worldToScreen(Point3(0.0, 0.0, 0.0), sw, sh)
+    drawScope.drawLine(TamerCadColors.AxisX, originScreen, viewModel.worldToScreen(Point3(axisLength, 0.0, 0.0), sw, sh), 3f)
+    drawScope.drawLine(TamerCadColors.AxisY, originScreen, viewModel.worldToScreen(Point3(0.0, axisLength, 0.0), sw, sh), 3f)
+    drawScope.drawLine(TamerCadColors.AxisZ, originScreen, viewModel.worldToScreen(Point3(0.0, 0.0, axisLength), sw, sh), 3f)
 }
 
 fun drawSnapMarker(drawScope: DrawScope, viewModel: CADViewModel, snap: SnapResult) {
     val screenPos = viewModel.worldToScreen(snap.point, drawScope.size.width, drawScope.size.height)
-    val color = TamerCadColors.SnapColor
-    val size = 12f
+    val color = TamerCadColors.SnapColor; val size = 12f
     when (snap.type) {
         SnapType.ENDPOINT -> drawScope.drawRect(color, Offset(screenPos.x - size/2, screenPos.y - size/2), Size(size, size), style = Stroke(2f))
         SnapType.MIDPOINT -> {
             val path = Path().apply {
-                moveTo(screenPos.x, screenPos.y - size/2)
-                lineTo(screenPos.x - size/2, screenPos.y + size/2)
-                lineTo(screenPos.x + size/2, screenPos.y + size/2)
-                close()
+                moveTo(screenPos.x, screenPos.y - size/2); lineTo(screenPos.x - size/2, screenPos.y + size/2)
+                lineTo(screenPos.x + size/2, screenPos.y + size/2); close()
             }
             drawScope.drawPath(path, color, style = Stroke(2f))
         }
@@ -290,52 +274,42 @@ fun drawSnapMarker(drawScope: DrawScope, viewModel: CADViewModel, snap: SnapResu
 }
 
 fun drawGeometry(drawScope: DrawScope, viewModel: CADViewModel, geom: IGeometry, plane: SketchPlane, color: Color, strokeWidth: Float) {
-    val screenWidth = drawScope.size.width
-    val screenHeight = drawScope.size.height
+    val sw = drawScope.size.width; val sh = drawScope.size.height
     when (geom) {
-        is SketchLine -> {
-            drawScope.drawLine(color, viewModel.sketchToScreen(geom.start, plane, screenWidth, screenHeight), viewModel.sketchToScreen(geom.end, plane, screenWidth, screenHeight), strokeWidth)
-        }
+        is SketchLine -> drawScope.drawLine(color, viewModel.sketchToScreen(geom.start, plane, sw, sh), viewModel.sketchToScreen(geom.end, plane, sw, sh), strokeWidth)
         is SketchCircle -> {
-            val segments = 64
-            val path = Path()
+            val path = Path(); val segments = 64
             for (i in 0..segments) {
                 val t = 2.0 * PI * i / segments
-                val pLocal = geom.center + Vec2(cos(t) * geom.radius, sin(t) * geom.radius)
-                val pScreen = viewModel.sketchToScreen(pLocal, plane, screenWidth, screenHeight)
-                if (i == 0) path.moveTo(pScreen.x, pScreen.y) else path.lineTo(pScreen.x, pScreen.y)
+                val p = geom.center + Vec2(cos(t) * geom.radius, sin(t) * geom.radius)
+                val s = viewModel.sketchToScreen(p, plane, sw, sh)
+                if (i == 0) path.moveTo(s.x, s.y) else path.lineTo(s.x, s.y)
             }
             drawScope.drawPath(path, color, style = Stroke(strokeWidth))
         }
         is SketchArc -> {
-            val segments = 32
-            val path = Path()
+            val path = Path(); val segments = 32
             fun norm(a: Double) = (a % (2 * PI) + (2 * PI)) % (2 * PI)
-            val s = norm(geom.startAngle)
-            val e = norm(geom.endAngle)
+            val s = norm(geom.startAngle); val e = norm(geom.endAngle)
             var sweep = e - s
             if (geom.isClockwise && sweep > 0) sweep -= 2 * PI
             if (!geom.isClockwise && sweep < 0) sweep += 2 * PI
             for (i in 0..segments) {
                 val t = s + sweep * i / segments
-                val pLocal = geom.center + Vec2(cos(t) * geom.radius, sin(t) * geom.radius)
-                val pScreen = viewModel.sketchToScreen(pLocal, plane, screenWidth, screenHeight)
-                if (i == 0) path.moveTo(pScreen.x, pScreen.y) else path.lineTo(pScreen.x, pScreen.y)
+                val p = geom.center + Vec2(cos(t) * geom.radius, sin(t) * geom.radius)
+                val ps = viewModel.sketchToScreen(p, plane, sw, sh)
+                if (i == 0) path.moveTo(ps.x, ps.y) else path.lineTo(ps.x, ps.y)
             }
             drawScope.drawPath(path, color, style = Stroke(strokeWidth))
         }
         is SketchRect -> {
-            val p1s = viewModel.sketchToScreen(geom.p1, plane, screenWidth, screenHeight)
-            val p2s = viewModel.sketchToScreen(Vec2(geom.p2.x, geom.p1.y), plane, screenWidth, screenHeight)
-            val p3s = viewModel.sketchToScreen(geom.p2, plane, screenWidth, screenHeight)
-            val p4s = viewModel.sketchToScreen(Vec2(geom.p1.x, geom.p2.y), plane, screenWidth, screenHeight)
-            drawScope.drawLine(color, p1s, p2s, strokeWidth)
-            drawScope.drawLine(color, p2s, p3s, strokeWidth)
-            drawScope.drawLine(color, p3s, p4s, strokeWidth)
-            drawScope.drawLine(color, p4s, p1s, strokeWidth)
+            val p1s = viewModel.sketchToScreen(geom.p1, plane, sw, sh)
+            val p2s = viewModel.sketchToScreen(Vec2(geom.p2.x, geom.p1.y), plane, sw, sh)
+            val p3s = viewModel.sketchToScreen(geom.p2, plane, sw, sh)
+            val p4s = viewModel.sketchToScreen(Vec2(geom.p1.x, geom.p2.y), plane, sw, sh)
+            drawScope.drawLine(color, p1s, p2s, strokeWidth); drawScope.drawLine(color, p2s, p3s, strokeWidth)
+            drawScope.drawLine(color, p3s, p4s, strokeWidth); drawScope.drawLine(color, p4s, p1s, strokeWidth)
         }
-        is Line -> {
-            drawScope.drawLine(color, viewModel.worldToScreen(geom.startPoint, screenWidth, screenHeight), viewModel.worldToScreen(geom.endPoint, screenWidth, screenHeight), strokeWidth)
-        }
+        is Line -> drawScope.drawLine(color, viewModel.worldToScreen(geom.startPoint, sw, sh), viewModel.worldToScreen(geom.endPoint, sw, sh), strokeWidth)
     }
 }
