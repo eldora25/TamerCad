@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.tamercad.ui.Phase20823Test" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-08-14T16:12:04" hostname="DESKTOP-OUQLP2N" time="0.001">
+  <properties/>
+  <testcase name="testObjectTreeDisplaysSketchCount" classname="com.tamercad.ui.Phase20823Test" time="0.0"/>
+  <testcase name="testInspectButtonOpensObjectTree" classname="com.tamercad.ui.Phase20823Test" time="0.001"/>
+  <testcase name="testObjectTreeVisibleWithoutSavedPosition" classname="com.tamercad.ui.Phase20823Test" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

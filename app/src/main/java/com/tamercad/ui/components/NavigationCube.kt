@@ -25,8 +25,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.tamercad.ui.theme.TamerCadColors
-import kotlin.math.cos
-import kotlin.math.sin
+import kotlin.math.*
 
 data class NavVec3(val x: Double, val y: Double, val z: Double)
 data class NavFace(val name: String, val normal: NavVec3, val pitch: Float, val yaw: Float, val color: Color, val vertices: List<NavVec3>)
@@ -34,11 +33,11 @@ data class NavFace(val name: String, val normal: NavVec3, val pitch: Float, val 
 private const val cubeScale = 1.0
 val navFaces = listOf(
     NavFace("FRONT", NavVec3(0.0, 0.0, 1.0), 0f, 0f, Color(0xFF2C2C34), listOf(NavVec3(-cubeScale, -cubeScale, cubeScale), NavVec3(cubeScale, -cubeScale, cubeScale), NavVec3(cubeScale, cubeScale, cubeScale), NavVec3(-cubeScale, cubeScale, cubeScale))),
-    NavFace("BACK", NavVec3(0.0, 0.0, -1.0), 0f, Math.PI.toFloat(), Color(0xFF222228), listOf(NavVec3(cubeScale, -cubeScale, -cubeScale), NavVec3(-cubeScale, -cubeScale, -cubeScale), NavVec3(-cubeScale, cubeScale, -cubeScale), NavVec3(cubeScale, cubeScale, -cubeScale))),
-    NavFace("TOP", NavVec3(0.0, -1.0, 0.0), Math.PI.toFloat() / 2f, 0f, Color(0xFF383842), listOf(NavVec3(-cubeScale, -cubeScale, -cubeScale), NavVec3(cubeScale, -cubeScale, -cubeScale), NavVec3(cubeScale, -cubeScale, cubeScale), NavVec3(-cubeScale, -cubeScale, cubeScale))),
-    NavFace("BTM", NavVec3(0.0, 1.0, 0.0), -Math.PI.toFloat() / 2f, 0f, Color(0xFF1A1A20), listOf(NavVec3(-cubeScale, cubeScale, cubeScale), NavVec3(cubeScale, cubeScale, cubeScale), NavVec3(cubeScale, cubeScale, -cubeScale), NavVec3(-cubeScale, cubeScale, -cubeScale))),
-    NavFace("RIGHT", NavVec3(1.0, 0.0, 0.0), 0f, Math.PI.toFloat() / 2f, Color(0xFF32323C), listOf(NavVec3(cubeScale, -cubeScale, cubeScale), NavVec3(cubeScale, -cubeScale, -cubeScale), NavVec3(cubeScale, cubeScale, -cubeScale), NavVec3(cubeScale, cubeScale, cubeScale))),
-    NavFace("LEFT", NavVec3(-1.0, 0.0, 0.0), 0f, -Math.PI.toFloat() / 2f, Color(0xFF26262E), listOf(NavVec3(-cubeScale, -cubeScale, -cubeScale), NavVec3(-cubeScale, -cubeScale, cubeScale), NavVec3(-cubeScale, cubeScale, cubeScale), NavVec3(-cubeScale, cubeScale, -cubeScale)))
+    NavFace("BACK", NavVec3(0.0, 0.0, -1.0), 0f, PI.toFloat(), Color(0xFF222228), listOf(NavVec3(cubeScale, -cubeScale, -cubeScale), NavVec3(-cubeScale, -cubeScale, -cubeScale), NavVec3(-cubeScale, cubeScale, -cubeScale), NavVec3(cubeScale, cubeScale, -cubeScale))),
+    NavFace("TOP", NavVec3(0.0, -1.0, 0.0), PI.toFloat() / 2f, 0f, Color(0xFF383842), listOf(NavVec3(-cubeScale, -cubeScale, -cubeScale), NavVec3(cubeScale, -cubeScale, -cubeScale), NavVec3(cubeScale, -cubeScale, cubeScale), NavVec3(-cubeScale, -cubeScale, cubeScale))),
+    NavFace("BOTTOM", NavVec3(0.0, 1.0, 0.0), -PI.toFloat() / 2f, 0f, Color(0xFF1A1A20), listOf(NavVec3(-cubeScale, cubeScale, cubeScale), NavVec3(cubeScale, cubeScale, cubeScale), NavVec3(cubeScale, cubeScale, -cubeScale), NavVec3(-cubeScale, cubeScale, -cubeScale))),
+    NavFace("RIGHT", NavVec3(1.0, 0.0, 0.0), 0f, PI.toFloat() / 2f, Color(0xFF32323C), listOf(NavVec3(cubeScale, -cubeScale, cubeScale), NavVec3(cubeScale, -cubeScale, -cubeScale), NavVec3(cubeScale, cubeScale, -cubeScale), NavVec3(cubeScale, cubeScale, cubeScale))),
+    NavFace("LEFT", NavVec3(-1.0, 0.0, 0.0), 0f, -PI.toFloat() / 2f, Color(0xFF26262E), listOf(NavVec3(-cubeScale, -cubeScale, -cubeScale), NavVec3(-cubeScale, -cubeScale, cubeScale), NavVec3(-cubeScale, cubeScale, cubeScale), NavVec3(-cubeScale, cubeScale, -cubeScale)))
 )
 
 fun projectNav3DTo2D(p: NavVec3, pitch: Float, yaw: Float): NavVec3 {
@@ -145,13 +144,16 @@ fun NavigationCube(
                     val cy = tVertices.map { it.y }.average().toFloat()
                     val paint = android.graphics.Paint().apply { 
                         setColor(android.graphics.Color.WHITE)
-                        textSize = 24f
+                        textSize = 20f // Slightly smaller for full names
                         textAlign = android.graphics.Paint.Align.CENTER
                         isAntiAlias = true
                         typeface = android.graphics.Typeface.DEFAULT_BOLD 
                     }
-                    drawContext.canvas.nativeCanvas.drawText(face.name.take(1), cx, cy + 8f, paint)
+                    drawContext.canvas.nativeCanvas.drawText(face.name, cx, cy + 7f, paint)
                 }
+
+                // DRAW XYZ AXIS TRIAD
+                drawAxisTriad(this, cameraPitch, cameraYaw)
             }
         }
 
@@ -164,20 +166,54 @@ fun NavigationCube(
                 .padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            IconButton(onClick = onHomeClick, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.Home, "Home", tint = Color.White, modifier = Modifier.size(18.dp))
+            IconButton(onClick = onHomeClick, modifier = Modifier.size(40.dp)) {
+                Icon(Icons.Default.Home, "Home", tint = Color.White, modifier = Modifier.size(20.dp))
             }
-            IconButton(onClick = onFitAllClick, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.ZoomOutMap, "Fit", tint = Color.White, modifier = Modifier.size(18.dp))
+            IconButton(onClick = onFitAllClick, modifier = Modifier.size(40.dp)) {
+                Icon(Icons.Default.ZoomOutMap, "Fit", tint = Color.White, modifier = Modifier.size(20.dp))
             }
-            IconButton(onClick = onTogglePerspective, modifier = Modifier.size(32.dp)) {
+            IconButton(onClick = onTogglePerspective, modifier = Modifier.size(40.dp)) {
                 Icon(
                     if (isPerspective) Icons.Default.ViewInAr else Icons.Default.CropFree, 
                     "Projection", 
                     tint = Color.White, 
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
     }
+}
+
+private fun drawAxisTriad(drawScope: androidx.compose.ui.graphics.drawscope.DrawScope, pitch: Float, yaw: Float) {
+    val size = drawScope.size.width
+    val origin = Offset(20f, size - 20f) 
+    val length = 20f
+
+    val axes = listOf(
+        Triple(NavVec3(1.0, 0.0, 0.0), TamerCadColors.AxisX, "X"),
+        Triple(NavVec3(0.0, -1.0, 0.0), TamerCadColors.AxisY, "Y"),
+        Triple(NavVec3(0.0, 0.0, 1.0), TamerCadColors.AxisZ, "Z")
+    )
+
+    axes.forEach { (dir, color, label) ->
+        val proj = projectNav3DTo2D(dir, pitch, yaw)
+        val end = origin + Offset(proj.x.toFloat() * length, proj.y.toFloat() * length)
+        
+        drawScope.drawLine(color, origin, end, strokeWidth = 2f)
+        
+        val paint = android.graphics.Paint().apply { 
+            setColor(color.toArgb())
+            textSize = 12f
+            isAntiAlias = true
+            typeface = android.graphics.Typeface.DEFAULT_BOLD 
+        }
+        drawScope.drawContext.canvas.nativeCanvas.drawText(label, end.x + 4f, end.y + 4f, paint)
+    }
+}
+
+private fun Color.toArgb(): Int {
+    return (alpha * 255.0f + 0.5f).toInt() shl 24 or
+           (red * 255.0f + 0.5f).toInt() shl 16 or
+           (green * 255.0f + 0.5f).toInt() shl 8 or
+           (blue * 255.0f + 0.5f).toInt()
 }

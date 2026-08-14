@@ -3,6 +3,7 @@ package com.tamercad.ui.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -34,10 +35,12 @@ import com.tamercad.core.sketch.SketchArc
 import com.tamercad.core.sketch.SketchRect
 import com.tamercad.ui.CADViewModel
 import com.tamercad.ui.CadMode
+import com.tamercad.ui.sketch.SketchTool
 import com.tamercad.ui.theme.TamerCadColors
 import com.tamercad.ui.interaction.InteractionState
 import com.tamercad.ui.navigation.GestureHardenEngine
 import com.tamercad.ui.navigation.NavigationMode
+import com.tamercad.ui.viewport.ViewportPolicy
 import androidx.compose.material3.Text
 import java.util.Locale
 import kotlin.math.*
@@ -51,11 +54,18 @@ fun CADCanvas(viewModel: CADViewModel) {
     var viewportSize by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(Size.Zero) }
     var lastInputX by androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     var lastInputY by androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    val density = androidx.compose.ui.platform.LocalDensity.current
 
     Box(modifier = Modifier
         .fillMaxSize()
         .onGloballyPositioned { coords ->
-            viewportSize = Size(coords.size.width.toFloat(), coords.size.height.toFloat())
+            val newSize = Size(coords.size.width.toFloat(), coords.size.height.toFloat())
+            if (viewportSize == Size.Zero && newSize.width > 0) {
+                with(density) {
+                    viewModel.loadUiState(newSize.width.toDp().value, newSize.height.toDp().value)
+                }
+            }
+            viewportSize = newSize
         }
     ) {
         val sw = viewportSize.width
@@ -136,35 +146,41 @@ fun CADCanvas(viewModel: CADViewModel) {
             }
         }
 
-        // --- ENHANCED DIAGNOSTIC OVERLAY (PHASE 2.0.6.2) ---
+        // --- ENHANCED DIAGNOSTIC OVERLAY (PHASE 2.0.8.1) ---
         Column(
             modifier = Modifier
-                .align(androidx.compose.ui.Alignment.BottomEnd)
-                .padding(16.dp)
-                .background(Color.Black.copy(alpha = 0.6f))
-                .padding(10.dp)
+                .align(androidx.compose.ui.Alignment.BottomStart)
+                .padding(start = ViewportPolicy.DiagnosticsStart, bottom = ViewportPolicy.DiagnosticsBottom)
+                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                .padding(8.dp)
+                .width(180.dp)
+                .wrapContentHeight()
         ) {
             DebugText("INPUT: ${if (viewModel.isStylusInUse) "STYLUS" else "FINGER"} DOWN: ${viewModel.isStylusDown}")
-            DebugText("INTENT: ${viewModel.interactionIntent} MAX MOVE: ${String.format(Locale.US, "%.1f", viewModel.stylusMaxMoveDist)}")
-
-            DebugText("--- DOCUMENT ---")
-            DebugText("TOTAL SKETCHES: ${viewModel.document.sketches.size}")
-            DebugText("TOTAL ENTITIES: ${viewModel.document.sketches.sumOf { it.getGeometries().size }}")
+            DebugText("MODE: ${viewModel.selectionManager.selectionMode}")
             
+            DebugText("--- DOCUMENT ---")
+            DebugText("SKETCHES: ${viewModel.document.sketches.size} ENTITIES: ${viewModel.document.sketches.sumOf { it.getGeometries().size }}")
+            
+            DebugText("--- SELECTION ---")
+            DebugText("COUNT: ${viewModel.selectionManager.selectedEntities.size}")
+            DebugText("ACTIVE SKETCH: ${viewModel.activeSketchId?.take(8) ?: "NONE"}")
+            DebugText("HIT DIST: ${String.format(Locale.US, "%.1f px", viewModel.selectionManager.hitDistance)}")
+
             DebugText("--- INTERACTION ---")
             DebugText("TOOL: ${viewModel.activeSketchTool}")
-            DebugText("POINTS: ${viewModel.rawSketchPoints.size}")
             DebugText("SNAP: ${viewModel.currentSnap?.type ?: "NONE"}")
-            DebugText("LAST COMMIT: ${viewModel.lastCommitInfo}")
 
-            DebugText("--- ALIGNMENT ---")
-            viewModel.hoverPointLocal?.let { local ->
-                val plane = viewModel.currentActiveSketch?.plane ?: viewModel.activeSketchPlane
-                val reprojected = viewModel.sketchToScreen(local, plane, sw, sh)
-                DebugText("REPROJECTED XY: ${String.format(Locale.US, "%.1f / %.1f", reprojected.x, reprojected.y)}")
-                DebugText("ERROR XY: ${String.format(Locale.US, "%+.1f / %+.1f", reprojected.x - lastInputX, reprojected.y - lastInputY)}")
-                DebugText("SKETCH LOCAL XY: ${String.format(Locale.US, "%.2f / %.2f", local.x, local.y)}")
-            }
+            DebugText("--- OBJECT TREE ---")
+            DebugText("VISIBLE: ${viewModel.isObjectTreeVisible}")
+            DebugText("PINNED: ${viewModel.objectTreePinned}")
+            DebugText("COMPOSED: ${viewModel.objectTreeComposed}")
+            DebugText("MEASURED: ${viewModel.objectTreeMeasured}")
+            DebugText("ITEMS: ${viewModel.objectTreeItemCount}")
+            DebugText("X_DP: ${String.format(Locale.US, "%.1f", viewModel.objectTreeOffsetDp.x)}")
+            DebugText("Y_DP: ${String.format(Locale.US, "%.1f", viewModel.objectTreeOffsetDp.y)}")
+            DebugText("SIZE: ${viewModel.objectTreeMeasuredWidth.toInt()}x${viewModel.objectTreeMeasuredHeight.toInt()}")
+            DebugText("CAT: ${viewModel.activeCategory}")
         }
     }
 }
@@ -229,8 +245,11 @@ fun drawSnapMarker(drawScope: DrawScope, viewModel: CADViewModel, snap: SnapResu
 
 fun drawGeometry(drawScope: DrawScope, viewModel: CADViewModel, geom: IGeometry, plane: SketchPlane, color: Color, strokeWidth: Float) {
     val sw = drawScope.size.width; val sh = drawScope.size.height
+    val finalColor = if (geom.isSelected) TamerCadColors.SelectionColor else color
+    val finalStroke = if (geom.isSelected) strokeWidth * 2f else strokeWidth
+    
     when (geom) {
-        is SketchLine -> drawScope.drawLine(color, viewModel.sketchToScreen(geom.start, plane, sw, sh), viewModel.sketchToScreen(geom.end, plane, sw, sh), strokeWidth)
+        is SketchLine -> drawScope.drawLine(finalColor, viewModel.sketchToScreen(geom.start, plane, sw, sh), viewModel.sketchToScreen(geom.end, plane, sw, sh), finalStroke)
         is SketchCircle -> {
             val path = Path(); val segments = 64
             for (i in 0..segments) {
@@ -239,7 +258,7 @@ fun drawGeometry(drawScope: DrawScope, viewModel: CADViewModel, geom: IGeometry,
                 val s = viewModel.sketchToScreen(p, plane, sw, sh)
                 if (i == 0) path.moveTo(s.x, s.y) else path.lineTo(s.x, s.y)
             }
-            drawScope.drawPath(path, color, style = Stroke(strokeWidth))
+            drawScope.drawPath(path, finalColor, style = Stroke(finalStroke))
         }
         is SketchArc -> {
             val path = Path(); val segments = 32
@@ -254,16 +273,16 @@ fun drawGeometry(drawScope: DrawScope, viewModel: CADViewModel, geom: IGeometry,
                 val ps = viewModel.sketchToScreen(p, plane, sw, sh)
                 if (i == 0) path.moveTo(ps.x, ps.y) else path.lineTo(ps.x, ps.y)
             }
-            drawScope.drawPath(path, color, style = Stroke(strokeWidth))
+            drawScope.drawPath(path, finalColor, style = Stroke(finalStroke))
         }
         is SketchRect -> {
             val p1s = viewModel.sketchToScreen(geom.p1, plane, sw, sh)
             val p2s = viewModel.sketchToScreen(Vec2(geom.p2.x, geom.p1.y), plane, sw, sh)
             val p3s = viewModel.sketchToScreen(geom.p2, plane, sw, sh)
             val p4s = viewModel.sketchToScreen(Vec2(geom.p1.x, geom.p2.y), plane, sw, sh)
-            drawScope.drawLine(color, p1s, p2s, strokeWidth); drawScope.drawLine(color, p2s, p3s, strokeWidth)
-            drawScope.drawLine(color, p3s, p4s, strokeWidth); drawScope.drawLine(color, p4s, p1s, strokeWidth)
+            drawScope.drawLine(finalColor, p1s, p2s, finalStroke); drawScope.drawLine(finalColor, p2s, p3s, finalStroke)
+            drawScope.drawLine(finalColor, p3s, p4s, finalStroke); drawScope.drawLine(finalColor, p4s, p1s, finalStroke)
         }
-        is Line -> drawScope.drawLine(color, viewModel.worldToScreen(geom.startPoint, sw, sh), viewModel.worldToScreen(geom.endPoint, sw, sh), strokeWidth)
+        is Line -> drawScope.drawLine(finalColor, viewModel.worldToScreen(geom.startPoint, sw, sh), viewModel.worldToScreen(geom.endPoint, sw, sh), finalStroke)
     }
 }

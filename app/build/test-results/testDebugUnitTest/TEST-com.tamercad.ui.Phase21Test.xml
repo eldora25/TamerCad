@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.tamercad.ui.Phase21Test" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-08-14T16:12:04" hostname="DESKTOP-OUQLP2N" time="0.008">
+  <properties/>
+  <testcase name="testPlaneSwitchCommandTermination" classname="com.tamercad.ui.Phase21Test" time="0.001"/>
+  <testcase name="testSelectCircle" classname="com.tamercad.ui.Phase21Test" time="0.001"/>
+  <testcase name="testSelectionDoesNotTranslateGeometry" classname="com.tamercad.ui.Phase21Test" time="0.0"/>
+  <testcase name="testEmptySpaceDeselection" classname="com.tamercad.ui.Phase21Test" time="0.001"/>
+  <testcase name="testSelectArc" classname="com.tamercad.ui.Phase21Test" time="0.001"/>
+  <testcase name="testCrossPlaneSelectionOwnership" classname="com.tamercad.ui.Phase21Test" time="0.0"/>
+  <testcase name="testCommandTerminationOnSelect" classname="com.tamercad.ui.Phase21Test" time="0.0"/>
+  <testcase name="testDeleteIsolation" classname="com.tamercad.ui.Phase21Test" time="0.001"/>
+  <testcase name="testSelectLine" classname="com.tamercad.ui.Phase21Test" time="0.001"/>
+  <testcase name="testSelectRect" classname="com.tamercad.ui.Phase21Test" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -18,6 +18,8 @@ import com.tamercad.ui.theme.IconRegistry
 import com.tamercad.ui.theme.TamerCadColors
 import com.tamercad.ui.theme.TamerCadDimensions
 
+import com.tamercad.ui.viewport.ViewportPolicy
+
 /**
  * TamerCAD Profesyonel Tablet Tool Rail.
  * Sadece ana kategorileri dikey bir şeritte gösterir.
@@ -27,12 +29,13 @@ fun CADSideToolbar(
     activeCategory: ToolbarCategory,
     isSketchMode: Boolean = false,
     onCategoryClick: (ToolbarCategory) -> Unit,
-    onExitSketch: (Boolean) -> Unit
+    onExitSketch: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = Modifier
-            .padding(start = TamerCadDimensions.SpacingMedium, top = 80.dp)
-            .width(64.dp) 
+        modifier = modifier
+            .padding(start = ViewportPolicy.SideToolbarStart, top = ViewportPolicy.SideToolbarTopOffset)
+            .width(ViewportPolicy.SideToolbarWidth) 
             .wrapContentHeight()
             .clip(RoundedCornerShape(TamerCadDimensions.CornerLarge))
             .background(TamerCadColors.Surface)

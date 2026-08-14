@@ -67,7 +67,7 @@ class Phase206Test {
         viewModel.enterSketchMode("XZ")
         val active = viewModel.currentActiveSketch!!
         assertEquals("XZ sketch should be empty", 0, active.getGeometries().size)
-        viewModel.onPointSelected(com.tamercad.core.math.Vec2(50.0, 50.0))
+        viewModel.onPointSelected(com.tamercad.core.math.Vec2(50.0, 50.0), 1000f, 1000f)
         assertTrue(viewModel.currentSnap?.type != com.tamercad.core.sketch.SnapType.ENDPOINT)
     }
 

@@ -28,6 +28,8 @@ class SketchFeature(
     private val geometries = mutableStateListOf<IGeometry>()
     private val constraints = mutableListOf<IConstraint>()
     
+    var lastHitDistance: Double = 0.0
+
     fun addGeometry(geometry: IGeometry) { geometries.add(geometry) }
     fun removeGeometry(geometry: IGeometry) { geometries.remove(geometry) }
     fun getGeometries(): List<IGeometry> = geometries.toList()
@@ -51,16 +53,7 @@ class SketchFeature(
 
         for (geom in geometries) {
             val dist = when (geom) {
-                is SketchLine -> {
-                    val dx = geom.end.x - geom.start.x; val dy = geom.end.y - geom.start.y
-                    val l2 = dx*dx + dy*dy
-                    if (l2 == 0.0) lp.distanceTo(geom.start)
-                    else {
-                        var t = ((lp.x - geom.start.x) * dx + (lp.y - geom.start.y) * dy) / l2
-                        t = max(0.0, min(1.0, t))
-                        lp.distanceTo(Vec2(geom.start.x + t * dx, geom.start.y + t * dy))
-                    }
-                }
+                is SketchLine -> distanceToSegment(lp, geom.start, geom.end)
                 is SketchCircle -> {
                     abs(lp.distanceTo(geom.center) - geom.radius)
                 }
@@ -73,8 +66,13 @@ class SketchFeature(
                     } else tolerance + 1.0
                 }
                 is SketchRect -> {
-                    // Min distance to 4 segments
-                    tolerance + 1.0 // Placeholder
+                    val p1 = geom.p1; val p2 = geom.p2
+                    val c2 = Vec2(p2.x, p1.y); val c4 = Vec2(p1.x, p2.y)
+                    val d1 = distanceToSegment(lp, p1, c2)
+                    val d2 = distanceToSegment(lp, c2, p2)
+                    val d3 = distanceToSegment(lp, p2, c4)
+                    val d4 = distanceToSegment(lp, c4, p1)
+                    min(min(d1, d2), min(d3, d4))
                 }
                 is Line -> geom.distanceToPoint(point)
                 is Circle3D -> geom.distanceToPoint(point)
@@ -86,7 +84,17 @@ class SketchFeature(
                 closestGeometry = geom
             }
         }
+        lastHitDistance = if (closestGeometry != null) minDistance else 0.0
         return closestGeometry
+    }
+
+    private fun distanceToSegment(p: Vec2, a: Vec2, b: Vec2): Double {
+        val dx = b.x - a.x; val dy = b.y - a.y
+        val l2 = dx*dx + dy*dy
+        if (l2 == 0.0) return p.distanceTo(a)
+        var t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2
+        t = max(0.0, min(1.0, t))
+        return p.distanceTo(Vec2(a.x + t * dx, a.y + t * dy))
     }
 
     private fun isAngleInArc(a: Double, s: Double, e: Double, cw: Boolean): Boolean {

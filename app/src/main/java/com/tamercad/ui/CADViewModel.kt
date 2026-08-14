@@ -23,10 +23,18 @@ import com.tamercad.ui.selection.SelectionManager
 import com.tamercad.ui.state.SettingsState
 import com.tamercad.core.document.CADDocument
 import com.tamercad.ui.toolbar.ToolbarCategory
+import com.tamercad.TamerCadApplication
 import java.util.*
 import kotlin.math.*
 
 enum class InteractionIntent { PENDING, TAP, DRAG }
+
+data class PickResult(
+    val sketchId: String,
+    val entity: IGeometry,
+    val screenDistance: Float,
+    val depth: Double = 0.0
+)
 
 /**
  * TAMERCAD — PHASE 2.0.6.2 — STYLUS ROBUSTNESS & PLANE ALIGNMENT
@@ -104,7 +112,19 @@ class CADViewModel : ViewModel() {
     var renameInput by mutableStateOf(""); var showRenameDialog by mutableStateOf<Component3D?>(null)
     var showInfoDialog by mutableStateOf(false); var showSettings by mutableStateOf(false)
     var showDimDialog by mutableStateOf(false); var dimInput by mutableStateOf("")
-    var browserOffset by mutableStateOf(Offset(250f, 100f)); var selectionPoint by mutableStateOf<Offset?>(null)
+    
+    var objectTreeOffsetDp by mutableStateOf(Offset(0f, 0f))
+    var objectTreePinned by mutableStateOf(false)
+    var isObjectTreeVisible by mutableStateOf(false)
+
+    // --- DEBUG PROBES FOR PHASE 2.0.8.2.3 ---
+    var objectTreeComposed by mutableStateOf(false)
+    var objectTreeMeasured by mutableStateOf(false)
+    var objectTreeMeasuredWidth by mutableFloatStateOf(0f)
+    var objectTreeMeasuredHeight by mutableFloatStateOf(0f)
+    var objectTreeItemCount by mutableIntStateOf(0)
+    
+    var selectionPoint by mutableStateOf<Offset?>(null)
     var saveStatus by mutableStateOf("Saved"); var updateTrigger by mutableIntStateOf(0)
     var currentMeasurement by mutableStateOf<MeasurementEngine.MeasurementResult?>(null)
 
@@ -180,14 +200,42 @@ class CADViewModel : ViewModel() {
     fun onStylusUp(x: Float, y: Float, w: Float, h: Float) {
         isStylusDown = false; val pt = screenToSketchPoint(x, y, w, h) ?: return
         if (stylusMaxMoveDist < dragStartSlopPx) {
-            interactionIntent = InteractionIntent.TAP; onPointSelected(pt)
-        } else { onPointSelected(pt) }
+            interactionIntent = InteractionIntent.TAP; onPointSelected(pt, w, h)
+        } else { onPointSelected(pt, w, h) }
         interactionIntent = InteractionIntent.PENDING
     }
 
-    fun onPointSelected(localPt: Vec2) {
+    fun onPointSelected(localPt: Vec2, w: Float, h: Float) {
         val sketch = currentActiveSketch ?: return
-        if (activeSketchTool == SketchTool.NONE || activeSketchTool == SketchTool.SELECT) return
+        if (activeSketchTool == SketchTool.SELECT) {
+            // Document-wide screen-space picking
+            // FALLBACK: If stylusDownPos is zero (e.g. in tests calling this directly), 
+            // use the projected screen position of localPt.
+            val screenPos = if (stylusDownPos == Offset.Zero) {
+                sketchToScreen(localPt, w, h)
+            } else {
+                stylusDownPos
+            }
+            val pick = findEntityAt(screenPos.x, screenPos.y, w, h)
+            
+            if (pick != null) {
+                if (selectionManager.selectionMode == com.tamercad.ui.selection.SelectionMode.MULTI) {
+                    selectionManager.toggleInSketch(pick.entity, pick.sketchId)
+                } else {
+                    selectionManager.selectSingle(pick.entity, pick.sketchId)
+                }
+                
+                // Active Sketch Selection Policy: owner sketch becomes active
+                // CRITICAL: Changing activeSketchId here MUST NOT call alignCameraToPlane
+                activeSketchId = pick.sketchId
+                selectionManager.hitDistance = pick.screenDistance.toDouble()
+            } else {
+                selectionManager.clear()
+            }
+            triggerUpdate()
+            return
+        }
+        if (activeSketchTool == SketchTool.NONE) return
         val snap = SnapEngine.snapPoint(localPt, rawSketchPoints.lastOrNull(), sketch.getGeometries(), zoom, currentGridSpacing)
         val finalPt = snap.point
         when (activeSketchTool) {
@@ -286,6 +334,21 @@ class CADViewModel : ViewModel() {
         previewGeometry = null; rawSketchPoints.clear(); currentSnap = null; startSnap = null; interactionState = InteractionState.IDLE; triggerUpdate()
     }
 
+    fun deleteSelectedEntity() {
+        val selected = selectionManager.selectedEntities.toList()
+        if (selected.isEmpty()) return
+        
+        val sketchId = selectionManager.selectedSketchId ?: return
+        val sketch = document.sketches.find { it.id == sketchId } ?: return
+        
+        selected.forEach { entity ->
+            commandManager.execute(RemoveGeometryCommand(sketch, entity))
+        }
+        
+        selectionManager.clear()
+        triggerUpdate()
+    }
+
     // CAMERA UTILS
     fun alignCameraToPlane(plane: SketchPlane) {
         val n = plane.normal; cameraPitch = asin(n.y).toFloat(); cameraYaw = atan2(n.x, n.z).toFloat(); triggerUpdate()
@@ -316,17 +379,119 @@ class CADViewModel : ViewModel() {
     }
 
     fun runCommand(id: String, ctx: Context) {
+        // --- UI CONTEXT POLICY ---
+        // Creation tools clear selection to avoid interference
+        if (id in listOf("line", "circle", "rect", "arc", "spline")) {
+            selectionManager.clear()
+        }
+
         resetActiveToolInteraction()
         when(id) {
             "line" -> activeSketchTool = SketchTool.LINE
             "circle" -> activeSketchTool = SketchTool.CIRCLE
             "rect" -> activeSketchTool = SketchTool.RECTANGLE
             "arc" -> activeSketchTool = SketchTool.ARC
-            "select" -> activeSketchTool = SketchTool.SELECT
+            "select" -> { 
+                activeSketchTool = SketchTool.SELECT
+                selectionManager.selectionMode = com.tamercad.ui.selection.SelectionMode.SINGLE
+            }
+            "multi_select" -> {
+                activeSketchTool = SketchTool.SELECT
+                selectionManager.selectionMode = com.tamercad.ui.selection.SelectionMode.MULTI
+            }
             "sketch" -> startSketchFlow()
+            "delete" -> deleteSelectedEntity()
+            "browser" -> toggleObjectTree()
+            "inspect" -> {
+                activeCategory = ToolbarCategory.INSPECT
+                openObjectTree()
+            }
             else -> {}
         }
         triggerUpdate()
+    }
+
+    fun openObjectTree() {
+        isObjectTreeVisible = true
+        saveUiState()
+    }
+
+    fun closeObjectTree() {
+        isObjectTreeVisible = false
+        saveUiState()
+    }
+
+    fun toggleObjectTree() {
+        isObjectTreeVisible = !isObjectTreeVisible
+        saveUiState()
+    }
+
+    fun setObjectTreePositionDp(offsetDp: Offset) {
+        objectTreeOffsetDp = offsetDp
+        // Note: Final clamping occurs during persistence or after measurement
+    }
+
+    fun saveObjectTreeDragEnd() {
+        saveUiState()
+    }
+
+    fun toggleObjectTreePin() {
+        objectTreePinned = !objectTreePinned
+        saveUiState()
+    }
+
+    // Terminology Aliases for compatibility
+    fun toggleBrowser() = toggleObjectTree()
+    fun openBrowser() = openObjectTree()
+    fun closeBrowser() = closeObjectTree()
+    fun toggleBrowserPin() = toggleObjectTreePin()
+
+    fun saveUiState() {
+        try {
+            val prefs = TamerCadApplication.instance.getSharedPreferences("ui_state", Context.MODE_PRIVATE)
+            prefs.edit().apply {
+                putFloat("browser_x_dp", objectTreeOffsetDp.x)
+                putFloat("browser_y_dp", objectTreeOffsetDp.y)
+                putBoolean("browser_pinned", objectTreePinned)
+                apply()
+            }
+        } catch (e: Exception) {
+            Log.w("CADViewModel", "Failed to save UI state: ${e.message}")
+        }
+    }
+
+    fun loadUiState(screenWidthDp: Float, screenHeightDp: Float) {
+        val defaultX = screenWidthDp - 280f 
+        val defaultY = 220f
+        
+        var x = -1f
+        var y = -1f
+        
+        try {
+            val prefs = TamerCadApplication.instance.getSharedPreferences("ui_state", Context.MODE_PRIVATE)
+            x = prefs.getFloat("browser_x_dp", -1f)
+            y = prefs.getFloat("browser_y_dp", -1f)
+            objectTreePinned = prefs.getBoolean("browser_pinned", false)
+        } catch (e: Exception) {
+            Log.w("CADViewModel", "Failed to load UI state: ${e.message}")
+        }
+        
+        isObjectTreeVisible = false 
+        
+        if (x < 0f || y < 0f) {
+            objectTreeOffsetDp = Offset(defaultX, defaultY)
+        } else {
+            clampObjectTreePosition(x, y, screenWidthDp, screenHeightDp)
+        }
+    }
+
+    fun clampObjectTreePosition(xDp: Float, yDp: Float, screenWidthDp: Float, screenHeightDp: Float) {
+        val panelWidth = 260f 
+        // Ensure header is reachable (at least top 40dp)
+        val safeX = xDp.coerceIn(0f, max(0f, screenWidthDp - 40f))
+        val safeY = yDp.coerceIn(0f, max(0f, screenHeightDp - 40f))
+        
+        objectTreeOffsetDp = Offset(safeX, safeY)
     }
 
     fun renameComponent() { showRenameDialog?.let { it.name = renameInput; showRenameDialog = null; triggerUpdate() } }
@@ -339,5 +504,89 @@ class CADViewModel : ViewModel() {
         fun norm(a: Double) = (a % (2 * PI) + (2 * PI)) % (2 * PI)
         val s = norm(start); val m = norm(mid); val e = norm(end)
         return if (s < e) { m < s || m > e } else { m > e && m < s }
+    }
+
+    private fun findEntityAt(screenX: Float, screenY: Float, w: Float, h: Float): PickResult? {
+        val candidates = mutableListOf<PickResult>()
+        val tolerancePx = 24f // Tablet/Stylus appropriate tolerance
+
+        document.sketches.forEach { sketch ->
+            // Only search visible sketches
+            sketch.getGeometries().forEach { geom ->
+                val distPx = getScreenDistanceToGeometry(screenX, screenY, geom, sketch.plane, w, h)
+                if (distPx != null && distPx <= tolerancePx) {
+                    candidates.add(PickResult(sketch.id, geom, distPx))
+                }
+            }
+        }
+
+        // Rank by smallest screen-space distance
+        // Deterministic tie-breaker using entity ID
+        return candidates.sortedWith(compareBy({ it.screenDistance }, { it.entity.id })).firstOrNull()
+    }
+
+    private fun getScreenDistanceToGeometry(sx: Float, sy: Float, geom: IGeometry, plane: SketchPlane, w: Float, h: Float): Float? {
+        val mouse = Offset(sx, sy)
+        
+        return when (geom) {
+            is SketchLine -> {
+                val p1 = sketchToScreen(geom.start, plane, w, h)
+                val p2 = sketchToScreen(geom.end, plane, w, h)
+                distanceToSegmentPx(mouse, p1, p2)
+            }
+            is SketchCircle -> {
+                // Approximate circle with points for screen-space accuracy in oblique views
+                val segments = 32
+                var minDist = Float.MAX_VALUE
+                for (i in 0 until segments) {
+                    val angle = 2.0 * PI * i / segments
+                    val p = geom.center + Vec2(cos(angle) * geom.radius, sin(angle) * geom.radius)
+                    val sp = sketchToScreen(p, plane, w, h)
+                    val dist = (mouse - sp).getDistance()
+                    if (dist < minDist) minDist = dist
+                }
+                minDist
+            }
+            is SketchArc -> {
+                // Approximate arc
+                val segments = 16
+                var minDist = Float.MAX_VALUE
+                fun norm(a: Double) = (a % (2 * PI) + (2 * PI)) % (2 * PI)
+                val s = norm(geom.startAngle); val e = norm(geom.endAngle)
+                var sweep = e - s
+                if (geom.isClockwise && sweep > 0) sweep -= 2 * PI
+                if (!geom.isClockwise && sweep < 0) sweep += 2 * PI
+                
+                for (i in 0..segments) {
+                    val t = s + sweep * i / segments
+                    val p = geom.center + Vec2(cos(t) * geom.radius, sin(t) * geom.radius)
+                    val sp = sketchToScreen(p, plane, w, h)
+                    val dist = (mouse - sp).getDistance()
+                    if (dist < minDist) minDist = dist
+                }
+                minDist
+            }
+            is SketchRect -> {
+                val p1 = sketchToScreen(geom.p1, plane, w, h)
+                val p2 = sketchToScreen(Vec2(geom.p2.x, geom.p1.y), plane, w, h)
+                val p3 = sketchToScreen(geom.p2, plane, w, h)
+                val p4 = sketchToScreen(Vec2(geom.p1.x, geom.p2.y), plane, w, h)
+                val d1 = distanceToSegmentPx(mouse, p1, p2)
+                val d2 = distanceToSegmentPx(mouse, p2, p3)
+                val d3 = distanceToSegmentPx(mouse, p3, p4)
+                val d4 = distanceToSegmentPx(mouse, p4, p1)
+                min(min(d1, d2), min(d3, d4))
+            }
+            else -> null
+        }
+    }
+
+    private fun distanceToSegmentPx(p: Offset, a: Offset, b: Offset): Float {
+        val dx = b.x - a.x; val dy = b.y - a.y
+        val l2 = dx*dx + dy*dy
+        if (l2 == 0f) return (p - a).getDistance()
+        var t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2
+        t = max(0f, min(1f, t))
+        return (p - Offset(a.x + t * dx, a.y + t * dy)).getDistance()
     }
 }

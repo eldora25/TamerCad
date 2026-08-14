@@ -19,6 +19,7 @@ object TamerCadColors {
     val Primary = Color(0xFF4A90E2) 
     val Accent = Color(0xFF007AFF)  
     val Selection = Color(0xFF4A90E2).copy(alpha = 0.3f)
+    val SelectionColor = Color(0xFFF1C40F) // Yellow highlight
     
     // Status
     val Error = Color(0xFFEB5757)

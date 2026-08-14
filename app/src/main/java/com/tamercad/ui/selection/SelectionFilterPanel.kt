@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tamercad.ui.theme.TamerCadColors
 import com.tamercad.ui.theme.TamerCadDimensions
+import com.tamercad.ui.viewport.ViewportPolicy
 
 /**
  * TamerCAD Seçim Filtre Paneli.
@@ -30,7 +31,7 @@ fun SelectionFilterPanel(
 ) {
     Column(
         modifier = modifier
-            .width(56.dp)
+            .width(ViewportPolicy.SelectionFilterWidth)
             .wrapContentHeight()
             .clip(RoundedCornerShape(TamerCadDimensions.CornerLarge))
             .background(TamerCadColors.Surface.copy(alpha = 0.9f))

@@ -1,22 +1,3 @@
 # ninja log v5
-0	937	8078400444716222	CMakeFiles/tamercad_kernel.dir/tamercad_kernel.cpp.o	9127dc8bbf4b1203
-943	1045	8078400445806474	C:/Projelerim/TamerCad-main/app/build/intermediates/cxx/Debug/3w5j3t6g/obj/x86_64/libtamercad_kernel.so	5e73044ea7ae6f4e
-11	1499	8078424058998911	CMakeFiles/tamercad_kernel.dir/tamercad_kernel.cpp.o	9127dc8bbf4b1203
-1500	1682	8078424060879339	C:/Projelerim/TamerCad-main/app/build/intermediates/cxx/Debug/3w5j3t6g/obj/x86_64/libtamercad_kernel.so	5e73044ea7ae6f4e
-9	1416	8078449473228479	CMakeFiles/tamercad_kernel.dir/tamercad_kernel.cpp.o	9127dc8bbf4b1203
-1416	1625	8078449475295213	C:/Projelerim/TamerCad-main/app/build/intermediates/cxx/Debug/3w5j3t6g/obj/x86_64/libtamercad_kernel.so	5e73044ea7ae6f4e
-29	1550	8078482150321736	CMakeFiles/tamercad_kernel.dir/tamercad_kernel.cpp.o	9127dc8bbf4b1203
-1551	1767	8078482152562244	C:/Projelerim/TamerCad-main/app/build/intermediates/cxx/Debug/3w5j3t6g/obj/x86_64/libtamercad_kernel.so	5e73044ea7ae6f4e
-57	2529	8078607950927749	CMakeFiles/tamercad_kernel.dir/tamercad_kernel.cpp.o	9127dc8bbf4b1203
-2530	2701	8078607952728167	C:/Projelerim/TamerCad-main/app/build/intermediates/cxx/Debug/3w5j3t6g/obj/x86_64/libtamercad_kernel.so	5e73044ea7ae6f4e
-56	498	8079722562075049	C:/Projelerim/TamerCad-main/app/build/intermediates/cxx/Debug/3w5j3t6g/obj/x86_64/libtamercad_kernel.so	5e73044ea7ae6f4e
-0	8	0	clean	e2f79e34c18ecdf5
-19	1748	8079727795755696	CMakeFiles/tamercad_kernel.dir/tamercad_kernel.cpp.o	9127dc8bbf4b1203
-1749	2080	8079727798196251	C:/Projelerim/TamerCad-main/app/build/intermediates/cxx/Debug/3w5j3t6g/obj/x86_64/libtamercad_kernel.so	5e73044ea7ae6f4e
-10	149	8079733997229682	C:/Projelerim/TamerCad-main/app/build/intermediates/cxx/Debug/3w5j3t6g/obj/x86_64/libtamercad_kernel.so	5e73044ea7ae6f4e
-0	8	0	clean	e2f79e34c18ecdf5
-10	1886	8079741541796605	CMakeFiles/tamercad_kernel.dir/tamercad_kernel.cpp.o	9127dc8bbf4b1203
-1887	2028	8079741543236920	C:/Projelerim/TamerCad-main/app/build/intermediates/cxx/Debug/3w5j3t6g/obj/x86_64/libtamercad_kernel.so	5e73044ea7ae6f4e
-1	8	0	clean	e2f79e34c18ecdf5
-71	2210	8079750857936156	CMakeFiles/tamercad_kernel.dir/tamercad_kernel.cpp.o	9127dc8bbf4b1203
-2211	2668	8079750862617211	C:/Projelerim/TamerCad-main/app/build/intermediates/cxx/Debug/3w5j3t6g/obj/x86_64/libtamercad_kernel.so	5e73044ea7ae6f4e
+0	138135	8083556279579060	CMakeFiles/tamercad_kernel.dir/tamercad_kernel.cpp.o	aa2f8d0da0768922
+138140	171560	8083556617032065	C:/Projelerim/TamerCad-main/app/build/intermediates/cxx/Debug/3w5j3t6g/obj/x86_64/libtamercad_kernel.so	8235fa8493996a4c

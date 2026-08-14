@@ -21,6 +21,7 @@ import com.tamercad.ui.components.LabeledSidebarIconButton
 import com.tamercad.ui.theme.IconRegistry
 import com.tamercad.ui.theme.TamerCadColors
 import com.tamercad.ui.theme.TamerCadDimensions
+import com.tamercad.ui.viewport.ViewportPolicy
 
 /**
  * TamerCAD Kategori Bazlı Dinamik Araç Paneli.
@@ -38,8 +39,7 @@ fun CategoryPanel(
 
     Column(
         modifier = Modifier
-            .padding(start = 100.dp, top = 80.dp) // Tool Rail'in hemen sağına
-            .width(200.dp)
+            .width(ViewportPolicy.CategoryPanelWidth)
             .wrapContentHeight()
             .clip(RoundedCornerShape(TamerCadDimensions.CornerMedium))
             .background(TamerCadColors.Surface)
@@ -74,7 +74,8 @@ fun CategoryPanel(
                     "arc" -> viewModel.activeSketchTool == SketchTool.ARC
                     "spline" -> viewModel.activeSketchTool == SketchTool.SPLINE
                     "trim" -> viewModel.activeSketchTool == SketchTool.TRIM
-                    "select" -> viewModel.activeSketchTool == SketchTool.SELECT
+                    "select" -> viewModel.activeSketchTool == SketchTool.SELECT && viewModel.selectionManager.selectionMode == com.tamercad.ui.selection.SelectionMode.SINGLE
+                    "multi_select" -> viewModel.activeSketchTool == SketchTool.SELECT && viewModel.selectionManager.selectionMode == com.tamercad.ui.selection.SelectionMode.MULTI
                     else -> false
                 }
                 
@@ -96,6 +97,10 @@ fun CategoryPanel(
 
 private fun getToolsForCategory(category: ToolbarCategory, selectionType: com.tamercad.ui.contextual.SelectionType): List<ToolDefinition> {
     return when (category) {
+        ToolbarCategory.SELECT -> listOf(
+            ToolDefinition("select", "Select", IconRegistry.Select),
+            ToolDefinition("multi_select", "Multi Select", IconRegistry.Select) // Reuse icon for now
+        )
         ToolbarCategory.SKETCH -> listOf(
             ToolDefinition("line", "Line", IconRegistry.Line),
             ToolDefinition("arc", "Arc", IconRegistry.Arc),
